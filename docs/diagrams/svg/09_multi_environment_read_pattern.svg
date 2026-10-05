@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="760" viewBox="0 0 800 760">
+  <metadata>
+    <title>09 — Multi-Environment Read Pattern</title>
+    <description>Mermaid source diagram — render with mermaid-cli or open the HTML version in a browser.
+Source: docs/diagrams/mermaid/09_multi_environment_read_pattern.md</description>
+    <mermaid-source>flowchart TB
+    subgraph App[&quot;Ground Truth App (Production Deployment)&quot;]
+        ReviewEngine[C2: Review Engine]
+        AssetRegistry[C1: Asset Registry]
+    end
+
+    subgraph Candidates[&quot;Candidate Validation Flow&quot;]
+        direction LR
+        NewAsset[New/Edited&lt;br/&gt;Candidate Asset]
+        StagingMV[Staging/UAT Catalog&lt;br/&gt;Metric View deployed&lt;br/&gt;from feature branch]
+        StagingData[Staging/UAT Data&lt;br/&gt;Must be production-quality]
+    end
+
+    subgraph Freshness[&quot;Freshness Resurfacing Flow&quot;]
+        direction LR
+        StaleAsset[Production Asset&lt;br/&gt;Review interval expired]
+        ProdMV[Production Catalog&lt;br/&gt;Live Metric View]
+        ProdData[Production Data&lt;br/&gt;Actual business data]
+    end
+
+    subgraph QueryExec[&quot;Sample Query Execution&quot;]
+        SQLWh[Serverless SQL Warehouse]
+        OBOAuth[OBO Auth&lt;br/&gt;User's UC Permissions]
+    end
+
+    AssetRegistry --&gt;|candidate assets| ReviewEngine
+    ReviewEngine --&gt;|&quot;Run a common aggregation&quot;&lt;br/&gt;for candidates| StagingMV
+    StagingMV --&gt; StagingData
+    NewAsset --&gt; StagingMV
+
+    AssetRegistry --&gt;|stale production assets| ReviewEngine
+    ReviewEngine --&gt;|&quot;Run a common aggregation&quot;&lt;br/&gt;for freshness| ProdMV
+    ProdMV --&gt; ProdData
+    StaleAsset --&gt; ProdMV
+
+    ReviewEngine --&gt; SQLWh
+    SQLWh --&gt; OBOAuth
+
+    Note1[Key assumption: Staging/UAT&lt;br/&gt;must have production-quality data&lt;br/&gt;for meaningful validation]
+    style Note1 fill:none,stroke:none</mermaid-source>
+  </metadata>
+  <rect width="800" height="760" fill="#1B1B1B" rx="8"/>
+  <text x="20" y="30" fill="#FF6F00" font-family="sans-serif" font-size="14" font-weight="bold">09 — Multi-Environment Read Pattern</text>
+  <text x="20" y="46" fill="#666" font-family="sans-serif" font-size="10">Mermaid source — open HTML version for rendered diagram</text>
+    <text x="20" y="60" fill="#A0A0A0" font-family="monospace" font-size="11">flowchart TB</text>
+    <text x="20" y="78" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph App["Ground Truth App (Production Deployment)"]</text>
+    <text x="20" y="96" fill="#A0A0A0" font-family="monospace" font-size="11">        ReviewEngine[C2: Review Engine]</text>
+    <text x="20" y="114" fill="#A0A0A0" font-family="monospace" font-size="11">        AssetRegistry[C1: Asset Registry]</text>
+    <text x="20" y="132" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="150" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="168" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Candidates["Candidate Validation Flow"]</text>
+    <text x="20" y="186" fill="#A0A0A0" font-family="monospace" font-size="11">        direction LR</text>
+    <text x="20" y="204" fill="#A0A0A0" font-family="monospace" font-size="11">        NewAsset[New/Edited&lt;br/&gt;Candidate Asset]</text>
+    <text x="20" y="222" fill="#A0A0A0" font-family="monospace" font-size="11">        StagingMV[Staging/UAT Catalog&lt;br/&gt;Metric View deployed&lt;br/&gt;from feature branch]</text>
+    <text x="20" y="240" fill="#A0A0A0" font-family="monospace" font-size="11">        StagingData[Staging/UAT Data&lt;br/&gt;Must be production-quality]</text>
+    <text x="20" y="258" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="276" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="294" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Freshness["Freshness Resurfacing Flow"]</text>
+    <text x="20" y="312" fill="#A0A0A0" font-family="monospace" font-size="11">        direction LR</text>
+    <text x="20" y="330" fill="#A0A0A0" font-family="monospace" font-size="11">        StaleAsset[Production Asset&lt;br/&gt;Review interval expired]</text>
+    <text x="20" y="348" fill="#A0A0A0" font-family="monospace" font-size="11">        ProdMV[Production Catalog&lt;br/&gt;Live Metric View]</text>
+    <text x="20" y="366" fill="#A0A0A0" font-family="monospace" font-size="11">        ProdData[Production Data&lt;br/&gt;Actual business data]</text>
+    <text x="20" y="384" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="402" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="420" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph QueryExec["Sample Query Execution"]</text>
+    <text x="20" y="438" fill="#A0A0A0" font-family="monospace" font-size="11">        SQLWh[Serverless SQL Warehouse]</text>
+    <text x="20" y="456" fill="#A0A0A0" font-family="monospace" font-size="11">        OBOAuth[OBO Auth&lt;br/&gt;User's UC Permissions]</text>
+    <text x="20" y="474" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="492" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="510" fill="#A0A0A0" font-family="monospace" font-size="11">    AssetRegistry --&gt;|candidate assets| ReviewEngine</text>
+    <text x="20" y="528" fill="#A0A0A0" font-family="monospace" font-size="11">    ReviewEngine --&gt;|"Run a common aggregation"&lt;br/&gt;for candidates| StagingMV</text>
+    <text x="20" y="546" fill="#A0A0A0" font-family="monospace" font-size="11">    StagingMV --&gt; StagingData</text>
+    <text x="20" y="564" fill="#A0A0A0" font-family="monospace" font-size="11">    NewAsset --&gt; StagingMV</text>
+    <text x="20" y="582" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="600" fill="#A0A0A0" font-family="monospace" font-size="11">    AssetRegistry --&gt;|stale production assets| ReviewEngine</text>
+    <text x="20" y="618" fill="#A0A0A0" font-family="monospace" font-size="11">    ReviewEngine --&gt;|"Run a common aggregation"&lt;br/&gt;for freshness| ProdMV</text>
+    <text x="20" y="636" fill="#A0A0A0" font-family="monospace" font-size="11">    ProdMV --&gt; ProdData</text>
+    <text x="20" y="654" fill="#A0A0A0" font-family="monospace" font-size="11">    StaleAsset --&gt; ProdMV</text>
+    <text x="20" y="672" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="690" fill="#A0A0A0" font-family="monospace" font-size="11">    ReviewEngine --&gt; SQLWh</text>
+    <text x="20" y="708" fill="#A0A0A0" font-family="monospace" font-size="11">    SQLWh --&gt; OBOAuth</text>
+    <text x="20" y="726" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="744" fill="#A0A0A0" font-family="monospace" font-size="11">    Note1[Key assumption: Staging/UAT&lt;br/&gt;must have production-quality data&lt;br/&gt;for meaningful validation]</text>
+    <text x="20" y="762" fill="#A0A0A0" font-family="monospace" font-size="11">    style Note1 fill:none,stroke:none</text>
+
+</svg>

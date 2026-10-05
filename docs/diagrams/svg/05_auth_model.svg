@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="832" viewBox="0 0 800 832">
+  <metadata>
+    <title>05 — Authentication Model (OBO + Service Principal)</title>
+    <description>Mermaid source diagram — render with mermaid-cli or open the HTML version in a browser.
+Source: docs/diagrams/mermaid/05_auth_model.md</description>
+    <mermaid-source>flowchart TB
+    subgraph User[&quot;Business User&quot;]
+        Browser[Browser / Genie One]
+    end
+
+    subgraph App[&quot;Databricks App&quot;]
+        AppKit[Node.js AppKit]
+        OBO_Token[OBO Token&lt;br/&gt;Forwarded User Identity]
+        SP_Token[Service Principal&lt;br/&gt;App Identity]
+    end
+
+    subgraph Reads[&quot;Reads (OBO — User Permissions)&quot;]
+        UC_MV[UC Metric Views&lt;br/&gt;Sample Queries]
+        UC_Pages[UC Pages&lt;br/&gt;Entity Store]
+        UC_Domains[UC Domains&lt;br/&gt;Subdomains]
+    end
+
+    subgraph Writes[&quot;Writes (SP — App Permissions)&quot;]
+        LB_Votes[Lakebase: Votes]
+        LB_Feedback[Lakebase: Feedback]
+        LB_Campaigns[Lakebase: Campaigns]
+        LB_Gamification[Lakebase: User Activity]
+        LB_Scores[Lakebase: Confidence Scores]
+    end
+
+    Browser --&gt;|authenticate| AppKit
+    AppKit --&gt;|forward user token| OBO_Token
+    AppKit --&gt;|use app SP| SP_Token
+
+    OBO_Token --&gt;|user's UC permissions| UC_MV
+    OBO_Token --&gt;|user's UC permissions| UC_Pages
+    OBO_Token --&gt;|user's UC permissions| UC_Domains
+
+    SP_Token --&gt;|app-owned data| LB_Votes
+    SP_Token --&gt;|app-owned data| LB_Feedback
+    SP_Token --&gt;|app-owned data| LB_Campaigns
+    SP_Token --&gt;|app-owned data| LB_Gamification
+    SP_Token --&gt;|app-owned data| LB_Scores
+
+    Note1[User can only see assets&lt;br/&gt;they have UC permission to access]
+    Note2[All votes attributed to&lt;br/&gt;the actual user via OBO identity]
+
+    style Note1 fill:none,stroke:none
+    style Note2 fill:none,stroke:none</mermaid-source>
+  </metadata>
+  <rect width="800" height="832" fill="#1B1B1B" rx="8"/>
+  <text x="20" y="30" fill="#FF6F00" font-family="sans-serif" font-size="14" font-weight="bold">05 — Authentication Model (OBO + Service Principal)</text>
+  <text x="20" y="46" fill="#666" font-family="sans-serif" font-size="10">Mermaid source — open HTML version for rendered diagram</text>
+    <text x="20" y="60" fill="#A0A0A0" font-family="monospace" font-size="11">flowchart TB</text>
+    <text x="20" y="78" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph User["Business User"]</text>
+    <text x="20" y="96" fill="#A0A0A0" font-family="monospace" font-size="11">        Browser[Browser / Genie One]</text>
+    <text x="20" y="114" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="132" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="150" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph App["Databricks App"]</text>
+    <text x="20" y="168" fill="#A0A0A0" font-family="monospace" font-size="11">        AppKit[Node.js AppKit]</text>
+    <text x="20" y="186" fill="#A0A0A0" font-family="monospace" font-size="11">        OBO_Token[OBO Token&lt;br/&gt;Forwarded User Identity]</text>
+    <text x="20" y="204" fill="#A0A0A0" font-family="monospace" font-size="11">        SP_Token[Service Principal&lt;br/&gt;App Identity]</text>
+    <text x="20" y="222" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="240" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="258" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Reads["Reads (OBO — User Permissions)"]</text>
+    <text x="20" y="276" fill="#A0A0A0" font-family="monospace" font-size="11">        UC_MV[UC Metric Views&lt;br/&gt;Sample Queries]</text>
+    <text x="20" y="294" fill="#A0A0A0" font-family="monospace" font-size="11">        UC_Pages[UC Pages&lt;br/&gt;Entity Store]</text>
+    <text x="20" y="312" fill="#A0A0A0" font-family="monospace" font-size="11">        UC_Domains[UC Domains&lt;br/&gt;Subdomains]</text>
+    <text x="20" y="330" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="348" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="366" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Writes["Writes (SP — App Permissions)"]</text>
+    <text x="20" y="384" fill="#A0A0A0" font-family="monospace" font-size="11">        LB_Votes[Lakebase: Votes]</text>
+    <text x="20" y="402" fill="#A0A0A0" font-family="monospace" font-size="11">        LB_Feedback[Lakebase: Feedback]</text>
+    <text x="20" y="420" fill="#A0A0A0" font-family="monospace" font-size="11">        LB_Campaigns[Lakebase: Campaigns]</text>
+    <text x="20" y="438" fill="#A0A0A0" font-family="monospace" font-size="11">        LB_Gamification[Lakebase: User Activity]</text>
+    <text x="20" y="456" fill="#A0A0A0" font-family="monospace" font-size="11">        LB_Scores[Lakebase: Confidence Scores]</text>
+    <text x="20" y="474" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="492" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="510" fill="#A0A0A0" font-family="monospace" font-size="11">    Browser --&gt;|authenticate| AppKit</text>
+    <text x="20" y="528" fill="#A0A0A0" font-family="monospace" font-size="11">    AppKit --&gt;|forward user token| OBO_Token</text>
+    <text x="20" y="546" fill="#A0A0A0" font-family="monospace" font-size="11">    AppKit --&gt;|use app SP| SP_Token</text>
+    <text x="20" y="564" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="582" fill="#A0A0A0" font-family="monospace" font-size="11">    OBO_Token --&gt;|user's UC permissions| UC_MV</text>
+    <text x="20" y="600" fill="#A0A0A0" font-family="monospace" font-size="11">    OBO_Token --&gt;|user's UC permissions| UC_Pages</text>
+    <text x="20" y="618" fill="#A0A0A0" font-family="monospace" font-size="11">    OBO_Token --&gt;|user's UC permissions| UC_Domains</text>
+    <text x="20" y="636" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="654" fill="#A0A0A0" font-family="monospace" font-size="11">    SP_Token --&gt;|app-owned data| LB_Votes</text>
+    <text x="20" y="672" fill="#A0A0A0" font-family="monospace" font-size="11">    SP_Token --&gt;|app-owned data| LB_Feedback</text>
+    <text x="20" y="690" fill="#A0A0A0" font-family="monospace" font-size="11">    SP_Token --&gt;|app-owned data| LB_Campaigns</text>
+    <text x="20" y="708" fill="#A0A0A0" font-family="monospace" font-size="11">    SP_Token --&gt;|app-owned data| LB_Gamification</text>
+    <text x="20" y="726" fill="#A0A0A0" font-family="monospace" font-size="11">    SP_Token --&gt;|app-owned data| LB_Scores</text>
+    <text x="20" y="744" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="762" fill="#A0A0A0" font-family="monospace" font-size="11">    Note1[User can only see assets&lt;br/&gt;they have UC permission to access]</text>
+    <text x="20" y="780" fill="#A0A0A0" font-family="monospace" font-size="11">    Note2[All votes attributed to&lt;br/&gt;the actual user via OBO identity]</text>
+    <text x="20" y="798" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="816" fill="#A0A0A0" font-family="monospace" font-size="11">    style Note1 fill:none,stroke:none</text>
+    <text x="20" y="834" fill="#A0A0A0" font-family="monospace" font-size="11">    style Note2 fill:none,stroke:none</text>
+
+</svg>

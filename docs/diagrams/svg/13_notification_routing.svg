@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="940" viewBox="0 0 800 940">
+  <metadata>
+    <title>13 — Notification Routing (Notification Service)</title>
+    <description>Mermaid source diagram — render with mermaid-cli or open the HTML version in a browser.
+Source: docs/diagrams/mermaid/13_notification_routing.md</description>
+    <mermaid-source>flowchart TB
+    subgraph Triggers[&quot;Event Triggers&quot;]
+        FBReady[Feature Branch Ready]
+        PipeFail[Pipeline Failure]
+        ScoreReg[Confidence Regression]
+        CovStall[Coverage Stall 48h]
+        CampNew[Campaign Created]
+        Certified[Asset Certified]
+        GameMile[Gamification Milestone]
+    end
+
+    subgraph Priority[&quot;Priority Classification&quot;]
+        Critical[CRITICAL&lt;br/&gt;Immediate delivery]
+        High[HIGH&lt;br/&gt;Immediate delivery]
+        Medium[MEDIUM&lt;br/&gt;Immediate delivery]
+        Low[LOW&lt;br/&gt;Daily digest]
+    end
+
+    subgraph Channels[&quot;Delivery Channels&quot;]
+        InApp[In-App&lt;br/&gt;All events]
+        Slack[Slack&lt;br/&gt;High+ priority]
+        Teams[Teams&lt;br/&gt;High+ priority]
+        Digest[Daily Digest&lt;br/&gt;Low priority batch]
+    end
+
+    subgraph Recipients[&quot;Recipients&quot;]
+        DS[Data Steward]
+        Admin[Admin]
+        Reviewers[Reviewers]
+        Individual[Individual User]
+    end
+
+    FBReady --&gt; High
+    PipeFail --&gt; Critical
+    ScoreReg --&gt; Medium
+    CovStall --&gt; Low
+    CampNew --&gt; Low
+    Certified --&gt; Medium
+    GameMile --&gt; Low
+
+    Critical --&gt; InApp &amp; Slack &amp; Teams
+    High --&gt; InApp &amp; Slack &amp; Teams
+    Medium --&gt; InApp
+    Low --&gt; Digest
+
+    High --&gt; DS
+    Critical --&gt; DS &amp; Admin
+    Medium --&gt; DS
+    Low --&gt; Reviewers
+    GameMile --&gt; Individual</mermaid-source>
+  </metadata>
+  <rect width="800" height="940" fill="#1B1B1B" rx="8"/>
+  <text x="20" y="30" fill="#FF6F00" font-family="sans-serif" font-size="14" font-weight="bold">13 — Notification Routing (Notification Service)</text>
+  <text x="20" y="46" fill="#666" font-family="sans-serif" font-size="10">Mermaid source — open HTML version for rendered diagram</text>
+    <text x="20" y="60" fill="#A0A0A0" font-family="monospace" font-size="11">flowchart TB</text>
+    <text x="20" y="78" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Triggers["Event Triggers"]</text>
+    <text x="20" y="96" fill="#A0A0A0" font-family="monospace" font-size="11">        FBReady[Feature Branch Ready]</text>
+    <text x="20" y="114" fill="#A0A0A0" font-family="monospace" font-size="11">        PipeFail[Pipeline Failure]</text>
+    <text x="20" y="132" fill="#A0A0A0" font-family="monospace" font-size="11">        ScoreReg[Confidence Regression]</text>
+    <text x="20" y="150" fill="#A0A0A0" font-family="monospace" font-size="11">        CovStall[Coverage Stall 48h]</text>
+    <text x="20" y="168" fill="#A0A0A0" font-family="monospace" font-size="11">        CampNew[Campaign Created]</text>
+    <text x="20" y="186" fill="#A0A0A0" font-family="monospace" font-size="11">        Certified[Asset Certified]</text>
+    <text x="20" y="204" fill="#A0A0A0" font-family="monospace" font-size="11">        GameMile[Gamification Milestone]</text>
+    <text x="20" y="222" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="240" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="258" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Priority["Priority Classification"]</text>
+    <text x="20" y="276" fill="#A0A0A0" font-family="monospace" font-size="11">        Critical[CRITICAL&lt;br/&gt;Immediate delivery]</text>
+    <text x="20" y="294" fill="#A0A0A0" font-family="monospace" font-size="11">        High[HIGH&lt;br/&gt;Immediate delivery]</text>
+    <text x="20" y="312" fill="#A0A0A0" font-family="monospace" font-size="11">        Medium[MEDIUM&lt;br/&gt;Immediate delivery]</text>
+    <text x="20" y="330" fill="#A0A0A0" font-family="monospace" font-size="11">        Low[LOW&lt;br/&gt;Daily digest]</text>
+    <text x="20" y="348" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="366" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="384" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Channels["Delivery Channels"]</text>
+    <text x="20" y="402" fill="#A0A0A0" font-family="monospace" font-size="11">        InApp[In-App&lt;br/&gt;All events]</text>
+    <text x="20" y="420" fill="#A0A0A0" font-family="monospace" font-size="11">        Slack[Slack&lt;br/&gt;High+ priority]</text>
+    <text x="20" y="438" fill="#A0A0A0" font-family="monospace" font-size="11">        Teams[Teams&lt;br/&gt;High+ priority]</text>
+    <text x="20" y="456" fill="#A0A0A0" font-family="monospace" font-size="11">        Digest[Daily Digest&lt;br/&gt;Low priority batch]</text>
+    <text x="20" y="474" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="492" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="510" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Recipients["Recipients"]</text>
+    <text x="20" y="528" fill="#A0A0A0" font-family="monospace" font-size="11">        DS[Data Steward]</text>
+    <text x="20" y="546" fill="#A0A0A0" font-family="monospace" font-size="11">        Admin[Admin]</text>
+    <text x="20" y="564" fill="#A0A0A0" font-family="monospace" font-size="11">        Reviewers[Reviewers]</text>
+    <text x="20" y="582" fill="#A0A0A0" font-family="monospace" font-size="11">        Individual[Individual User]</text>
+    <text x="20" y="600" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="618" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="636" fill="#A0A0A0" font-family="monospace" font-size="11">    FBReady --&gt; High</text>
+    <text x="20" y="654" fill="#A0A0A0" font-family="monospace" font-size="11">    PipeFail --&gt; Critical</text>
+    <text x="20" y="672" fill="#A0A0A0" font-family="monospace" font-size="11">    ScoreReg --&gt; Medium</text>
+    <text x="20" y="690" fill="#A0A0A0" font-family="monospace" font-size="11">    CovStall --&gt; Low</text>
+    <text x="20" y="708" fill="#A0A0A0" font-family="monospace" font-size="11">    CampNew --&gt; Low</text>
+    <text x="20" y="726" fill="#A0A0A0" font-family="monospace" font-size="11">    Certified --&gt; Medium</text>
+    <text x="20" y="744" fill="#A0A0A0" font-family="monospace" font-size="11">    GameMile --&gt; Low</text>
+    <text x="20" y="762" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="780" fill="#A0A0A0" font-family="monospace" font-size="11">    Critical --&gt; InApp &amp; Slack &amp; Teams</text>
+    <text x="20" y="798" fill="#A0A0A0" font-family="monospace" font-size="11">    High --&gt; InApp &amp; Slack &amp; Teams</text>
+    <text x="20" y="816" fill="#A0A0A0" font-family="monospace" font-size="11">    Medium --&gt; InApp</text>
+    <text x="20" y="834" fill="#A0A0A0" font-family="monospace" font-size="11">    Low --&gt; Digest</text>
+    <text x="20" y="852" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="870" fill="#A0A0A0" font-family="monospace" font-size="11">    High --&gt; DS</text>
+    <text x="20" y="888" fill="#A0A0A0" font-family="monospace" font-size="11">    Critical --&gt; DS &amp; Admin</text>
+    <text x="20" y="906" fill="#A0A0A0" font-family="monospace" font-size="11">    Medium --&gt; DS</text>
+    <text x="20" y="924" fill="#A0A0A0" font-family="monospace" font-size="11">    Low --&gt; Reviewers</text>
+    <text x="20" y="942" fill="#A0A0A0" font-family="monospace" font-size="11">    GameMile --&gt; Individual</text>
+
+</svg>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="688" viewBox="0 0 800 688">
+  <metadata>
+    <title>03 — Deployment Architecture (Three-Bundle DAB)</title>
+    <description>Mermaid source diagram — render with mermaid-cli or open the HTML version in a browser.
+Source: docs/diagrams/mermaid/03_deployment_architecture.md</description>
+    <mermaid-source>flowchart TB
+    subgraph Bundle1[&quot;Bundle 1 — Infra (Deploy First)&quot;]
+        LB[Lakebase Project&lt;br/&gt;+ Branches: prod/dev/test]
+        UC_Schema[UC Schemas]
+        UC_Secrets[UC Secrets&lt;br/&gt;catalog.schema.secret]
+        SQLWh[Serverless SQL Warehouse]
+        LFJobs[Lakeflow Jobs&lt;br/&gt;Feedback Pipeline&lt;br/&gt;Freshness Resurfacing]
+        NotifDest[Notification Destinations&lt;br/&gt;Slack / Teams / Webhook]
+        UGConn[Unity Gateway&lt;br/&gt;Connection Registration]
+        GCSkills[Genie Code Custom Skills&lt;br/&gt;Feedback Loop Prompts]
+        MVOps[Metric Views&lt;br/&gt;over Lakebase Data]
+    end
+
+    subgraph Bundle2[&quot;Bundle 2 — App (After Bundle 1)&quot;]
+        AppKit[Node.js AppKit Backend&lt;br/&gt;Review Engine + Campaign Mgr&lt;br/&gt;+ Notification Service]
+        ReactUI[React Frontend&lt;br/&gt;Card UI + Admin + Dashboard]
+        MCPSrv[MCP Server&lt;br/&gt;Co-hosted, registered as&lt;br/&gt;Unity Gateway MCP Service]
+        PostDeploy2[Post-Deploy Job&lt;br/&gt;SP permissions, Lakebase seed,&lt;br/&gt;MCP registration]
+    end
+
+    subgraph Bundle3[&quot;Bundle 3 — Genie Agent (After Bundle 1, Parallel w/ Bundle 2)&quot;]
+        GenieAgent[Operational Genie Agent&lt;br/&gt;C9]
+        AgentInstr[Curated Instructions&lt;br/&gt;+ Example Questions]
+        PostDeploy3[Post-Deploy Job&lt;br/&gt;Agent validation]
+    end
+
+    Bundle1 --&gt; Bundle2
+    Bundle1 --&gt; Bundle3
+    Bundle2 -. &quot;runtime dependency&lt;br/&gt;(not deployment)&quot; .-&gt; Bundle3
+    Bundle3 -. &quot;runtime dependency&lt;br/&gt;(not deployment)&quot; .-&gt; Bundle2
+
+    LB --&gt; AppKit
+    LB --&gt; MCPSrv
+    MVOps --&gt; GenieAgent
+    SQLWh --&gt; GenieAgent
+    UGConn --&gt; MCPSrv</mermaid-source>
+  </metadata>
+  <rect width="800" height="688" fill="#1B1B1B" rx="8"/>
+  <text x="20" y="30" fill="#FF6F00" font-family="sans-serif" font-size="14" font-weight="bold">03 — Deployment Architecture (Three-Bundle DAB)</text>
+  <text x="20" y="46" fill="#666" font-family="sans-serif" font-size="10">Mermaid source — open HTML version for rendered diagram</text>
+    <text x="20" y="60" fill="#A0A0A0" font-family="monospace" font-size="11">flowchart TB</text>
+    <text x="20" y="78" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Bundle1["Bundle 1 — Infra (Deploy First)"]</text>
+    <text x="20" y="96" fill="#A0A0A0" font-family="monospace" font-size="11">        LB[Lakebase Project&lt;br/&gt;+ Branches: prod/dev/test]</text>
+    <text x="20" y="114" fill="#A0A0A0" font-family="monospace" font-size="11">        UC_Schema[UC Schemas]</text>
+    <text x="20" y="132" fill="#A0A0A0" font-family="monospace" font-size="11">        UC_Secrets[UC Secrets&lt;br/&gt;catalog.schema.secret]</text>
+    <text x="20" y="150" fill="#A0A0A0" font-family="monospace" font-size="11">        SQLWh[Serverless SQL Warehouse]</text>
+    <text x="20" y="168" fill="#A0A0A0" font-family="monospace" font-size="11">        LFJobs[Lakeflow Jobs&lt;br/&gt;Feedback Pipeline&lt;br/&gt;Freshness Resurfacing]</text>
+    <text x="20" y="186" fill="#A0A0A0" font-family="monospace" font-size="11">        NotifDest[Notification Destinations&lt;br/&gt;Slack / Teams / Webhook]</text>
+    <text x="20" y="204" fill="#A0A0A0" font-family="monospace" font-size="11">        UGConn[Unity Gateway&lt;br/&gt;Connection Registration]</text>
+    <text x="20" y="222" fill="#A0A0A0" font-family="monospace" font-size="11">        GCSkills[Genie Code Custom Skills&lt;br/&gt;Feedback Loop Prompts]</text>
+    <text x="20" y="240" fill="#A0A0A0" font-family="monospace" font-size="11">        MVOps[Metric Views&lt;br/&gt;over Lakebase Data]</text>
+    <text x="20" y="258" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="276" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="294" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Bundle2["Bundle 2 — App (After Bundle 1)"]</text>
+    <text x="20" y="312" fill="#A0A0A0" font-family="monospace" font-size="11">        AppKit[Node.js AppKit Backend&lt;br/&gt;Review Engine + Campaign Mgr&lt;br/&gt;+ Notification Service]</text>
+    <text x="20" y="330" fill="#A0A0A0" font-family="monospace" font-size="11">        ReactUI[React Frontend&lt;br/&gt;Card UI + Admin + Dashboard]</text>
+    <text x="20" y="348" fill="#A0A0A0" font-family="monospace" font-size="11">        MCPSrv[MCP Server&lt;br/&gt;Co-hosted, registered as&lt;br/&gt;Unity Gateway MCP Service]</text>
+    <text x="20" y="366" fill="#A0A0A0" font-family="monospace" font-size="11">        PostDeploy2[Post-Deploy Job&lt;br/&gt;SP permissions, Lakebase seed,&lt;br/&gt;MCP registration]</text>
+    <text x="20" y="384" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="402" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="420" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Bundle3["Bundle 3 — Genie Agent (After Bundle 1, Parallel w/ Bundle 2)"]</text>
+    <text x="20" y="438" fill="#A0A0A0" font-family="monospace" font-size="11">        GenieAgent[Operational Genie Agent&lt;br/&gt;C9]</text>
+    <text x="20" y="456" fill="#A0A0A0" font-family="monospace" font-size="11">        AgentInstr[Curated Instructions&lt;br/&gt;+ Example Questions]</text>
+    <text x="20" y="474" fill="#A0A0A0" font-family="monospace" font-size="11">        PostDeploy3[Post-Deploy Job&lt;br/&gt;Agent validation]</text>
+    <text x="20" y="492" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="510" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="528" fill="#A0A0A0" font-family="monospace" font-size="11">    Bundle1 --&gt; Bundle2</text>
+    <text x="20" y="546" fill="#A0A0A0" font-family="monospace" font-size="11">    Bundle1 --&gt; Bundle3</text>
+    <text x="20" y="564" fill="#A0A0A0" font-family="monospace" font-size="11">    Bundle2 -. "runtime dependency&lt;br/&gt;(not deployment)" .-&gt; Bundle3</text>
+    <text x="20" y="582" fill="#A0A0A0" font-family="monospace" font-size="11">    Bundle3 -. "runtime dependency&lt;br/&gt;(not deployment)" .-&gt; Bundle2</text>
+    <text x="20" y="600" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="618" fill="#A0A0A0" font-family="monospace" font-size="11">    LB --&gt; AppKit</text>
+    <text x="20" y="636" fill="#A0A0A0" font-family="monospace" font-size="11">    LB --&gt; MCPSrv</text>
+    <text x="20" y="654" fill="#A0A0A0" font-family="monospace" font-size="11">    MVOps --&gt; GenieAgent</text>
+    <text x="20" y="672" fill="#A0A0A0" font-family="monospace" font-size="11">    SQLWh --&gt; GenieAgent</text>
+    <text x="20" y="690" fill="#A0A0A0" font-family="monospace" font-size="11">    UGConn --&gt; MCPSrv</text>
+
+</svg>

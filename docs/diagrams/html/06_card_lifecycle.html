@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>06 — Card Lifecycle (Asset → Surfacing → Review → Feedback → Re-deploy)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1B1F2B;
+            color: #FFFFFF;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #FF3621;
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #B0B5C3;
+            font-size: 0.85rem;
+            margin-bottom: 32px;
+        }
+        .mermaid {
+            background: #252836;
+            border: 1px solid #3E4252;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 95vw;
+            overflow-x: auto;
+        }
+        .source-file {
+            color: #8B90A7;
+            font-size: 0.75rem;
+            margin-top: 24px;
+            font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>06 — Card Lifecycle (Asset → Surfacing → Review → Feedback → Re-deploy)</h1>
+    <div class="subtitle">Semantic Ground Truth App — L100 Diagram</div>
+    <div class="mermaid" id="diagram"></div>
+    <div class="source-file">Source: docs/diagrams/mermaid/06_card_lifecycle.md</div>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#FF3621',
+                primaryTextColor: '#FFFFFF',
+                primaryBorderColor: '#FF3621',
+                lineColor: '#B0B5C3',
+                secondaryColor: '#252836',
+                tertiaryColor: '#1B1F2B',
+                background: '#252836',
+                mainBkg: '#252836',
+                nodeBorder: '#FF3621',
+                clusterBkg: '#2A2D3A',
+                clusterBorder: '#3E4252',
+                titleColor: '#FF3621',
+                edgeLabelBackground: '#252836'
+            }
+        });
+        const source = `
+stateDiagram-v2
+    [*] --> Registered: Fixture YAML<br/>added/updated in repo
+
+    Registered --> Queued: Campaign assigns<br/>asset for review
+
+    Queued --> Surfaced: Smart surfacing<br/>algorithm selects<br/>(coverage-weighted)
+
+    Surfaced --> Approved: User approves ✅
+    Surfaced --> Rejected: User rejects ❌<br/>with feedback
+    Surfaced --> Edited: User edits<br/>description/synonyms
+
+    Approved --> Scoring: Vote recorded<br/>in Lakebase
+    Rejected --> Scoring: Vote + feedback<br/>recorded
+    Edited --> Scoring: Vote + edits<br/>recorded
+
+    Scoring --> Certified: Wilson score<br/>exceeds threshold
+    Scoring --> Queued: Below threshold,<br/>needs more votes
+
+    Rejected --> FeedbackBatch: End-of-day<br/>collection
+    Edited --> FeedbackBatch: End-of-day<br/>collection
+
+    FeedbackBatch --> GenieCode: Genie Code<br/>proposes YAML edits
+    GenieCode --> FeatureBranch: Creates branch<br/>in owning repo
+    FeatureBranch --> StewardReview: Data Steward<br/>reviews & refines
+    StewardReview --> StagingDeploy: Promote to<br/>staging/UAT
+    StagingDeploy --> Registered: Updated fixture<br/>triggers re-review
+
+    Certified --> Production: Deployed to<br/>production catalog
+    Production --> Stale: Freshness interval<br/>expires
+    Stale --> Queued: Resurfaced for<br/>periodic re-validation
+        `;
+        const { svg } = await mermaid.render('mermaid-svg', source);
+        document.getElementById('diagram').innerHTML = svg;
+    </script>
+</body>
+</html>

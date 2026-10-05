@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="346" viewBox="0 0 800 346">
+  <metadata>
+    <title>01 — Metric View Deployment Pipeline</title>
+    <description>Mermaid source diagram — render with mermaid-cli or open the HTML version in a browser.
+Source: docs/diagrams/mermaid/01_mv_deployment_pipeline.md</description>
+    <mermaid-source>sequenceDiagram
+    participant Repo as DAB Repo&lt;br/&gt;(fixtures/)
+    participant Job as Lakeflow Job&lt;br/&gt;(forEach Task)
+    participant NB as Notebook Task
+    participant UC as Unity Catalog&lt;br/&gt;(Target Env)
+
+    Repo-&gt;&gt;Job: Trigger on deploy&lt;br/&gt;(list YAML files in fixtures/)
+    loop For each YAML file
+        Job-&gt;&gt;NB: Pass fixture path +&lt;br/&gt;target catalog, schema,&lt;br/&gt;source table overrides
+        NB-&gt;&gt;NB: Parse YAML fixture
+        NB-&gt;&gt;NB: Resolve environment-specific&lt;br/&gt;source table references
+        NB-&gt;&gt;NB: Generate CREATE OR REPLACE VIEW&lt;br/&gt;... WITH METRICS LANGUAGE YAML
+        NB-&gt;&gt;UC: Execute SQL via&lt;br/&gt;Statement Execution API
+        UC--&gt;&gt;NB: View created/updated
+        NB--&gt;&gt;Job: Success + view name
+    end
+    Job--&gt;&gt;Repo: All views deployed</mermaid-source>
+  </metadata>
+  <rect width="800" height="346" fill="#1B1B1B" rx="8"/>
+  <text x="20" y="30" fill="#FF6F00" font-family="sans-serif" font-size="14" font-weight="bold">01 — Metric View Deployment Pipeline</text>
+  <text x="20" y="46" fill="#666" font-family="sans-serif" font-size="10">Mermaid source — open HTML version for rendered diagram</text>
+    <text x="20" y="60" fill="#A0A0A0" font-family="monospace" font-size="11">sequenceDiagram</text>
+    <text x="20" y="78" fill="#A0A0A0" font-family="monospace" font-size="11">    participant Repo as DAB Repo&lt;br/&gt;(fixtures/)</text>
+    <text x="20" y="96" fill="#A0A0A0" font-family="monospace" font-size="11">    participant Job as Lakeflow Job&lt;br/&gt;(forEach Task)</text>
+    <text x="20" y="114" fill="#A0A0A0" font-family="monospace" font-size="11">    participant NB as Notebook Task</text>
+    <text x="20" y="132" fill="#A0A0A0" font-family="monospace" font-size="11">    participant UC as Unity Catalog&lt;br/&gt;(Target Env)</text>
+    <text x="20" y="150" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="168" fill="#A0A0A0" font-family="monospace" font-size="11">    Repo-&gt;&gt;Job: Trigger on deploy&lt;br/&gt;(list YAML files in fixtures/)</text>
+    <text x="20" y="186" fill="#A0A0A0" font-family="monospace" font-size="11">    loop For each YAML file</text>
+    <text x="20" y="204" fill="#A0A0A0" font-family="monospace" font-size="11">        Job-&gt;&gt;NB: Pass fixture path +&lt;br/&gt;target catalog, schema,&lt;br/&gt;source table overrides</text>
+    <text x="20" y="222" fill="#A0A0A0" font-family="monospace" font-size="11">        NB-&gt;&gt;NB: Parse YAML fixture</text>
+    <text x="20" y="240" fill="#A0A0A0" font-family="monospace" font-size="11">        NB-&gt;&gt;NB: Resolve environment-specific&lt;br/&gt;source table references</text>
+    <text x="20" y="258" fill="#A0A0A0" font-family="monospace" font-size="11">        NB-&gt;&gt;NB: Generate CREATE OR REPLACE VIEW&lt;br/&gt;... WITH METRICS LANGUAGE YAML</text>
+    <text x="20" y="276" fill="#A0A0A0" font-family="monospace" font-size="11">        NB-&gt;&gt;UC: Execute SQL via&lt;br/&gt;Statement Execution API</text>
+    <text x="20" y="294" fill="#A0A0A0" font-family="monospace" font-size="11">        UC--&gt;&gt;NB: View created/updated</text>
+    <text x="20" y="312" fill="#A0A0A0" font-family="monospace" font-size="11">        NB--&gt;&gt;Job: Success + view name</text>
+    <text x="20" y="330" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="348" fill="#A0A0A0" font-family="monospace" font-size="11">    Job--&gt;&gt;Repo: All views deployed</text>
+
+</svg>

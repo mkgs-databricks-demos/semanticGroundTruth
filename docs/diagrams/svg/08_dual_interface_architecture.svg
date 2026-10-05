@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="634" viewBox="0 0 800 634">
+  <metadata>
+    <title>08 — Dual Interface Architecture</title>
+    <description>Mermaid source diagram — render with mermaid-cli or open the HTML version in a browser.
+Source: docs/diagrams/mermaid/08_dual_interface_architecture.md</description>
+    <mermaid-source>flowchart TB
+    subgraph Users[&quot;Users&quot;]
+        BizUser1[Business SME&lt;br/&gt;Standalone App]
+        BizUser2[Business SME&lt;br/&gt;Genie One Chat]
+        ExtClient[External MCP Client&lt;br/&gt;Claude / ChatGPT]
+    end
+
+    subgraph StandaloneApp[&quot;Standalone Databricks App&quot;]
+        ReactApp[React Frontend&lt;br/&gt;Card Swipe UI&lt;br/&gt;Admin Panels&lt;br/&gt;Gamification&lt;br/&gt;Executive Dashboard]
+    end
+
+    subgraph MCPInterface[&quot;MCP Server (Co-hosted)&quot;]
+        MCPTools[MCP Tools&lt;br/&gt;get_next_review_card&lt;br/&gt;submit_vote&lt;br/&gt;add_synonym&lt;br/&gt;add_example_question&lt;br/&gt;get_review_stats&lt;br/&gt;run_validation_query]
+        MCPAppsView[MCP Apps&lt;br/&gt;Interactive View&lt;br/&gt;Card rendered in chat]
+    end
+
+    subgraph SharedBackend[&quot;Shared Backend (Node.js AppKit)&quot;]
+        ReviewAPI[Review Engine API&lt;br/&gt;GET /api/review/next&lt;br/&gt;POST /api/review/vote&lt;br/&gt;etc.]
+        Lakebase[Lakebase&lt;br/&gt;Votes, Campaigns,&lt;br/&gt;Scores, Activity]
+    end
+
+    BizUser1 --&gt; ReactApp
+    BizUser2 --&gt; MCPAppsView
+    ExtClient --&gt; MCPTools
+
+    ReactApp --&gt; ReviewAPI
+    MCPTools --&gt; ReviewAPI
+    MCPAppsView --&gt; MCPTools
+
+    ReviewAPI --&gt; Lakebase
+
+    Note1[Both interfaces share the same&lt;br/&gt;Review Engine, Lakebase state,&lt;br/&gt;and surfacing algorithm]
+    style Note1 fill:none,stroke:none</mermaid-source>
+  </metadata>
+  <rect width="800" height="634" fill="#1B1B1B" rx="8"/>
+  <text x="20" y="30" fill="#FF6F00" font-family="sans-serif" font-size="14" font-weight="bold">08 — Dual Interface Architecture</text>
+  <text x="20" y="46" fill="#666" font-family="sans-serif" font-size="10">Mermaid source — open HTML version for rendered diagram</text>
+    <text x="20" y="60" fill="#A0A0A0" font-family="monospace" font-size="11">flowchart TB</text>
+    <text x="20" y="78" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Users["Users"]</text>
+    <text x="20" y="96" fill="#A0A0A0" font-family="monospace" font-size="11">        BizUser1[Business SME&lt;br/&gt;Standalone App]</text>
+    <text x="20" y="114" fill="#A0A0A0" font-family="monospace" font-size="11">        BizUser2[Business SME&lt;br/&gt;Genie One Chat]</text>
+    <text x="20" y="132" fill="#A0A0A0" font-family="monospace" font-size="11">        ExtClient[External MCP Client&lt;br/&gt;Claude / ChatGPT]</text>
+    <text x="20" y="150" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="168" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="186" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph StandaloneApp["Standalone Databricks App"]</text>
+    <text x="20" y="204" fill="#A0A0A0" font-family="monospace" font-size="11">        ReactApp[React Frontend&lt;br/&gt;Card Swipe UI&lt;br/&gt;Admin Panels&lt;br/&gt;Gamification&lt;br/&gt;Executive Dashboard]</text>
+    <text x="20" y="222" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="240" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="258" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph MCPInterface["MCP Server (Co-hosted)"]</text>
+    <text x="20" y="276" fill="#A0A0A0" font-family="monospace" font-size="11">        MCPTools[MCP Tools&lt;br/&gt;get_next_review_card&lt;br/&gt;submit_vote&lt;br/&gt;add_synonym&lt;br/&gt;add_example_question&lt;br/&gt;get_review_stats&lt;br/&gt;run_validation_query]</text>
+    <text x="20" y="294" fill="#A0A0A0" font-family="monospace" font-size="11">        MCPAppsView[MCP Apps&lt;br/&gt;Interactive View&lt;br/&gt;Card rendered in chat]</text>
+    <text x="20" y="312" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="330" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="348" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph SharedBackend["Shared Backend (Node.js AppKit)"]</text>
+    <text x="20" y="366" fill="#A0A0A0" font-family="monospace" font-size="11">        ReviewAPI[Review Engine API&lt;br/&gt;GET /api/review/next&lt;br/&gt;POST /api/review/vote&lt;br/&gt;etc.]</text>
+    <text x="20" y="384" fill="#A0A0A0" font-family="monospace" font-size="11">        Lakebase[Lakebase&lt;br/&gt;Votes, Campaigns,&lt;br/&gt;Scores, Activity]</text>
+    <text x="20" y="402" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="420" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="438" fill="#A0A0A0" font-family="monospace" font-size="11">    BizUser1 --&gt; ReactApp</text>
+    <text x="20" y="456" fill="#A0A0A0" font-family="monospace" font-size="11">    BizUser2 --&gt; MCPAppsView</text>
+    <text x="20" y="474" fill="#A0A0A0" font-family="monospace" font-size="11">    ExtClient --&gt; MCPTools</text>
+    <text x="20" y="492" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="510" fill="#A0A0A0" font-family="monospace" font-size="11">    ReactApp --&gt; ReviewAPI</text>
+    <text x="20" y="528" fill="#A0A0A0" font-family="monospace" font-size="11">    MCPTools --&gt; ReviewAPI</text>
+    <text x="20" y="546" fill="#A0A0A0" font-family="monospace" font-size="11">    MCPAppsView --&gt; MCPTools</text>
+    <text x="20" y="564" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="582" fill="#A0A0A0" font-family="monospace" font-size="11">    ReviewAPI --&gt; Lakebase</text>
+    <text x="20" y="600" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="618" fill="#A0A0A0" font-family="monospace" font-size="11">    Note1[Both interfaces share the same&lt;br/&gt;Review Engine, Lakebase state,&lt;br/&gt;and surfacing algorithm]</text>
+    <text x="20" y="636" fill="#A0A0A0" font-family="monospace" font-size="11">    style Note1 fill:none,stroke:none</text>
+
+</svg>

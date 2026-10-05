@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="904" viewBox="0 0 800 904">
+  <metadata>
+    <title>04 — End-to-End Data Flow</title>
+    <description>Mermaid source diagram — render with mermaid-cli or open the HTML version in a browser.
+Source: docs/diagrams/mermaid/04_data_flow.md</description>
+    <mermaid-source>flowchart LR
+    subgraph Sources[&quot;Source of Truth&quot;]
+        Fixtures[DAB Repo&lt;br/&gt;fixtures/ YAMLs]
+        UCPages[UC Entity Store&lt;br/&gt;Pages/Domains]
+    end
+
+    subgraph AppLayer[&quot;Ground Truth App&quot;]
+        C1[C1: Asset Registry&lt;br/&gt;Lakebase]
+        C2[C2: Review Engine]
+        C5[C5: Campaign Manager]
+    end
+
+    subgraph Interfaces[&quot;User Interfaces&quot;]
+        C3[C3: Card UI&lt;br/&gt;React App]
+        C4[C4: MCP Server&lt;br/&gt;Genie One]
+    end
+
+    subgraph Feedback[&quot;Feedback Loop&quot;]
+        C6[C6: Feedback Pipeline&lt;br/&gt;Lakeflow + Genie Code]
+        C7[C7: Notifications&lt;br/&gt;Slack/Teams]
+    end
+
+    subgraph Analytics[&quot;Analytics&quot;]
+        C8[C8: Executive Dashboard]
+        C9[C9: Genie Agent]
+    end
+
+    subgraph UCEnvs[&quot;UC Environments&quot;]
+        Staging[Staging/UAT Catalog]
+        Prod[Production Catalog]
+    end
+
+    Fixtures --&gt;|parse YAML| C1
+    UCPages --&gt;|read descriptions| C1
+    C1 --&gt;|reviewable assets| C2
+    C5 --&gt;|active campaigns| C2
+    C2 --&gt;|next card| C3
+    C2 --&gt;|MCP tools| C4
+    C3 --&gt;|votes, edits| C2
+    C4 --&gt;|votes, edits| C2
+    C2 --&gt;|store votes| C1
+    C2 --&gt;|run query via OBO| Staging
+    C2 --&gt;|run query via OBO| Prod
+    C1 --&gt;|unprocessed feedback| C6
+    C6 --&gt;|feature branch| Fixtures
+    C6 --&gt;|alert| C7
+    C1 --&gt;|operational data| C8
+    C1 --&gt;|metric views| C9</mermaid-source>
+  </metadata>
+  <rect width="800" height="904" fill="#1B1B1B" rx="8"/>
+  <text x="20" y="30" fill="#FF6F00" font-family="sans-serif" font-size="14" font-weight="bold">04 — End-to-End Data Flow</text>
+  <text x="20" y="46" fill="#666" font-family="sans-serif" font-size="10">Mermaid source — open HTML version for rendered diagram</text>
+    <text x="20" y="60" fill="#A0A0A0" font-family="monospace" font-size="11">flowchart LR</text>
+    <text x="20" y="78" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Sources["Source of Truth"]</text>
+    <text x="20" y="96" fill="#A0A0A0" font-family="monospace" font-size="11">        Fixtures[DAB Repo&lt;br/&gt;fixtures/ YAMLs]</text>
+    <text x="20" y="114" fill="#A0A0A0" font-family="monospace" font-size="11">        UCPages[UC Entity Store&lt;br/&gt;Pages/Domains]</text>
+    <text x="20" y="132" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="150" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="168" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph AppLayer["Ground Truth App"]</text>
+    <text x="20" y="186" fill="#A0A0A0" font-family="monospace" font-size="11">        C1[C1: Asset Registry&lt;br/&gt;Lakebase]</text>
+    <text x="20" y="204" fill="#A0A0A0" font-family="monospace" font-size="11">        C2[C2: Review Engine]</text>
+    <text x="20" y="222" fill="#A0A0A0" font-family="monospace" font-size="11">        C5[C5: Campaign Manager]</text>
+    <text x="20" y="240" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="258" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="276" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Interfaces["User Interfaces"]</text>
+    <text x="20" y="294" fill="#A0A0A0" font-family="monospace" font-size="11">        C3[C3: Card UI&lt;br/&gt;React App]</text>
+    <text x="20" y="312" fill="#A0A0A0" font-family="monospace" font-size="11">        C4[C4: MCP Server&lt;br/&gt;Genie One]</text>
+    <text x="20" y="330" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="348" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="366" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Feedback["Feedback Loop"]</text>
+    <text x="20" y="384" fill="#A0A0A0" font-family="monospace" font-size="11">        C6[C6: Feedback Pipeline&lt;br/&gt;Lakeflow + Genie Code]</text>
+    <text x="20" y="402" fill="#A0A0A0" font-family="monospace" font-size="11">        C7[C7: Notifications&lt;br/&gt;Slack/Teams]</text>
+    <text x="20" y="420" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="438" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="456" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph Analytics["Analytics"]</text>
+    <text x="20" y="474" fill="#A0A0A0" font-family="monospace" font-size="11">        C8[C8: Executive Dashboard]</text>
+    <text x="20" y="492" fill="#A0A0A0" font-family="monospace" font-size="11">        C9[C9: Genie Agent]</text>
+    <text x="20" y="510" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="528" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="546" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph UCEnvs["UC Environments"]</text>
+    <text x="20" y="564" fill="#A0A0A0" font-family="monospace" font-size="11">        Staging[Staging/UAT Catalog]</text>
+    <text x="20" y="582" fill="#A0A0A0" font-family="monospace" font-size="11">        Prod[Production Catalog]</text>
+    <text x="20" y="600" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="618" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="636" fill="#A0A0A0" font-family="monospace" font-size="11">    Fixtures --&gt;|parse YAML| C1</text>
+    <text x="20" y="654" fill="#A0A0A0" font-family="monospace" font-size="11">    UCPages --&gt;|read descriptions| C1</text>
+    <text x="20" y="672" fill="#A0A0A0" font-family="monospace" font-size="11">    C1 --&gt;|reviewable assets| C2</text>
+    <text x="20" y="690" fill="#A0A0A0" font-family="monospace" font-size="11">    C5 --&gt;|active campaigns| C2</text>
+    <text x="20" y="708" fill="#A0A0A0" font-family="monospace" font-size="11">    C2 --&gt;|next card| C3</text>
+    <text x="20" y="726" fill="#A0A0A0" font-family="monospace" font-size="11">    C2 --&gt;|MCP tools| C4</text>
+    <text x="20" y="744" fill="#A0A0A0" font-family="monospace" font-size="11">    C3 --&gt;|votes, edits| C2</text>
+    <text x="20" y="762" fill="#A0A0A0" font-family="monospace" font-size="11">    C4 --&gt;|votes, edits| C2</text>
+    <text x="20" y="780" fill="#A0A0A0" font-family="monospace" font-size="11">    C2 --&gt;|store votes| C1</text>
+    <text x="20" y="798" fill="#A0A0A0" font-family="monospace" font-size="11">    C2 --&gt;|run query via OBO| Staging</text>
+    <text x="20" y="816" fill="#A0A0A0" font-family="monospace" font-size="11">    C2 --&gt;|run query via OBO| Prod</text>
+    <text x="20" y="834" fill="#A0A0A0" font-family="monospace" font-size="11">    C1 --&gt;|unprocessed feedback| C6</text>
+    <text x="20" y="852" fill="#A0A0A0" font-family="monospace" font-size="11">    C6 --&gt;|feature branch| Fixtures</text>
+    <text x="20" y="870" fill="#A0A0A0" font-family="monospace" font-size="11">    C6 --&gt;|alert| C7</text>
+    <text x="20" y="888" fill="#A0A0A0" font-family="monospace" font-size="11">    C1 --&gt;|operational data| C8</text>
+    <text x="20" y="906" fill="#A0A0A0" font-family="monospace" font-size="11">    C1 --&gt;|metric views| C9</text>
+
+</svg>

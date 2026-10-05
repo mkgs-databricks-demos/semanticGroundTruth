@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="562" viewBox="0 0 800 562">
+  <metadata>
+    <title>02 — Feedback Loop Pipeline</title>
+    <description>Mermaid source diagram — render with mermaid-cli or open the HTML version in a browser.
+Source: docs/diagrams/mermaid/02_feedback_loop.md</description>
+    <mermaid-source>sequenceDiagram
+    participant LB as Lakebase&lt;br/&gt;(Votes Table)
+    participant LFJ as Lakeflow Job&lt;br/&gt;(End-of-Day)
+    participant GC as Genie Code Task
+    participant Git as DAB Repo&lt;br/&gt;(Feature Branch)
+    participant Notif as Notification Service
+    participant DS as Data Steward
+    participant App as Ground Truth App
+
+    LFJ-&gt;&gt;LB: Query unprocessed&lt;br/&gt;rejections &amp; edits
+    LB--&gt;&gt;LFJ: Feedback batch
+    LFJ-&gt;&gt;GC: Send feedback batch +&lt;br/&gt;current fixture YAML content
+    GC-&gt;&gt;GC: Analyze feedback context
+    GC-&gt;&gt;GC: Generate proposed&lt;br/&gt;YAML edits
+    GC-&gt;&gt;Git: Create feature branch&lt;br/&gt;with proposed changes
+    Git--&gt;&gt;GC: Branch URL
+    GC-&gt;&gt;LB: Mark votes as processed&lt;br/&gt;+ record branch URL
+    GC-&gt;&gt;Notif: Trigger Data Steward alert
+    Notif-&gt;&gt;DS: Slack/Teams/In-app notification&lt;br/&gt;with branch link
+
+    DS-&gt;&gt;Git: Review proposed changes
+    DS-&gt;&gt;Git: Refine &amp; merge to dev
+    DS-&gt;&gt;Git: Promote to staging/UAT
+
+    Note over App,Git: Staging deploy triggers&lt;br/&gt;automatic review campaign
+    App-&gt;&gt;App: Re-enter voting pool&lt;br/&gt;for re-validation
+
+    DS-&gt;&gt;Git: Promote to production
+    Note over App: Freshness clock resets</mermaid-source>
+  </metadata>
+  <rect width="800" height="562" fill="#1B1B1B" rx="8"/>
+  <text x="20" y="30" fill="#FF6F00" font-family="sans-serif" font-size="14" font-weight="bold">02 — Feedback Loop Pipeline</text>
+  <text x="20" y="46" fill="#666" font-family="sans-serif" font-size="10">Mermaid source — open HTML version for rendered diagram</text>
+    <text x="20" y="60" fill="#A0A0A0" font-family="monospace" font-size="11">sequenceDiagram</text>
+    <text x="20" y="78" fill="#A0A0A0" font-family="monospace" font-size="11">    participant LB as Lakebase&lt;br/&gt;(Votes Table)</text>
+    <text x="20" y="96" fill="#A0A0A0" font-family="monospace" font-size="11">    participant LFJ as Lakeflow Job&lt;br/&gt;(End-of-Day)</text>
+    <text x="20" y="114" fill="#A0A0A0" font-family="monospace" font-size="11">    participant GC as Genie Code Task</text>
+    <text x="20" y="132" fill="#A0A0A0" font-family="monospace" font-size="11">    participant Git as DAB Repo&lt;br/&gt;(Feature Branch)</text>
+    <text x="20" y="150" fill="#A0A0A0" font-family="monospace" font-size="11">    participant Notif as Notification Service</text>
+    <text x="20" y="168" fill="#A0A0A0" font-family="monospace" font-size="11">    participant DS as Data Steward</text>
+    <text x="20" y="186" fill="#A0A0A0" font-family="monospace" font-size="11">    participant App as Ground Truth App</text>
+    <text x="20" y="204" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="222" fill="#A0A0A0" font-family="monospace" font-size="11">    LFJ-&gt;&gt;LB: Query unprocessed&lt;br/&gt;rejections &amp; edits</text>
+    <text x="20" y="240" fill="#A0A0A0" font-family="monospace" font-size="11">    LB--&gt;&gt;LFJ: Feedback batch</text>
+    <text x="20" y="258" fill="#A0A0A0" font-family="monospace" font-size="11">    LFJ-&gt;&gt;GC: Send feedback batch +&lt;br/&gt;current fixture YAML content</text>
+    <text x="20" y="276" fill="#A0A0A0" font-family="monospace" font-size="11">    GC-&gt;&gt;GC: Analyze feedback context</text>
+    <text x="20" y="294" fill="#A0A0A0" font-family="monospace" font-size="11">    GC-&gt;&gt;GC: Generate proposed&lt;br/&gt;YAML edits</text>
+    <text x="20" y="312" fill="#A0A0A0" font-family="monospace" font-size="11">    GC-&gt;&gt;Git: Create feature branch&lt;br/&gt;with proposed changes</text>
+    <text x="20" y="330" fill="#A0A0A0" font-family="monospace" font-size="11">    Git--&gt;&gt;GC: Branch URL</text>
+    <text x="20" y="348" fill="#A0A0A0" font-family="monospace" font-size="11">    GC-&gt;&gt;LB: Mark votes as processed&lt;br/&gt;+ record branch URL</text>
+    <text x="20" y="366" fill="#A0A0A0" font-family="monospace" font-size="11">    GC-&gt;&gt;Notif: Trigger Data Steward alert</text>
+    <text x="20" y="384" fill="#A0A0A0" font-family="monospace" font-size="11">    Notif-&gt;&gt;DS: Slack/Teams/In-app notification&lt;br/&gt;with branch link</text>
+    <text x="20" y="402" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="420" fill="#A0A0A0" font-family="monospace" font-size="11">    DS-&gt;&gt;Git: Review proposed changes</text>
+    <text x="20" y="438" fill="#A0A0A0" font-family="monospace" font-size="11">    DS-&gt;&gt;Git: Refine &amp; merge to dev</text>
+    <text x="20" y="456" fill="#A0A0A0" font-family="monospace" font-size="11">    DS-&gt;&gt;Git: Promote to staging/UAT</text>
+    <text x="20" y="474" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="492" fill="#A0A0A0" font-family="monospace" font-size="11">    Note over App,Git: Staging deploy triggers&lt;br/&gt;automatic review campaign</text>
+    <text x="20" y="510" fill="#A0A0A0" font-family="monospace" font-size="11">    App-&gt;&gt;App: Re-enter voting pool&lt;br/&gt;for re-validation</text>
+    <text x="20" y="528" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="546" fill="#A0A0A0" font-family="monospace" font-size="11">    DS-&gt;&gt;Git: Promote to production</text>
+    <text x="20" y="564" fill="#A0A0A0" font-family="monospace" font-size="11">    Note over App: Freshness clock resets</text>
+
+</svg>

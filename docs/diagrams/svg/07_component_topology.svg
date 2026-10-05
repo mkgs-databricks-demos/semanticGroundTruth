@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="832" viewBox="0 0 800 832">
+  <metadata>
+    <title>07 — Component Topology (System Map)</title>
+    <description>Mermaid source diagram — render with mermaid-cli or open the HTML version in a browser.
+Source: docs/diagrams/mermaid/07_component_topology.md</description>
+    <mermaid-source>flowchart TB
+    subgraph ExternalSources[&quot;External Sources&quot;]
+        DABRepos[DAB Repos&lt;br/&gt;fixtures/ YAMLs]
+        UCSemantics[UC Semantics&lt;br/&gt;Pages, Domains]
+    end
+
+    subgraph CoreEngine[&quot;Core Engine&quot;]
+        C1[C1: Asset Registry&lt;br/&gt;Lakebase Tables]
+        C2[C2: Review Engine&lt;br/&gt;Node.js AppKit]
+        C5[C5: Campaign Manager&lt;br/&gt;Node.js + Lakebase]
+    end
+
+    subgraph UserInterfaces[&quot;User Interfaces&quot;]
+        C3[C3: Card UI&lt;br/&gt;React]
+        C4[C4: MCP Server&lt;br/&gt;TypeScript SDK + MCP Apps]
+    end
+
+    subgraph BackendServices[&quot;Backend Services&quot;]
+        C6[C6: Feedback Pipeline&lt;br/&gt;Lakeflow + Genie Code]
+        C7[C7: Notification Service&lt;br/&gt;Slack / Teams / Webhook]
+    end
+
+    subgraph AnalyticsLayer[&quot;Analytics Layer&quot;]
+        C8[C8: Executive Dashboard&lt;br/&gt;AI/BI or React]
+        C9[C9: Operational Genie Agent&lt;br/&gt;Metric Views + Curated Instructions]
+    end
+
+    DABRepos --&gt;|parse fixtures| C1
+    UCSemantics --&gt;|read metadata| C1
+
+    C1 &lt;--&gt;|asset pool + votes| C2
+    C5 --&gt;|active campaigns + RBAC| C2
+
+    C2 --&gt;|review API| C3
+    C2 --&gt;|MCP tools| C4
+    C3 --&gt;|votes, edits, examples| C2
+    C4 --&gt;|votes, edits, examples| C2
+
+    C2 --&gt;|unprocessed feedback| C6
+    C6 --&gt;|feature branches| DABRepos
+    C6 --&gt;|alerts| C7
+
+    C1 --&gt;|operational data| C8
+    C1 --&gt;|metric views| C9</mermaid-source>
+  </metadata>
+  <rect width="800" height="832" fill="#1B1B1B" rx="8"/>
+  <text x="20" y="30" fill="#FF6F00" font-family="sans-serif" font-size="14" font-weight="bold">07 — Component Topology (System Map)</text>
+  <text x="20" y="46" fill="#666" font-family="sans-serif" font-size="10">Mermaid source — open HTML version for rendered diagram</text>
+    <text x="20" y="60" fill="#A0A0A0" font-family="monospace" font-size="11">flowchart TB</text>
+    <text x="20" y="78" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph ExternalSources["External Sources"]</text>
+    <text x="20" y="96" fill="#A0A0A0" font-family="monospace" font-size="11">        DABRepos[DAB Repos&lt;br/&gt;fixtures/ YAMLs]</text>
+    <text x="20" y="114" fill="#A0A0A0" font-family="monospace" font-size="11">        UCSemantics[UC Semantics&lt;br/&gt;Pages, Domains]</text>
+    <text x="20" y="132" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="150" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="168" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph CoreEngine["Core Engine"]</text>
+    <text x="20" y="186" fill="#A0A0A0" font-family="monospace" font-size="11">        C1[C1: Asset Registry&lt;br/&gt;Lakebase Tables]</text>
+    <text x="20" y="204" fill="#A0A0A0" font-family="monospace" font-size="11">        C2[C2: Review Engine&lt;br/&gt;Node.js AppKit]</text>
+    <text x="20" y="222" fill="#A0A0A0" font-family="monospace" font-size="11">        C5[C5: Campaign Manager&lt;br/&gt;Node.js + Lakebase]</text>
+    <text x="20" y="240" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="258" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="276" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph UserInterfaces["User Interfaces"]</text>
+    <text x="20" y="294" fill="#A0A0A0" font-family="monospace" font-size="11">        C3[C3: Card UI&lt;br/&gt;React]</text>
+    <text x="20" y="312" fill="#A0A0A0" font-family="monospace" font-size="11">        C4[C4: MCP Server&lt;br/&gt;TypeScript SDK + MCP Apps]</text>
+    <text x="20" y="330" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="348" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="366" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph BackendServices["Backend Services"]</text>
+    <text x="20" y="384" fill="#A0A0A0" font-family="monospace" font-size="11">        C6[C6: Feedback Pipeline&lt;br/&gt;Lakeflow + Genie Code]</text>
+    <text x="20" y="402" fill="#A0A0A0" font-family="monospace" font-size="11">        C7[C7: Notification Service&lt;br/&gt;Slack / Teams / Webhook]</text>
+    <text x="20" y="420" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="438" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="456" fill="#A0A0A0" font-family="monospace" font-size="11">    subgraph AnalyticsLayer["Analytics Layer"]</text>
+    <text x="20" y="474" fill="#A0A0A0" font-family="monospace" font-size="11">        C8[C8: Executive Dashboard&lt;br/&gt;AI/BI or React]</text>
+    <text x="20" y="492" fill="#A0A0A0" font-family="monospace" font-size="11">        C9[C9: Operational Genie Agent&lt;br/&gt;Metric Views + Curated Instructions]</text>
+    <text x="20" y="510" fill="#A0A0A0" font-family="monospace" font-size="11">    end</text>
+    <text x="20" y="528" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="546" fill="#A0A0A0" font-family="monospace" font-size="11">    DABRepos --&gt;|parse fixtures| C1</text>
+    <text x="20" y="564" fill="#A0A0A0" font-family="monospace" font-size="11">    UCSemantics --&gt;|read metadata| C1</text>
+    <text x="20" y="582" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="600" fill="#A0A0A0" font-family="monospace" font-size="11">    C1 &lt;--&gt;|asset pool + votes| C2</text>
+    <text x="20" y="618" fill="#A0A0A0" font-family="monospace" font-size="11">    C5 --&gt;|active campaigns + RBAC| C2</text>
+    <text x="20" y="636" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="654" fill="#A0A0A0" font-family="monospace" font-size="11">    C2 --&gt;|review API| C3</text>
+    <text x="20" y="672" fill="#A0A0A0" font-family="monospace" font-size="11">    C2 --&gt;|MCP tools| C4</text>
+    <text x="20" y="690" fill="#A0A0A0" font-family="monospace" font-size="11">    C3 --&gt;|votes, edits, examples| C2</text>
+    <text x="20" y="708" fill="#A0A0A0" font-family="monospace" font-size="11">    C4 --&gt;|votes, edits, examples| C2</text>
+    <text x="20" y="726" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="744" fill="#A0A0A0" font-family="monospace" font-size="11">    C2 --&gt;|unprocessed feedback| C6</text>
+    <text x="20" y="762" fill="#A0A0A0" font-family="monospace" font-size="11">    C6 --&gt;|feature branches| DABRepos</text>
+    <text x="20" y="780" fill="#A0A0A0" font-family="monospace" font-size="11">    C6 --&gt;|alerts| C7</text>
+    <text x="20" y="798" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="816" fill="#A0A0A0" font-family="monospace" font-size="11">    C1 --&gt;|operational data| C8</text>
+    <text x="20" y="834" fill="#A0A0A0" font-family="monospace" font-size="11">    C1 --&gt;|metric views| C9</text>
+
+</svg>

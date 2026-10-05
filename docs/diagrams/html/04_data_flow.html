@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>04 — End-to-End Data Flow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1B1F2B;
+            color: #FFFFFF;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #FF3621;
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #B0B5C3;
+            font-size: 0.85rem;
+            margin-bottom: 32px;
+        }
+        .mermaid {
+            background: #252836;
+            border: 1px solid #3E4252;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 95vw;
+            overflow-x: auto;
+        }
+        .source-file {
+            color: #8B90A7;
+            font-size: 0.75rem;
+            margin-top: 24px;
+            font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>04 — End-to-End Data Flow</h1>
+    <div class="subtitle">Semantic Ground Truth App — L100 Diagram</div>
+    <div class="mermaid" id="diagram"></div>
+    <div class="source-file">Source: docs/diagrams/mermaid/04_data_flow.md</div>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#FF3621',
+                primaryTextColor: '#FFFFFF',
+                primaryBorderColor: '#FF3621',
+                lineColor: '#B0B5C3',
+                secondaryColor: '#252836',
+                tertiaryColor: '#1B1F2B',
+                background: '#252836',
+                mainBkg: '#252836',
+                nodeBorder: '#FF3621',
+                clusterBkg: '#2A2D3A',
+                clusterBorder: '#3E4252',
+                titleColor: '#FF3621',
+                edgeLabelBackground: '#252836'
+            }
+        });
+        const source = `
+flowchart LR
+    subgraph Sources["Source of Truth"]
+        Fixtures[DAB Repo<br/>fixtures/ YAMLs]
+        UCPages[UC Entity Store<br/>Pages/Domains]
+    end
+
+    subgraph AppLayer["Ground Truth App"]
+        C1[C1: Asset Registry<br/>Lakebase]
+        C2[C2: Review Engine]
+        C5[C5: Campaign Manager]
+    end
+
+    subgraph Interfaces["User Interfaces"]
+        C3[C3: Card UI<br/>React App]
+        C4[C4: MCP Server<br/>Genie One]
+    end
+
+    subgraph Feedback["Feedback Loop"]
+        C6[C6: Feedback Pipeline<br/>Lakeflow + Genie Code]
+        C7[C7: Notifications<br/>Slack/Teams]
+    end
+
+    subgraph Analytics["Analytics"]
+        C8[C8: Executive Dashboard]
+        C9[C9: Genie Agent]
+    end
+
+    subgraph UCEnvs["UC Environments"]
+        Staging[Staging/UAT Catalog]
+        Prod[Production Catalog]
+    end
+
+    Fixtures -->|parse YAML| C1
+    UCPages -->|read descriptions| C1
+    C1 -->|reviewable assets| C2
+    C5 -->|active campaigns| C2
+    C2 -->|next card| C3
+    C2 -->|MCP tools| C4
+    C3 -->|votes, edits| C2
+    C4 -->|votes, edits| C2
+    C2 -->|store votes| C1
+    C2 -->|run query via OBO| Staging
+    C2 -->|run query via OBO| Prod
+    C1 -->|unprocessed feedback| C6
+    C6 -->|feature branch| Fixtures
+    C6 -->|alert| C7
+    C1 -->|operational data| C8
+    C1 -->|metric views| C9
+        `;
+        const { svg } = await mermaid.render('mermaid-svg', source);
+        document.getElementById('diagram').innerHTML = svg;
+    </script>
+</body>
+</html>

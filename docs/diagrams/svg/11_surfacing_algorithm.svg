@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="310" viewBox="0 0 800 310">
+  <metadata>
+    <title>11 — Smart Surfacing Algorithm (Review Engine)</title>
+    <description>Mermaid source diagram — render with mermaid-cli or open the HTML version in a browser.
+Source: docs/diagrams/mermaid/11_surfacing_algorithm.md</description>
+    <mermaid-source>flowchart TD
+    Start([User requests next card]) --&gt; GetPool[Get active campaign pool&lt;br/&gt;or all assets if no campaign]
+    GetPool --&gt; FilterReviewed[Filter out assets&lt;br/&gt;user already reviewed&lt;br/&gt;at current version]
+    FilterReviewed --&gt; FilterType{Asset type&lt;br/&gt;filter?}
+    FilterType --&gt;|Yes| ApplyType[Filter by&lt;br/&gt;asset_type]
+    FilterType --&gt;|No| CheckRBAC
+    ApplyType --&gt; CheckRBAC[Filter by RBAC&lt;br/&gt;user group membership&lt;br/&gt;vs campaign assignments]
+    CheckRBAC --&gt; EmptyCheck{Pool&lt;br/&gt;empty?}
+    EmptyCheck --&gt;|Yes| NoCards([No cards available&lt;br/&gt;Show completion message])
+    EmptyCheck --&gt;|No| WeightCoverage[Weight by inverse&lt;br/&gt;of total_votes&lt;br/&gt;fewer votes = higher weight]
+    WeightCoverage --&gt; FreshnessBoost{Asset approaching&lt;br/&gt;freshness expiry?}
+    FreshnessBoost --&gt;|Yes| Apply2x[Apply 2x&lt;br/&gt;weight boost]
+    FreshnessBoost --&gt;|No| WeightedSelect
+    Apply2x --&gt; WeightedSelect[Weighted random&lt;br/&gt;selection from pool]
+    WeightedSelect --&gt; ReturnCard([Return selected asset&lt;br/&gt;as ReviewCard])</mermaid-source>
+  </metadata>
+  <rect width="800" height="310" fill="#1B1B1B" rx="8"/>
+  <text x="20" y="30" fill="#FF6F00" font-family="sans-serif" font-size="14" font-weight="bold">11 — Smart Surfacing Algorithm (Review Engine)</text>
+  <text x="20" y="46" fill="#666" font-family="sans-serif" font-size="10">Mermaid source — open HTML version for rendered diagram</text>
+    <text x="20" y="60" fill="#A0A0A0" font-family="monospace" font-size="11">flowchart TD</text>
+    <text x="20" y="78" fill="#A0A0A0" font-family="monospace" font-size="11">    Start([User requests next card]) --&gt; GetPool[Get active campaign pool&lt;br/&gt;or all assets if no campaign]</text>
+    <text x="20" y="96" fill="#A0A0A0" font-family="monospace" font-size="11">    GetPool --&gt; FilterReviewed[Filter out assets&lt;br/&gt;user already reviewed&lt;br/&gt;at current version]</text>
+    <text x="20" y="114" fill="#A0A0A0" font-family="monospace" font-size="11">    FilterReviewed --&gt; FilterType{Asset type&lt;br/&gt;filter?}</text>
+    <text x="20" y="132" fill="#A0A0A0" font-family="monospace" font-size="11">    FilterType --&gt;|Yes| ApplyType[Filter by&lt;br/&gt;asset_type]</text>
+    <text x="20" y="150" fill="#A0A0A0" font-family="monospace" font-size="11">    FilterType --&gt;|No| CheckRBAC</text>
+    <text x="20" y="168" fill="#A0A0A0" font-family="monospace" font-size="11">    ApplyType --&gt; CheckRBAC[Filter by RBAC&lt;br/&gt;user group membership&lt;br/&gt;vs campaign assignments]</text>
+    <text x="20" y="186" fill="#A0A0A0" font-family="monospace" font-size="11">    CheckRBAC --&gt; EmptyCheck{Pool&lt;br/&gt;empty?}</text>
+    <text x="20" y="204" fill="#A0A0A0" font-family="monospace" font-size="11">    EmptyCheck --&gt;|Yes| NoCards([No cards available&lt;br/&gt;Show completion message])</text>
+    <text x="20" y="222" fill="#A0A0A0" font-family="monospace" font-size="11">    EmptyCheck --&gt;|No| WeightCoverage[Weight by inverse&lt;br/&gt;of total_votes&lt;br/&gt;fewer votes = higher weight]</text>
+    <text x="20" y="240" fill="#A0A0A0" font-family="monospace" font-size="11">    WeightCoverage --&gt; FreshnessBoost{Asset approaching&lt;br/&gt;freshness expiry?}</text>
+    <text x="20" y="258" fill="#A0A0A0" font-family="monospace" font-size="11">    FreshnessBoost --&gt;|Yes| Apply2x[Apply 2x&lt;br/&gt;weight boost]</text>
+    <text x="20" y="276" fill="#A0A0A0" font-family="monospace" font-size="11">    FreshnessBoost --&gt;|No| WeightedSelect</text>
+    <text x="20" y="294" fill="#A0A0A0" font-family="monospace" font-size="11">    Apply2x --&gt; WeightedSelect[Weighted random&lt;br/&gt;selection from pool]</text>
+    <text x="20" y="312" fill="#A0A0A0" font-family="monospace" font-size="11">    WeightedSelect --&gt; ReturnCard([Return selected asset&lt;br/&gt;as ReviewCard])</text>
+
+</svg>

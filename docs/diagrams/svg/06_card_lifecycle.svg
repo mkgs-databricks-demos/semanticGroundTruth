@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="580" viewBox="0 0 800 580">
+  <metadata>
+    <title>06 — Card Lifecycle (Asset → Surfacing → Review → Feedback → Re-deploy)</title>
+    <description>Mermaid source diagram — render with mermaid-cli or open the HTML version in a browser.
+Source: docs/diagrams/mermaid/06_card_lifecycle.md</description>
+    <mermaid-source>stateDiagram-v2
+    [*] --&gt; Registered: Fixture YAML&lt;br/&gt;added/updated in repo
+
+    Registered --&gt; Queued: Campaign assigns&lt;br/&gt;asset for review
+
+    Queued --&gt; Surfaced: Smart surfacing&lt;br/&gt;algorithm selects&lt;br/&gt;(coverage-weighted)
+
+    Surfaced --&gt; Approved: User approves ✅
+    Surfaced --&gt; Rejected: User rejects ❌&lt;br/&gt;with feedback
+    Surfaced --&gt; Edited: User edits&lt;br/&gt;description/synonyms
+
+    Approved --&gt; Scoring: Vote recorded&lt;br/&gt;in Lakebase
+    Rejected --&gt; Scoring: Vote + feedback&lt;br/&gt;recorded
+    Edited --&gt; Scoring: Vote + edits&lt;br/&gt;recorded
+
+    Scoring --&gt; Certified: Wilson score&lt;br/&gt;exceeds threshold
+    Scoring --&gt; Queued: Below threshold,&lt;br/&gt;needs more votes
+
+    Rejected --&gt; FeedbackBatch: End-of-day&lt;br/&gt;collection
+    Edited --&gt; FeedbackBatch: End-of-day&lt;br/&gt;collection
+
+    FeedbackBatch --&gt; GenieCode: Genie Code&lt;br/&gt;proposes YAML edits
+    GenieCode --&gt; FeatureBranch: Creates branch&lt;br/&gt;in owning repo
+    FeatureBranch --&gt; StewardReview: Data Steward&lt;br/&gt;reviews &amp; refines
+    StewardReview --&gt; StagingDeploy: Promote to&lt;br/&gt;staging/UAT
+    StagingDeploy --&gt; Registered: Updated fixture&lt;br/&gt;triggers re-review
+
+    Certified --&gt; Production: Deployed to&lt;br/&gt;production catalog
+    Production --&gt; Stale: Freshness interval&lt;br/&gt;expires
+    Stale --&gt; Queued: Resurfaced for&lt;br/&gt;periodic re-validation</mermaid-source>
+  </metadata>
+  <rect width="800" height="580" fill="#1B1B1B" rx="8"/>
+  <text x="20" y="30" fill="#FF6F00" font-family="sans-serif" font-size="14" font-weight="bold">06 — Card Lifecycle (Asset → Surfacing → Review → Feedback → Re-deploy)</text>
+  <text x="20" y="46" fill="#666" font-family="sans-serif" font-size="10">Mermaid source — open HTML version for rendered diagram</text>
+    <text x="20" y="60" fill="#A0A0A0" font-family="monospace" font-size="11">stateDiagram-v2</text>
+    <text x="20" y="78" fill="#A0A0A0" font-family="monospace" font-size="11">    [*] --&gt; Registered: Fixture YAML&lt;br/&gt;added/updated in repo</text>
+    <text x="20" y="96" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="114" fill="#A0A0A0" font-family="monospace" font-size="11">    Registered --&gt; Queued: Campaign assigns&lt;br/&gt;asset for review</text>
+    <text x="20" y="132" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="150" fill="#A0A0A0" font-family="monospace" font-size="11">    Queued --&gt; Surfaced: Smart surfacing&lt;br/&gt;algorithm selects&lt;br/&gt;(coverage-weighted)</text>
+    <text x="20" y="168" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="186" fill="#A0A0A0" font-family="monospace" font-size="11">    Surfaced --&gt; Approved: User approves ✅</text>
+    <text x="20" y="204" fill="#A0A0A0" font-family="monospace" font-size="11">    Surfaced --&gt; Rejected: User rejects ❌&lt;br/&gt;with feedback</text>
+    <text x="20" y="222" fill="#A0A0A0" font-family="monospace" font-size="11">    Surfaced --&gt; Edited: User edits&lt;br/&gt;description/synonyms</text>
+    <text x="20" y="240" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="258" fill="#A0A0A0" font-family="monospace" font-size="11">    Approved --&gt; Scoring: Vote recorded&lt;br/&gt;in Lakebase</text>
+    <text x="20" y="276" fill="#A0A0A0" font-family="monospace" font-size="11">    Rejected --&gt; Scoring: Vote + feedback&lt;br/&gt;recorded</text>
+    <text x="20" y="294" fill="#A0A0A0" font-family="monospace" font-size="11">    Edited --&gt; Scoring: Vote + edits&lt;br/&gt;recorded</text>
+    <text x="20" y="312" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="330" fill="#A0A0A0" font-family="monospace" font-size="11">    Scoring --&gt; Certified: Wilson score&lt;br/&gt;exceeds threshold</text>
+    <text x="20" y="348" fill="#A0A0A0" font-family="monospace" font-size="11">    Scoring --&gt; Queued: Below threshold,&lt;br/&gt;needs more votes</text>
+    <text x="20" y="366" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="384" fill="#A0A0A0" font-family="monospace" font-size="11">    Rejected --&gt; FeedbackBatch: End-of-day&lt;br/&gt;collection</text>
+    <text x="20" y="402" fill="#A0A0A0" font-family="monospace" font-size="11">    Edited --&gt; FeedbackBatch: End-of-day&lt;br/&gt;collection</text>
+    <text x="20" y="420" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="438" fill="#A0A0A0" font-family="monospace" font-size="11">    FeedbackBatch --&gt; GenieCode: Genie Code&lt;br/&gt;proposes YAML edits</text>
+    <text x="20" y="456" fill="#A0A0A0" font-family="monospace" font-size="11">    GenieCode --&gt; FeatureBranch: Creates branch&lt;br/&gt;in owning repo</text>
+    <text x="20" y="474" fill="#A0A0A0" font-family="monospace" font-size="11">    FeatureBranch --&gt; StewardReview: Data Steward&lt;br/&gt;reviews &amp; refines</text>
+    <text x="20" y="492" fill="#A0A0A0" font-family="monospace" font-size="11">    StewardReview --&gt; StagingDeploy: Promote to&lt;br/&gt;staging/UAT</text>
+    <text x="20" y="510" fill="#A0A0A0" font-family="monospace" font-size="11">    StagingDeploy --&gt; Registered: Updated fixture&lt;br/&gt;triggers re-review</text>
+    <text x="20" y="528" fill="#A0A0A0" font-family="monospace" font-size="11"></text>
+    <text x="20" y="546" fill="#A0A0A0" font-family="monospace" font-size="11">    Certified --&gt; Production: Deployed to&lt;br/&gt;production catalog</text>
+    <text x="20" y="564" fill="#A0A0A0" font-family="monospace" font-size="11">    Production --&gt; Stale: Freshness interval&lt;br/&gt;expires</text>
+    <text x="20" y="582" fill="#A0A0A0" font-family="monospace" font-size="11">    Stale --&gt; Queued: Resurfaced for&lt;br/&gt;periodic re-validation</text>
+
+</svg>

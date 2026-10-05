@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>05 — Authentication Model (OBO + Service Principal)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1B1F2B;
+            color: #FFFFFF;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #FF3621;
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #B0B5C3;
+            font-size: 0.85rem;
+            margin-bottom: 32px;
+        }
+        .mermaid {
+            background: #252836;
+            border: 1px solid #3E4252;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 95vw;
+            overflow-x: auto;
+        }
+        .source-file {
+            color: #8B90A7;
+            font-size: 0.75rem;
+            margin-top: 24px;
+            font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>05 — Authentication Model (OBO + Service Principal)</h1>
+    <div class="subtitle">Semantic Ground Truth App — L100 Diagram</div>
+    <div class="mermaid" id="diagram"></div>
+    <div class="source-file">Source: docs/diagrams/mermaid/05_auth_model.md</div>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#FF3621',
+                primaryTextColor: '#FFFFFF',
+                primaryBorderColor: '#FF3621',
+                lineColor: '#B0B5C3',
+                secondaryColor: '#252836',
+                tertiaryColor: '#1B1F2B',
+                background: '#252836',
+                mainBkg: '#252836',
+                nodeBorder: '#FF3621',
+                clusterBkg: '#2A2D3A',
+                clusterBorder: '#3E4252',
+                titleColor: '#FF3621',
+                edgeLabelBackground: '#252836'
+            }
+        });
+        const source = `
+flowchart TB
+    subgraph User["Business User"]
+        Browser[Browser / Genie One]
+    end
+
+    subgraph App["Databricks App"]
+        AppKit[Node.js AppKit]
+        OBO_Token[OBO Token<br/>Forwarded User Identity]
+        SP_Token[Service Principal<br/>App Identity]
+    end
+
+    subgraph Reads["Reads (OBO — User Permissions)"]
+        UC_MV[UC Metric Views<br/>Sample Queries]
+        UC_Pages[UC Pages<br/>Entity Store]
+        UC_Domains[UC Domains<br/>Subdomains]
+    end
+
+    subgraph Writes["Writes (SP — App Permissions)"]
+        LB_Votes[Lakebase: Votes]
+        LB_Feedback[Lakebase: Feedback]
+        LB_Campaigns[Lakebase: Campaigns]
+        LB_Gamification[Lakebase: User Activity]
+        LB_Scores[Lakebase: Confidence Scores]
+    end
+
+    Browser -->|authenticate| AppKit
+    AppKit -->|forward user token| OBO_Token
+    AppKit -->|use app SP| SP_Token
+
+    OBO_Token -->|user's UC permissions| UC_MV
+    OBO_Token -->|user's UC permissions| UC_Pages
+    OBO_Token -->|user's UC permissions| UC_Domains
+
+    SP_Token -->|app-owned data| LB_Votes
+    SP_Token -->|app-owned data| LB_Feedback
+    SP_Token -->|app-owned data| LB_Campaigns
+    SP_Token -->|app-owned data| LB_Gamification
+    SP_Token -->|app-owned data| LB_Scores
+
+    Note1[User can only see assets<br/>they have UC permission to access]
+    Note2[All votes attributed to<br/>the actual user via OBO identity]
+
+    style Note1 fill:none,stroke:none
+    style Note2 fill:none,stroke:none
+        `;
+        const { svg } = await mermaid.render('mermaid-svg', source);
+        document.getElementById('diagram').innerHTML = svg;
+    </script>
+</body>
+</html>
