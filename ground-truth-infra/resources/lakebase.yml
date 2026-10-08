@@ -1,0 +1,142 @@
+# resources/lakebase.yml
+# Lakebase Autoscaling — Semantic Ground Truth OLTP Database
+#
+# Design source: L300-02
+# Requires Databricks CLI >= 0.287.0
+#
+# Resource hierarchy:
+#   postgres_project (ground_truth_project)
+#     └── postgres_branch: production (auto-created; declared with replace_existing:true to adopt it)
+#     └── postgres_branch: dev_branch  (explicitly created, copy-on-write from production)
+#         postgres_role:     app_role    (on production branch; app SP owns the app database)
+#         postgres_database: app_db      (on production branch; owned by app_role)
+#
+# CDF direction note:
+#   The plan originally called for 6 postgres_synced_tables to create CDF Delta tables in UC.
+#   Investigation (Oct 2026) found that postgres_synced_tables in DABs is REVERSE ETL direction
+#   (Delta → Lakebase), not Lakebase → Delta.
+#   The Lakebase → Delta CDF tables (lb_*_history) are configured via the Lakebase App UI
+#   after first deploy (Lakehouse Sync feature), or via postgres_catalogs (avoided: requires
+#   CREATE CATALOG permission on metastore). This is the same pattern used by lakeLoom.
+#   See Project Memory §Lakebase DAB Research Notes.
+#
+# Connection model:
+#   AppKit Lakebase plugin connects via direct Postgres wire protocol (port 5432) using
+#   OAuth token rotation. PGHOST, PGPORT, PGDATABASE, PGUSER env vars injected automatically.
+#
+# Post-deploy manual steps:
+#   1. (After Bundle 2 deploys) Enable Lakehouse Sync in Lakebase App UI for CDF tables:
+#      → assets, votes, user_activity, confidence_scores, campaigns, feedback_batches
+#      These produce lb_*_history Delta tables in UC for metric views (Phase 5).
+#   2. (Optional) Enable Data API in Lakebase App UI for external REST clients.
+#
+# Per-target project_ids are in the targets: block below (dev vs prod isolation).
+
+resources:
+
+  # ---------------------------------------------------------------------------
+  # Project — top-level Lakebase Autoscaling container
+  # ---------------------------------------------------------------------------
+  postgres_projects:
+    ground_truth_project:
+      # project_id is set per-target below for dev/prod isolation
+      display_name: "Semantic Ground Truth — Lakebase"
+      pg_version: 17
+      history_retention_duration: "604800s"  # 7 days
+      default_endpoint_settings:
+        autoscaling_limit_min_cu: 0.5
+        autoscaling_limit_max_cu: 2
+      lifecycle:
+        prevent_destroy: true
+
+  # ---------------------------------------------------------------------------
+  # Branches
+  # ---------------------------------------------------------------------------
+  postgres_branches:
+    # Production branch: auto-created by the project; adopted via replace_existing.
+    # Using replace_existing: true so the bundle takes over the auto-created branch
+    # without needing to create it from scratch.
+    production:
+      branch_id: production
+      parent: "projects/${resources.postgres_projects.ground_truth_project.id}"
+      no_expiry: true
+      is_protected: true
+      replace_existing: true
+      lifecycle:
+        prevent_destroy: true
+
+    # Dev branch: explicitly created as a copy-on-write snapshot of production.
+    # Used for testing schema changes, queries, and data changes without affecting production.
+    dev_branch:
+      branch_id: dev
+      parent: "projects/${resources.postgres_projects.ground_truth_project.id}"
+      no_expiry: true
+      lifecycle:
+        prevent_destroy: false
+
+  # ---------------------------------------------------------------------------
+  # Role — app service principal ownership of the app database
+  # ---------------------------------------------------------------------------
+  postgres_roles:
+    app_role:
+      parent: "${resources.postgres_branches.production.name}"
+      # role_id: resource identifier (final component of the resource name path)
+      role_id: app-role
+      # postgres_role is the Postgres role name (identifier in Postgres).
+      # Using a consistent name across targets.
+      postgres_role: ground_truth_app_role
+      # identity_type omitted: creates a plain Postgres role not tied to a Databricks identity.
+      # Update to SERVICE_PRINCIPAL with the app SP app_id after Bundle 2 deploys.
+      lifecycle:
+        prevent_destroy: true
+
+  # ---------------------------------------------------------------------------
+  # Database — application database owned by app_role
+  # ---------------------------------------------------------------------------
+  postgres_databases:
+    app_db:
+      database_id: ground-truth-app
+      parent: "${resources.postgres_branches.production.name}"
+      postgres_database: ground_truth_app
+      role: "${resources.postgres_branches.production.name}/roles/${resources.postgres_roles.app_role.id}"
+      lifecycle:
+        prevent_destroy: true
+
+  # ---------------------------------------------------------------------------
+  # Synced Tables (CDF Direction: Lakebase → Delta)
+  #
+  # NOTE: postgres_synced_tables in DABs is REVERSE ETL (Delta → Lakebase).
+  # The CDF direction (Lakebase → Delta for lb_*_history metric view sources)
+  # is NOT achievable via this resource type.
+  #
+  # Action after deploy:
+  #   Enable Lakehouse Sync in Lakebase App UI for each source table:
+  #     assets, votes, user_activity, confidence_scores, campaigns, feedback_batches
+  #   This creates Delta tables: lb_assets_history, lb_votes_history, etc.
+  #   in ${var.catalog}.${var.schema} for metric views to query.
+  # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Target-specific overrides
+# ---------------------------------------------------------------------------
+targets:
+
+  dev:
+    resources:
+      postgres_projects:
+        ground_truth_project:
+          project_id: dev-matthew-giglia-ground-truth
+          display_name: "Semantic Ground Truth — Lakebase [dev]"
+          default_endpoint_settings:
+            autoscaling_limit_min_cu: 0.5
+            autoscaling_limit_max_cu: 2
+
+  prod:
+    resources:
+      postgres_projects:
+        ground_truth_project:
+          project_id: ground-truth
+          display_name: "Semantic Ground Truth — Lakebase"
+          default_endpoint_settings:
+            autoscaling_limit_min_cu: 0.5
+            autoscaling_limit_max_cu: 4
