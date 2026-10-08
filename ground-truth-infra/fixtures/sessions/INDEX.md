@@ -2,6 +2,7 @@
 
 | Date | Summary | Branch |
 |------|---------|--------|
+| 2026-10-08 | [Phase 5: Metric view fixtures](2026-10-08_phase5-metric-view-fixtures.md) | `mg-genie-bundle-scaffolds` |
 | 2026-10-08 | [Phase 4: Lakeflow jobs + notebooks](2026-10-08_phase4-lakeflow-jobs.md) | `mg-genie-bundle-scaffolds` |
 | 2026-10-08 | [Phase 3: SQL warehouse + secrets](2026-10-08_phase3-warehouse-secrets.md) | `mg-genie-bundle-scaffolds` |
 | 2026-10-08 | [Phase 2: Lakebase resources](2026-10-08_phase2-lakebase-resources.md) | `mg-genie-bundle-scaffolds` |

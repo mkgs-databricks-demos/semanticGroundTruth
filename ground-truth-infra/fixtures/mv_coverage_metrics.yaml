@@ -1,0 +1,93 @@
+# Metric View Fixture: mv_coverage_metrics
+# Design source: L200-C9, L300-05
+# Source CDF table: lb_assets_history
+# Measures: Total Assets, Reviewed Assets, Certified Assets, Coverage Pct
+
+name: mv_coverage_metrics
+
+sql: |
+  CREATE VIEW IF NOT EXISTS ${catalog}.${schema}.mv_coverage_metrics
+  WITH METRICS
+  LANGUAGE YAML
+  AS $$
+    version: 1.1
+    source: >
+      SELECT
+        asset_id,
+        asset_type,
+        display_name,
+        status,
+        last_reviewed_at,
+        created_at,
+        DATE_TRUNC('MONTH', created_at) AS asset_month,
+        CASE WHEN status IN ('REVIEWED', 'CERTIFIED') THEN 1 ELSE 0 END AS is_reviewed,
+        CASE WHEN status = 'CERTIFIED' THEN 1 ELSE 0 END AS is_certified
+      FROM ${catalog}.${schema}.lb_assets_history
+      WHERE _change_type != 'DELETE'
+    comment: Coverage metrics showing review progress across the asset catalog.
+    dimensions:
+      - name: asset_type
+        expr: asset_type
+        display_name: Asset Type
+        comment: Type of the asset (table, query, dashboard, etc.)
+        synonyms:
+          - type
+          - kind
+      - name: status
+        expr: status
+        display_name: Review Status
+        comment: Current review status (PENDING, REVIEWED, CERTIFIED, etc.)
+        synonyms:
+          - review status
+          - certification status
+      - name: asset_month
+        expr: asset_month
+        display_name: Asset Month
+        comment: Month the asset was registered
+        format:
+          type: date
+          date_format: locale_long_month
+    measures:
+      - name: Total Assets
+        expr: COUNT(DISTINCT asset_id)
+        display_name: Total Assets
+        synonyms:
+          - assets
+          - total
+      - name: Reviewed Assets
+        expr: SUM(is_reviewed)
+        display_name: Reviewed Assets
+        synonyms:
+          - reviewed
+          - reviewed count
+      - name: Certified Assets
+        expr: SUM(is_certified)
+        display_name: Certified Assets
+        synonyms:
+          - certified
+          - certified count
+      - name: Coverage Pct
+        expr: SUM(is_reviewed) / COUNT(DISTINCT asset_id)
+        display_name: Review Coverage
+        comment: Fraction of assets that have been reviewed (0.0 to 1.0)
+        format:
+          type: percentage
+          decimal_places:
+            type: exact
+            places: 1
+        synonyms:
+          - coverage
+          - review coverage
+          - coverage percentage
+      - name: Certification Pct
+        expr: SUM(is_certified) / COUNT(DISTINCT asset_id)
+        display_name: Certification Rate
+        format:
+          type: percentage
+          decimal_places:
+            type: exact
+            places: 1
+        synonyms:
+          - certification rate
+          - certified percentage
+  $$

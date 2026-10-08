@@ -1,0 +1,96 @@
+# Metric View Fixture: mv_feedback_pipeline
+# Design source: L200-C9, L300-05
+# Source CDF table: lb_feedback_batches_history
+# Measures: Total Batches, Success Rate, Avg Processing Time
+
+name: mv_feedback_pipeline
+
+sql: |
+  CREATE VIEW IF NOT EXISTS ${catalog}.${schema}.mv_feedback_pipeline
+  WITH METRICS
+  LANGUAGE YAML
+  AS $$
+    version: 1.1
+    source: >
+      SELECT
+        batch_id,
+        status,
+        asset_count,
+        processing_time_seconds,
+        error_message,
+        created_at,
+        completed_at,
+        DATE_TRUNC('DAY', created_at) AS batch_date,
+        DATE_TRUNC('WEEK', created_at) AS batch_week,
+        CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END AS is_success,
+        CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END AS is_failed
+      FROM ${catalog}.${schema}.lb_feedback_batches_history
+      WHERE _change_type != 'DELETE'
+    comment: Operational metrics for the feedback pipeline job runs.
+    dimensions:
+      - name: status
+        expr: status
+        display_name: Batch Status
+        comment: Pipeline run status (SUCCESS, FAILED, RUNNING)
+        synonyms:
+          - batch status
+          - run status
+          - pipeline status
+      - name: batch_date
+        expr: batch_date
+        display_name: Batch Date
+        format:
+          type: date
+          date_format: year_month_day
+      - name: batch_week
+        expr: batch_week
+        display_name: Batch Week
+        format:
+          type: date
+          date_format: year_month_day
+    measures:
+      - name: Total Batches
+        expr: COUNT(batch_id)
+        display_name: Total Batches
+        synonyms:
+          - batches
+          - pipeline runs
+          - runs
+      - name: Success Rate
+        expr: SUM(is_success) / COUNT(batch_id)
+        display_name: Success Rate
+        comment: Fraction of pipeline runs that succeeded (0.0 to 1.0)
+        format:
+          type: percentage
+          decimal_places:
+            type: exact
+            places: 1
+        synonyms:
+          - pass rate
+          - successful runs
+      - name: Failed Batches
+        expr: SUM(is_failed)
+        display_name: Failed Batches
+        synonyms:
+          - failures
+          - failed runs
+      - name: Avg Processing Time
+        expr: AVG(processing_time_seconds)
+        display_name: Avg Processing Time (sec)
+        comment: Average time in seconds to complete a feedback pipeline run
+        format:
+          type: number
+          decimal_places:
+            type: exact
+            places: 1
+        synonyms:
+          - processing time
+          - duration
+          - average duration
+      - name: Total Assets Processed
+        expr: SUM(asset_count)
+        display_name: Total Assets Processed
+        synonyms:
+          - assets processed
+          - total processed
+  $$
