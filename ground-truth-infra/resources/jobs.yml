@@ -1,0 +1,144 @@
+# resources/jobs.yml
+# All 4 Lakeflow Jobs for ground-truth-infra (Bundle 1)
+# Design source: L300-04, L300-05, L300-08
+#
+# Jobs:
+#   feedback_pipeline     — Daily 11 PM: collect votes → generate proposed YAML → create branch
+#   freshness_resurfacing — Daily 6 AM: find stale assets, add to freshness campaigns
+#   metric_view_deploy    — On-demand: list fixtures → for_each deploy metric view
+#   post_deploy_validation — On-demand: validate all Bundle 1 resources
+#
+# Notebook paths use .py extension (confirmed on disk).
+# Schema references via ${resources.schemas.ground_truth_schema.*} for dependency ordering.
+# Warehouse references via ${resources.sql_warehouses.infra_warehouse.id}.
+
+resources:
+  jobs:
+
+    # -------------------------------------------------------------------------
+    # feedback_pipeline
+    # Daily 11 PM: collect unprocessed votes → call Genie Code API → create feature branch
+    # -------------------------------------------------------------------------
+    feedback_pipeline:
+      name: "feedback_pipeline [${bundle.target}]"
+      description: "Collects reviewer votes, generates proposed YAML edits via Genie Code, and creates a Git feature branch."
+
+      schedule:
+        quartz_cron_expression: "0 0 23 * * ?"  # Daily 11 PM UTC
+        timezone_id: UTC
+
+      tasks:
+        - task_key: collect_feedback
+          description: "Query unprocessed votes, group by asset, write feedback staging table"
+          notebook_task:
+            notebook_path: ../src/notebooks/collect_feedback.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${resources.schemas.ground_truth_schema.name}"
+              cutoff_hours: "24"
+          existing_cluster_id: ""
+          # Uses serverless compute (no cluster_id required for serverless)
+          environment_key: serverless
+
+        - task_key: create_feature_branch
+          description: "Call Genie Code API, generate proposed YAML edits, create Git feature branch"
+          depends_on:
+            - task_key: collect_feedback
+          notebook_task:
+            notebook_path: ../src/notebooks/create_feature_branch.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${resources.schemas.ground_truth_schema.name}"
+              genie_space_id: ""  # set to Genie Space ID after Phase 7
+              git_folder_id: ""   # set to the Repos folder ID for YAML fixtures
+          environment_key: serverless
+
+      email_notifications:
+        on_failure:
+          - matthew.giglia@databricks.com
+
+    # -------------------------------------------------------------------------
+    # freshness_resurfacing
+    # Daily 6 AM: identify stale certified assets, add to freshness campaigns
+    # -------------------------------------------------------------------------
+    freshness_resurfacing:
+      name: "freshness_resurfacing [${bundle.target}]"
+      description: "Finds stale certified assets and adds them to freshness campaigns for re-review."
+
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"  # Daily 6 AM UTC
+        timezone_id: UTC
+
+      tasks:
+        - task_key: freshness_check
+          description: "Identify stale assets and add to freshness campaign staging"
+          notebook_task:
+            notebook_path: ../src/notebooks/freshness_check.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${resources.schemas.ground_truth_schema.name}"
+              staleness_days: "90"
+          environment_key: serverless
+
+      email_notifications:
+        on_failure:
+          - matthew.giglia@databricks.com
+
+    # -------------------------------------------------------------------------
+    # metric_view_deploy
+    # On-demand: list fixture YAMLs → for_each task deploys each metric view
+    # -------------------------------------------------------------------------
+    metric_view_deploy:
+      name: "metric_view_deploy [${bundle.target}]"
+      description: "Deploys metric view fixtures from fixtures/ directory. Run on-demand after fixture changes."
+
+      tasks:
+        - task_key: list_fixtures
+          description: "List fixtures/*.yaml files and emit array via taskValues for for_each_task"
+          notebook_task:
+            notebook_path: ../src/notebooks/list_fixtures.py
+            base_parameters:
+              fixtures_path: ""
+          environment_key: serverless
+
+        - task_key: deploy_metric_views
+          description: "For each fixture YAML: read, resolve env refs, execute CREATE VIEW SQL"
+          depends_on:
+            - task_key: list_fixtures
+          for_each_task:
+            inputs: "{{tasks.list_fixtures.values.fixture_files}}"
+            concurrency: 1
+            task:
+              task_key: deploy_single_view
+              notebook_task:
+                notebook_path: ../src/notebooks/deploy_metric_view.py
+                base_parameters:
+                  fixture_file: "{{input}}"
+                  catalog: "${var.catalog}"
+                  schema: "${resources.schemas.ground_truth_schema.name}"
+                  warehouse_id: "${resources.sql_warehouses.infra_warehouse.id}"
+              environment_key: serverless
+
+    # -------------------------------------------------------------------------
+    # post_deploy_validation
+    # On-demand: validate all Bundle 1 resources are deployed and accessible
+    # -------------------------------------------------------------------------
+    post_deploy_validation:
+      name: "post_deploy_validation [${bundle.target}]"
+      description: "End-to-end validation of Bundle 1 infrastructure. Run after full bundle deploy."
+
+      tasks:
+        - task_key: validate_infra
+          description: "Check UC schema, warehouse, Lakebase, metric views, and all jobs"
+          notebook_task:
+            notebook_path: ../src/notebooks/post_deploy_validation.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${resources.schemas.ground_truth_schema.name}"
+              warehouse_id: "${resources.sql_warehouses.infra_warehouse.id}"
+              lakebase_project_id: "${resources.postgres_projects.ground_truth_project.id}"
+          environment_key: serverless
+
+      email_notifications:
+        on_failure:
+          - matthew.giglia@databricks.com
