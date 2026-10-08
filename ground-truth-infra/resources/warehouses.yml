@@ -1,0 +1,32 @@
+# resources/warehouses.yml
+# Serverless SQL warehouse for infrastructure tasks, job notebooks, and metric view queries.
+# Design source: L300-03 §Step 2
+#
+# Referenced by other resources as:
+#   ${resources.sql_warehouses.infra_warehouse.id}
+#
+# No manual variable needed — warehouse_id is resolved via DAB substitution.
+
+resources:
+  sql_warehouses:
+    infra_warehouse:
+      name: "Ground Truth Infra [${bundle.target}]"
+
+      # Smallest serverless warehouse — infra tasks and metric view queries are infrequent
+      cluster_size: "2X-Small"
+      warehouse_type: PRO
+      enable_serverless_compute: true
+      enable_photon: true
+
+      # Preview channel for latest SQL features (VARIANT, CLUSTER BY AUTO, metric views)
+      channel:
+        name: CHANNEL_NAME_PREVIEW
+
+      # Auto-stop after 10 minutes of idle to minimize cost
+      auto_stop_mins: 10
+
+      # Single cluster — jobs are infrequent and sequential
+      min_num_clusters: 1
+      max_num_clusters: 1
+      # NOTE: add permissions block here for production (CAN_MANAGE for deploying user,
+      # CAN_USE for app service principal and users group)
