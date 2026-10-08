@@ -26,7 +26,7 @@
 ### DAB Resources
 - **UC Schema** — `${var.catalog}.${var.schema}`
 - **SQL Warehouse** — Serverless PRO, 2X-Small
-- **Lakeflow Jobs** — feedback_pipeline, freshness_resurfacing, metric_view_deploy, post_deploy_validation, schema_migrations
+- **Lakeflow Jobs** — feedback_pipeline, freshness_resurfacing, metric_view_deploy, post_deploy_validation
 
 ### DAB-Declared Lakebase Resources (`resources/lakebase.yml`)
 - **Lakebase project** (`postgres_projects`) — `ground-truth`
@@ -81,7 +81,7 @@ All at `../docs/design/` (solution root).
 |----------|-------------|------|
 | `catalog` | Target UC catalog | Not yet |
 | `schema` | Target UC schema | Not yet |
-| `warehouse_id` | SQL Warehouse ID | Not yet (create first) |
+| `warehouse_id` | ~~Replaced by DAB substitution~~ `${resources.sql_warehouses.infra_warehouse.id}` | N/A |
 | `lakebase_project_id` | ~~Replaced by DAB substitution~~ `${resources.postgres_projects.ground_truth_project.id}` | N/A |
 | `notification_slack_webhook` | Slack webhook URL | Not yet |
 | `notification_teams_webhook` | Teams webhook URL | Not yet |
@@ -96,13 +96,17 @@ See `docs/plan/infra_build_plan.md` for the detailed 8-phase plan with deliverab
 
 ---
 
-## Open Questions (11)
+## Open Questions — ALL RESOLVED
 
-Consolidated in the build plan. Key blockers:
+All 11 open questions from the L300 specs have been resolved. See `docs/plan/infra_build_plan.md` § Consolidated Open Questions for full findings.
 
-1. **`for_each_task` syntax** — does `file_list(fixtures/)` work in DABs? (Phase 4)
-2. **`genie_code_task`** — available as DAB resource type? (Phase 4)
-3. **Genie Code task output format** — how does proposed YAML pass to downstream task? (Phase 4)
+Key resolutions:
+1. **`for_each_task` syntax** — `file_list()` does NOT exist. Use upstream notebook + `taskValues`.
+2. **`genie_code_task`** — Yes, available (Beta). No structured output — only a thread link.
+3. **Genie Code task output** — No built-in mechanism. Restructure pipeline: combine Genie Code call + branch creation in a single notebook task, or write proposed YAML to Delta/Volume.
+4. **Cross-bundle variables** — `deploy.sh` pattern with `bundle summary --output json` + `resolve_infra_vars()`.
+5. **Lakebase as DAB resources** — Fully supported (Beta, Feb 2026). Manual CLI replaced.
+6. **Migrations** — Moved to Bundle 2 (App). lakeLoom TypeScript pattern.
 
 ---
 
@@ -111,8 +115,8 @@ Consolidated in the build plan. Key blockers:
 - **Schema references:** `${resources.schemas.ground_truth_schema.*}` in resource definitions
 - **Warehouse references:** `${resources.sql_warehouses.infra_warehouse.id}`
 - **Notebook paths:** Must match actual file extension on disk; validate with directory listing
-- **Migrations:** Flyway-style `V###__description.sql`; tracked in `schema_migrations` table
-- **Session summaries:** `fixtures/sessions/YYYY-MM-DD_description.md`
+- **Migrations:** MOVED to Bundle 2 (App). lakeLoom TypeScript pattern — app server runs migrations on startup.
+- **Session summaries:** `fixtures/sessions/YYYY-MM-DD_description.md` + `fixtures/sessions/INDEX.md`
 - **Git workflow:** Feature branches only; `mg-genie-<description>`
 
 ---
@@ -123,6 +127,7 @@ Consolidated in the build plan. Key blockers:
 |------|--------|-------|
 | 2026-10-08 | Scaffold created | Empty DAB via workspace GUI; dev+prod targets; no variables/resources |
 | 2026-10-08 | Build plan created | `docs/plan/infra_build_plan.md`; PROJECT_MEMORY.md created |
+| 2026-10-08 | Open questions resolved | All 11 L300 open questions resolved. Key: Lakebase DAB-declarable (Beta), migrations moved to Bundle 2, `for_each_task` needs upstream notebook, `genie_code_task` available (Beta, no structured output), cross-bundle vars via deploy.sh. Build plan updated with findings. Session summary + README written. |
 
 ---
 

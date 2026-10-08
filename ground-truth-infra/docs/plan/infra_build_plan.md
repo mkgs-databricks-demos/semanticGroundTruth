@@ -60,7 +60,7 @@ All variables needed in `databricks.yml`.
 |----------|-------------|-------------|--------------|--------|
 | `catalog` | Target UC catalog | `dev_ground_truth` | `prod_ground_truth` | L300-01 |
 | `schema` | Target UC schema | `app` | `app` | L300-01 |
-| `warehouse_id` | SQL Warehouse ID | (after creation) | (after creation) | L300-03 |
+| `warehouse_id` | ~~Replaced by DAB substitution~~ `${resources.sql_warehouses.infra_warehouse.id}` | N/A | N/A | L300-03 |
 | `lakebase_project_id` | ~~Replaced by DAB substitution~~ `${resources.postgres_projects.ground_truth_project.id}` | N/A | N/A | L300-02 |
 | `notification_slack_webhook` | Slack webhook URL | `""` | (customer provides) | L300-03 |
 | `notification_teams_webhook` | Teams webhook URL | `""` | (customer provides) | L300-03 |
@@ -87,6 +87,7 @@ All variables needed in `databricks.yml`.
 | `collect_feedback.py` | Query unprocessed votes, group by asset, compile feedback JSON | L300-04 §Step 1 | `feedback_pipeline` task 1 |
 | `create_feature_branch.py` | Create Git feature branches with proposed YAML edits | L300-04 §Step 4 | `feedback_pipeline` task 3 |
 | `freshness_check.py` | Identify stale production assets, add to freshness campaigns | L300-04 §Step 3 | `freshness_resurfacing` |
+| `list_fixtures.py` | List `fixtures/*.yaml` files, emit array via `dbutils.jobs.taskValues.set()` for `for_each_task` input | L300-04 §Q1 | `metric_view_deploy` upstream task |
 | `deploy_metric_view.py` | Read fixture YAML, resolve env refs, execute CREATE VIEW SQL | L300-01 §Step 4 | `metric_view_deploy` forEach |
 | `post_deploy_validation.py` | Validate all Bundle 1 resources deployed correctly | L300-01 §Step 4, L300-08 | `post_deploy_validation` |
 
@@ -156,7 +157,7 @@ Configure `databricks.yml` with variables, targets, and include paths. Create `r
 **L300:** 03 | **Effort:** Low | **Prerequisites:** Phase 2 (Lakebase project exists)
 
 **Deliverables:**
-- [ ] SQL Warehouse created or identified; `warehouse_id` set in variables
+- [ ] SQL Warehouse declared in `resources/warehouses.yml`; reference via `${resources.sql_warehouses.infra_warehouse.id}` substitution (no manual variable needed)
 - [ ] `resources/warehouses.yml` — serverless SQL warehouse resource (2X-Small PRO)
 - [ ] UC Secrets created: `slack_webhook_url`, `teams_webhook_url`, `git_token`
 - [ ] Notification destinations configured in workspace settings
@@ -177,6 +178,7 @@ The core automation — feedback pipeline, freshness checks, and metric view dep
 - [ ] `src/notebooks/collect_feedback.py` — feedback collection
 - [ ] `src/notebooks/create_feature_branch.py` — Git branch creation with proposed YAML
 - [ ] `src/notebooks/freshness_check.py` — stale asset detection
+- [ ] `src/notebooks/list_fixtures.py` — list `fixtures/*.yaml`, emit array via `taskValues` for `for_each_task`
 - [ ] `src/notebooks/deploy_metric_view.py` — fixture YAML → CREATE VIEW SQL
 - [ ] `src/notebooks/post_deploy_validation.py` — end-to-end infra validation
 - [ ] `resources/jobs.yml` — all 4 job definitions:
@@ -247,7 +249,7 @@ The core automation — feedback pipeline, freshness checks, and metric view dep
 - [ ] `databricks bundle deploy --target dev` succeeds
 - [ ] `post_deploy_validation` job run passes all checks:
   - Lakebase accessible
-  - All migrations applied
+  - Lakebase project, branches, endpoint, and database accessible (app server runs migrations on first startup)
   - UC schema exists
   - SQL Warehouse accessible
   - UC Secrets readable
@@ -297,12 +299,13 @@ ground-truth-infra/
 │   ├── schemas.yml                      # UC schema
 │   ├── warehouses.yml                   # SQL Warehouse
 │   ├── lakebase.yml                     # Lakebase project, branches, endpoint, role, database, 6 synced tables (CDF)
-│   └── jobs.yml                         # All 5 Lakeflow Jobs
+│   └── jobs.yml                         # All 4 Lakeflow Jobs
 ├── src/
 │   ├── notebooks/
 │   │   ├── collect_feedback.py
 │   │   ├── create_feature_branch.py
 │   │   ├── freshness_check.py
+│   │   ├── list_fixtures.py
 │   │   ├── deploy_metric_view.py
 │   │   └── post_deploy_validation.py
 │   └── prompts/
@@ -326,7 +329,7 @@ From SOW Option A (L100 pitch/sow_timing_estimates.md):
 | Phase 1 (config) | 2 hrs | YAML editing |
 | Phase 2 (Lakebase) | 8 hrs | DAB-declared Lakebase resources (project, branches, endpoint, synced tables). Migrations moved to Bundle 2 (App). |
 | Phase 3 (secrets/wh/notif) | 4 hrs | CLI + UI |
-| Phase 4 (jobs) | 20 hrs | 5 notebooks + job YAML + open question resolution |
+| Phase 4 (jobs) | 20 hrs | 6 notebooks + job YAML + open question resolution |
 | Phase 5 (metric views) | 8 hrs | 4 fixture YAMLs + deploy/test |
 | Phase 6 (skills) | 2 hrs | Prompt file + registration |
 | Phase 7 (gateway) | 2 hrs | CLI + UI |
