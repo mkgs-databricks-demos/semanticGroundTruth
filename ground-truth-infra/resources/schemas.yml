@@ -1,0 +1,13 @@
+# resources/schemas.yml
+# UC Schema for ground-truth-infra.
+# Design source: L300-01 §Step 3
+#
+# Usage in other resources: always reference via ${resources.schemas.ground_truth_schema.*}
+# Never use raw ${var.schema} in downstream resource definitions — it bypasses dependency ordering.
+
+resources:
+  schemas:
+    ground_truth_schema:
+      catalog_name: ${var.catalog}
+      name: ${var.schema}
+      comment: "Semantic ground truth — shared UC schema for review assets, votes, feedback, and metric views (Bundle 1 infra)"
