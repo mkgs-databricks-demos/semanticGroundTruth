@@ -1,0 +1,15 @@
+# resources/lakebase/app_role.postgres_role.yml
+# App service principal role — owns the app database.
+# Design source: L300-02
+#
+# identity_type omitted: plain Postgres role, not tied to a Databricks identity.
+# Update to SERVICE_PRINCIPAL with the app SP app_id after Bundle 2 deploys.
+
+resources:
+  postgres_roles:
+    app_role:
+      parent: "${resources.postgres_branches.production.name}"
+      role_id: app-role
+      postgres_role: ground_truth_app_role
+      lifecycle:
+        prevent_destroy: true

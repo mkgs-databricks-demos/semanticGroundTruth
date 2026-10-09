@@ -1,0 +1,50 @@
+# resources/lakebase/ground_truth_project.postgres_project.yml
+# Lakebase Autoscaling project — top-level container
+# Design source: L300-02
+#
+# Per-target project_ids: dev → dev-matthew-giglia-ground-truth | prod → ground-truth
+#
+# Key findings (deploy experience):
+#   - .id returns the full resource path (e.g. projects/dev-matthew-giglia-ground-truth)
+#   - Never prepend 'projects/' manually to .id — it is already included
+#
+# Post-deploy manual steps (after Bundle 2):
+#   1. Enable Lakehouse Sync in Lakebase App UI for CDF tables:
+#      assets, votes, user_activity, confidence_scores, campaigns, feedback_batches
+#      → produces lb_*_history Delta tables in UC for metric views
+#   2. (Optional) Enable Data API for external REST clients
+
+resources:
+  postgres_projects:
+    ground_truth_project:
+      # project_id set per-target below
+      display_name: "Semantic Ground Truth"
+      pg_version: 17
+      history_retention_duration: "604800s"  # 7 days
+      default_endpoint_settings:
+        autoscaling_limit_min_cu: 0.5
+        autoscaling_limit_max_cu: 2
+      lifecycle:
+        prevent_destroy: true
+
+targets:
+
+  dev:
+    resources:
+      postgres_projects:
+        ground_truth_project:
+          project_id: dev-matthew-giglia-ground-truth
+          display_name: "Semantic Ground Truth [dev]"
+          default_endpoint_settings:
+            autoscaling_limit_min_cu: 0.5
+            autoscaling_limit_max_cu: 2
+
+  prod:
+    resources:
+      postgres_projects:
+        ground_truth_project:
+          project_id: ground-truth
+          display_name: "Semantic Ground Truth"
+          default_endpoint_settings:
+            autoscaling_limit_min_cu: 0.5
+            autoscaling_limit_max_cu: 4

@@ -1,0 +1,30 @@
+# resources/jobs/post_deploy_validation.job.yml
+# On-demand: validate all Bundle 1 resources are deployed and accessible
+# Design source: L300-08
+
+resources:
+  jobs:
+    post_deploy_validation:
+      name: "Semantic Ground Truth — Post-Deploy Validation"
+      description: "End-to-end validation of Bundle 1 infrastructure. Run after full bundle deploy."
+
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "1"
+
+      tasks:
+        - task_key: validate_infra
+          description: "Check UC schema, warehouse, Lakebase, metric views, and all jobs"
+          notebook_task:
+            notebook_path: ../../src/notebooks/post_deploy_validation.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${resources.schemas.ground_truth_schema.name}"
+              warehouse_id: "${resources.sql_warehouses.infra_warehouse.id}"
+              lakebase_project_id: "${resources.postgres_projects.ground_truth_project.id}"
+          environment_key: serverless
+
+      email_notifications:
+        on_failure:
+          - matthew.giglia@databricks.com
