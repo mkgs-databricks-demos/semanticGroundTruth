@@ -24,21 +24,21 @@
 # COMMAND ----------
 
 # --- Read Job Parameters ---
-dbutils.widgets.text("schema_use", "", "Resolved schema name")
+dbutils.widgets.text("bundle_target", "", "Bundle target (dev, prod)")
 dbutils.widgets.text("secret_scope_name", "", "Workspace secret scope name")
 dbutils.widgets.text("m2m_spn_prefix", "semantic-ground-truth-m2m", "SPN display name prefix")
 dbutils.widgets.text("m2m_client_id_dbs_key", "", "Secret key for M2M client_id")
 dbutils.widgets.text("m2m_client_secret_dbs_key", "", "Secret key for M2M client_secret")
 dbutils.widgets.text("workspace_url", "", "Workspace URL")
 
-schema_use = dbutils.widgets.get("schema_use")
+bundle_target = dbutils.widgets.get("bundle_target")
 secret_scope_name = dbutils.widgets.get("secret_scope_name")
 m2m_spn_prefix = dbutils.widgets.get("m2m_spn_prefix")
 m2m_client_id_dbs_key = dbutils.widgets.get("m2m_client_id_dbs_key")
 m2m_client_secret_dbs_key = dbutils.widgets.get("m2m_client_secret_dbs_key")
 workspace_url = dbutils.widgets.get("workspace_url")
 
-print(f"schema_use={schema_use}")
+print(f"bundle_target={bundle_target}")
 print(f"secret_scope_name={secret_scope_name}")
 print(f"m2m_spn_prefix={m2m_spn_prefix}")
 print(f"m2m_client_id_dbs_key={m2m_client_id_dbs_key}")
@@ -96,7 +96,10 @@ print(f"Workspace URL: {workspace_url}")
 # COMMAND ----------
 
 # --- Find or Create M2M Service Principal ---
-spn_display_name = f"{m2m_spn_prefix}-{schema_use}"
+# Naming: <prefix>-<bundle.target>, e.g. semantic-ground-truth-m2m-dev
+if not bundle_target:
+    raise ValueError("bundle_target parameter is required to derive the SPN display name")
+spn_display_name = f"{m2m_spn_prefix}-{bundle_target}"
 print(f"Target SPN display name: {spn_display_name}")
 
 spn, is_new_spn = get_or_create_service_principal(w, spn_display_name)

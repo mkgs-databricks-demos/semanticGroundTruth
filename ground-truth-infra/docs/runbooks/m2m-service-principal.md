@@ -14,17 +14,17 @@
 
 ## Identifying the SPN
 
-The SPN display name is `semantic-ground-truth-m2m-<schema>`, where `<schema>` is the resolved UC schema name.
+The SPN display name is `semantic-ground-truth-m2m-<target>`, where `<target>` is the bundle target (`${bundle.target}`). Secret key names remain schema-qualified.
 
-| Target | Schema | SPN Display Name |
-|--------|--------|------------------|
-| dev | `dev_matthew_giglia_semantic_ground_truth` | `semantic-ground-truth-m2m-dev_matthew_giglia_semantic_ground_truth` |
-| prod | `semantic_ground_truth` | `semantic-ground-truth-m2m-semantic_ground_truth` |
+| Target | SPN Display Name | Client secret key |
+|--------|------------------|-------------------|
+| dev | `semantic-ground-truth-m2m-dev` | `m2m_client_secret_dev_matthew_giglia_semantic_ground_truth` |
+| prod | `semantic-ground-truth-m2m-prod` | `m2m_client_secret_semantic_ground_truth` |
 
 To confirm the SPN exists:
 
 ```bash
-databricks service-principals list --filter 'displayName eq "semantic-ground-truth-m2m-dev_matthew_giglia_semantic_ground_truth"' --output json
+databricks service-principals list --filter 'displayName eq "semantic-ground-truth-m2m-dev"' --output json
 ```
 
 ---
@@ -36,7 +36,7 @@ databricks service-principals list --filter 'displayName eq "semantic-ground-tru
 ### Option A: Workspace UI
 
 1. Settings > Identity and access > Service principals > Manage
-2. Select the SPN (`semantic-ground-truth-m2m-<schema>`)
+2. Select the SPN (`semantic-ground-truth-m2m-<target>`)
 3. Secrets tab > **Generate secret**
 4. Set lifetime (up to 730 days)
 5. Under Scopes, select `all APIs` (or restrict to `sql`, `serving` if narrower scope works)

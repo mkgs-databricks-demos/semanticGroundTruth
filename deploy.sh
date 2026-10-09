@@ -463,7 +463,8 @@ print(f"{id_present} {secret_present}")
   fi
 
   # Secret missing — resolve SPN details for the admin instructions
-  local spn_display_name="${M2M_SPN_PREFIX}-${SCHEMA}"
+  local spn_display_name
+  spn_display_name="${M2M_SPN_PREFIX}-$(safe "${TARGET}")"
   local spn_object_id="" spn_application_id="" spn_info
   if spn_info=$(databricks service-principals list --filter "displayName eq \"${spn_display_name}\"" --output json 2>/dev/null); then
     read -r spn_object_id spn_application_id <<< "$(echo "${spn_info}" | python3 -c '
@@ -554,7 +555,7 @@ if [[ "${DEPLOY_APP}" == true ]]; then
   # 1. deploy_bundle "${APP_BUNDLE}"
   # 2. Resolve app URL from app bundle summary
   # 2b. Grant CAN_USE on the app to the M2M SPN (resolve application_id by
-  #     display name "${M2M_SPN_PREFIX}-${SCHEMA}" and pass as --var, or via
+  #     display name "${M2M_SPN_PREFIX}-${TARGET}" and pass as --var, or via
   #     a post-process job — see m2m_service_principal_plan.md §7.1)
   # 3. Run post_deploy_setup job (creates connection via SQL DDL + registers MCP)
   # 4. Re-deploy infra to register MCP service DAB resource

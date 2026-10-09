@@ -63,13 +63,15 @@ Both `dev` and `prod` targets point at the **same workspace** (`fevm-hls-fde`) a
 
 | Item | Value (dev) | Value (prod) |
 |------|-------------|--------------|
-| SPN display name | `semantic-ground-truth-m2m-dev_matthew_giglia_semantic_ground_truth` | `semantic-ground-truth-m2m-semantic_ground_truth` |
+| SPN display name | `semantic-ground-truth-m2m-dev` | `semantic-ground-truth-m2m-prod` |
 | Client ID key | `m2m_client_id_dev_matthew_giglia_semantic_ground_truth` | `m2m_client_id_semantic_ground_truth` |
 | Client secret key | `m2m_client_secret_dev_matthew_giglia_semantic_ground_truth` | `m2m_client_secret_semantic_ground_truth` |
 | Who writes client ID | `ensure_m2m_service_principal` task (automated) | same |
 | Who writes client secret | Workspace admin (manual) | same |
 
-The SPN display name is derived in the notebook from the resolved schema name (`${resources.schemas.ground_truth_schema.name}`), so no new per-target values are needed beyond the key variables.
+The SPN display name is `${m2m_spn_prefix}-${bundle.target}` (decided 2026-10-11; the original schema-based name was 65 chars and repeated the project name). The notebook receives `bundle_target` as a parameter, so no new per-target values are needed beyond the key variables. Secret key names stay schema-qualified.
+
+> Note: in `dev` (development mode) every developer deploying this bundle resolves to the same `semantic-ground-truth-m2m-dev` SPN. That is acceptable for a single-developer workspace; revisit if more developers deploy dev here.
 
 ### New bundle variables (`databricks.yml`)
 
@@ -115,10 +117,10 @@ Import pattern in notebooks: same `sys.path` insert of `../lib` relative to the 
 Python source notebook (matches the existing `.py` notebooks in `src/notebooks/`). Cells:
 
 1. **Install latest Databricks SDK** — `%pip install --upgrade databricks-sdk` + `dbutils.library.restartPython()`
-2. **Read job parameters** — `schema_use`, `secret_scope_name`, `m2m_spn_prefix`, `m2m_client_id_dbs_key`, `m2m_client_secret_dbs_key`, `workspace_url`
+2. **Read job parameters** — `bundle_target`, `secret_scope_name`, `m2m_spn_prefix`, `m2m_client_id_dbs_key`, `m2m_client_secret_dbs_key`, `workspace_url`
 3. **Load `src/lib`**
 4. **Preflight: caller is workspace admin** — `w.current_user.me()` and check membership in `admins` group; fail with a clear message if not (SPN creation requires workspace admin)
-5. **Find or create SPN** — display name `f"{m2m_spn_prefix}-{schema_use}"`; `get_or_create_service_principal(w, display_name)`; log `application_id`, workspace object `id`, `created_this_run`
+5. **Find or create SPN** — display name `f"{m2m_spn_prefix}-{bundle_target}"`; `get_or_create_service_principal(w, display_name)`; log `application_id`, workspace object `id`, `created_this_run`
 6. **Provision client ID** — `put_secret(w, scope, m2m_client_id_dbs_key, spn.application_id)` (idempotent overwrite)
 7. **Check admin-provisioned secret** — `m2m_client_secret_dbs_key in list_secret_keys(w, scope)`
 8. **Verify M2M token (if secret present)** — `try_get_secret_value()` then `verify_client_credentials()`; raise on non-2xx so a stale/rotated secret fails loudly; mark `skipped` if not yet provisioned
@@ -148,7 +150,7 @@ tasks:
     notebook_task:
       notebook_path: ../../src/notebooks/ensure_m2m_service_principal.py
       base_parameters:
-        schema_use: "${resources.schemas.ground_truth_schema.name}"
+        bundle_target: "${bundle.target}"
         secret_scope_name: "${resources.secret_scopes.ground_truth_secret_scope.name}"
         m2m_spn_prefix: "${var.m2m_spn_prefix}"
         m2m_client_id_dbs_key: "{{job.parameters.m2m_client_id_dbs_key}}"
@@ -333,7 +335,7 @@ Work happens on a feature branch (`mg-genie-m2m-spn`), never `main`.
 
 ## 11. Validation
 
-* SPN exists: `databricks service-principals list --filter 'displayName eq "semantic-ground-truth-m2m-<schema>"'`
+* SPN exists: `databricks service-principals list --filter 'displayName eq "semantic-ground-truth-m2m-<target>"'`
 * Client ID key matches SPN `applicationId`
 * Re-running the job is a no-op (`created_this_run: false`, same `application_id`)
 * With secret missing: job succeeds, `m2m_secret_present=false`, `setup_gateway_connection` skipped, `deploy.sh` prints the ADMIN ACTION block and exits 0

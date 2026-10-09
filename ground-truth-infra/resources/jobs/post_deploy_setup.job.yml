@@ -52,7 +52,7 @@ resources:
           notebook_task:
             notebook_path: ../../src/notebooks/ensure_m2m_service_principal.py
             base_parameters:
-              schema_use: "${resources.schemas.ground_truth_schema.name}"
+              bundle_target: "${bundle.target}"
               secret_scope_name: "${resources.secret_scopes.ground_truth_secret_scope.name}"
               m2m_spn_prefix: "${var.m2m_spn_prefix}"
               m2m_client_id_dbs_key: "{{job.parameters.m2m_client_id_dbs_key}}"
