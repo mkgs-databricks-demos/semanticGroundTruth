@@ -20,7 +20,7 @@ resources:
     # Daily 11 PM: collect unprocessed votes → call Genie Code API → create feature branch
     # -------------------------------------------------------------------------
     feedback_pipeline:
-      name: "feedback_pipeline [${bundle.target}]"
+      name: "feedback_pipeline"
       description: "Collects reviewer votes, generates proposed YAML edits via Genie Code, and creates a Git feature branch."
 
       schedule:
@@ -65,7 +65,7 @@ resources:
     # Daily 6 AM: identify stale certified assets, add to freshness campaigns
     # -------------------------------------------------------------------------
     freshness_resurfacing:
-      name: "freshness_resurfacing [${bundle.target}]"
+      name: "freshness_resurfacing"
       description: "Finds stale certified assets and adds them to freshness campaigns for re-review."
 
       schedule:
@@ -97,7 +97,7 @@ resources:
     # On-demand: list fixture YAMLs → for_each task deploys each metric view
     # -------------------------------------------------------------------------
     metric_view_deploy:
-      name: "metric_view_deploy [${bundle.target}]"
+      name: "metric_view_deploy"
       description: "Deploys metric view fixtures from fixtures/ directory. Run on-demand after fixture changes."
 
       environments:
@@ -137,7 +137,7 @@ resources:
     # On-demand: validate all Bundle 1 resources are deployed and accessible
     # -------------------------------------------------------------------------
     post_deploy_validation:
-      name: "post_deploy_validation [${bundle.target}]"
+      name: "post_deploy_validation"
       description: "End-to-end validation of Bundle 1 infrastructure. Run after full bundle deploy."
 
       environments:
