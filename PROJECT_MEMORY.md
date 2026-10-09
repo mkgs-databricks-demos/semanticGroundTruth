@@ -119,6 +119,7 @@ From L300-01 spec. **Infra bundle has these configured.** App and Agent bundles 
 ### Research
 - `docs/research/01_uc_semantics_api_surface.md` — UC Semantics API surface (metric views, Pages, Domains)
 - `docs/research/02_wilson_score_and_lakebase_cdf.md` — Wilson score interval + Lakebase CDF
+- `docs/research/03_genie_code_workflow_tasks.md` — Genie Code `genie_task` for Lakeflow Jobs: API surface, deploy pattern, feedback pipeline implications
 
 ### Semantics
 - `docs/semantics/01_ground_truth_app_core_terms.md` — Core terminology (10 terms, tagging priorities)
