@@ -18,6 +18,7 @@ resources:
         app_sp_client_id: ""
       only:
         - check_run_setup
+        - +ensure_m2m_service_principal
         - +setup_secrets
         - +setup_genie_automation
         - +setup_job_params

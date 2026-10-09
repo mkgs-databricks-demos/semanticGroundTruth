@@ -4,8 +4,8 @@
 # Design source: docs/plans/post_deploy_automation_plan.md
 #
 # Gate: check_run_setup condition_task — skips all tasks when run_setup=false
-# Group A (unblocked): secrets, Genie Code automation, feedback_pipeline job params
-# Group B (post-Bundle 2): Unity Gateway connection, Lakebase CDF, app_role SP
+# Group A (unblocked): secrets, M2M SPN, Genie Code automation, feedback_pipeline job params
+# Group B (post-Bundle 2): Unity Gateway connection (needs M2M secret + app_url), Lakebase CDF, app_role SP
 #
 # Secret scope is declarative; key values populated by setup_secrets task.
 # MCP Service is declarative.
@@ -23,6 +23,10 @@ resources:
           default: ""
         - name: app_sp_client_id
           default: ""
+        - name: m2m_client_id_dbs_key
+          default: "${var.m2m_client_id_dbs_key}"
+        - name: m2m_client_secret_dbs_key
+          default: "${var.m2m_client_secret_dbs_key}"
 
       environments:
         - environment_key: serverless
@@ -39,6 +43,23 @@ resources:
             right: "true"
 
         # --- Group A: Unblocked (auto-triggered by job_run on every deploy) ---
+
+        - task_key: ensure_m2m_service_principal
+          description: "Find or create the bundle-owned OAuth M2M SPN; store client_id; verify secret if present"
+          depends_on:
+            - task_key: check_run_setup
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../../src/notebooks/ensure_m2m_service_principal.py
+            base_parameters:
+              schema_use: "${resources.schemas.ground_truth_schema.name}"
+              secret_scope_name: "${resources.secret_scopes.ground_truth_secret_scope.name}"
+              m2m_spn_prefix: "${var.m2m_spn_prefix}"
+              m2m_client_id_dbs_key: "{{job.parameters.m2m_client_id_dbs_key}}"
+              m2m_client_secret_dbs_key: "{{job.parameters.m2m_client_secret_dbs_key}}"
+              workspace_url: "${workspace.host}"
+          environment_key: serverless
+
         - task_key: setup_secrets
           description: "Populate workspace_url and other infra-derived keys in the secret scope"
           depends_on:
@@ -88,10 +109,23 @@ resources:
             right: ""
 
         # --- Group B: Post-Bundle 2 ---
-        - task_key: setup_gateway_connection
-          description: "Create or update Unity Gateway HTTP connection for the MCP server"
+
+        # Gate: M2M secret must be provisioned for Gateway connection
+        - task_key: check_m2m_secret_present
+          description: "Check if admin has provisioned the M2M SPN OAuth secret"
           depends_on:
             - task_key: check_bundle2_ready
+              outcome: "true"
+            - task_key: ensure_m2m_service_principal
+          condition_task:
+            left: "{{tasks.ensure_m2m_service_principal.values.m2m_secret_present}}"
+            op: EQUAL_TO
+            right: "true"
+
+        - task_key: setup_gateway_connection
+          description: "Create or update Unity Gateway HTTP connection for the MCP server (uses M2M SPN creds)"
+          depends_on:
+            - task_key: check_m2m_secret_present
               outcome: "true"
           notebook_task:
             notebook_path: ../../src/notebooks/setup_gateway_connection.py
@@ -99,6 +133,10 @@ resources:
               connection_name: "semantic-ground-truth-mcp"
               app_url: "{{job.parameters.app_url}}"
               base_path: "/mcp"
+              secret_scope_name: "${resources.secret_scopes.ground_truth_secret_scope.name}"
+              m2m_client_id_dbs_key: "{{job.parameters.m2m_client_id_dbs_key}}"
+              m2m_client_secret_dbs_key: "{{job.parameters.m2m_client_secret_dbs_key}}"
+              workspace_url: "${workspace.host}"
           environment_key: serverless
 
         - task_key: setup_cdf_config

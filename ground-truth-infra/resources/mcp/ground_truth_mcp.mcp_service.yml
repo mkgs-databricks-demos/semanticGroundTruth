@@ -5,6 +5,10 @@
 # Dependency: The source_connection (HTTP connection) must exist first.
 # Connection is created by setup_gateway_connection notebook (post_deploy_setup job)
 # AFTER Bundle 2 deploys the app — SQL DDL with secret() refs, hi-genie pattern.
+# Connection credentials: bundle-owned M2M SPN (not the app's auto-provisioned SPN).
+#   client_id  → secret('<scope>', '<m2m_client_id_key>')    (auto-provisioned)
+#   client_secret → secret('<scope>', '<m2m_client_secret_key>') (admin-provisioned)
+# See docs/plans/m2m_service_principal_plan.md for the full credential flow.
 # Pre-Bundle 2: this resource will fail (expected — no connection yet).
 # Post-Bundle 2: re-deploy infra to register the MCP service.
 # Requires: engine: direct, CLI ≥ 1.17.0
