@@ -28,19 +28,28 @@ resources:
               cutoff_hours: "24"
           environment_key: serverless
 
-        # Task 2: genie_task replaces the old notebook_task (create_feature_branch.py).
-        # configuration_id is a placeholder — patched by post_deploy_setup job
-        # (setup_genie_automation → setup_job_params) on first deploy.
-        # Once known, hardcode the real value here and remove PENDING_SETUP.
+        # Task 2: PLACEHOLDER notebook_task — replaced at runtime by a genie_task.
+        #
+        # Why not genie_task in YAML? The bundle validator strips unknown fields
+        # (genie_task is Beta), so the Jobs API receives a task with no type and
+        # rejects it. Workaround: declare a notebook_task placeholder here, and
+        # setup_job_params (post_deploy_setup job) patches it to a genie_task via
+        # the Jobs API after every deploy.
+        #
+        # The notebook is deprecated and exits harmlessly if it runs before the
+        # patch (no genie_space_id configured → early exit).
+        #
+        # See: docs/plans/feedback_pipeline_rework_plan.md
         - task_key: create_feature_branch
           description: "Genie Code reads feedback staging, generates YAML edits, creates Git feature branch"
           depends_on:
             - task_key: collect_feedback
-          genie_task:
-            configuration_id: "PENDING_SETUP"  # patched by setup_job_params after first deploy
-            parameters:
+          notebook_task:
+            notebook_path: ../../src/notebooks/create_feature_branch.py
+            base_parameters:
               catalog: "${var.catalog}"
               schema: "${resources.schemas.ground_truth_schema.name}"
+          environment_key: serverless
           timeout_seconds: 1800
           health:
             rules:
