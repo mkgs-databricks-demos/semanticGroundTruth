@@ -7,7 +7,7 @@
 # Resource hierarchy:
 #   postgres_project (ground_truth_project)
 #     └── postgres_branch: production (auto-created; declared with replace_existing:true to adopt it)
-#     └── postgres_branch: dev_branch  (explicitly created, copy-on-write from production)
+#     └── postgres_branch: development  (explicitly created, copy-on-write from production)
 #         postgres_role:     app_role    (on production branch; app SP owns the app database)
 #         postgres_database: app_db      (on production branch; owned by app_role)
 #
@@ -40,7 +40,7 @@ resources:
   postgres_projects:
     ground_truth_project:
       # project_id is set per-target below for dev/prod isolation
-      display_name: "Semantic Ground Truth — Lakebase"
+      display_name: "Semantic Ground Truth"
       pg_version: 17
       history_retention_duration: "604800s"  # 7 days
       default_endpoint_settings:
@@ -65,10 +65,10 @@ resources:
       lifecycle:
         prevent_destroy: true
 
-    # Dev branch: explicitly created as a copy-on-write snapshot of production.
+    # Development branch: explicitly created as a copy-on-write snapshot of production.
     # Used for testing schema changes, queries, and data changes without affecting production.
-    dev_branch:
-      branch_id: dev
+    development:
+      branch_id: development
       parent: "${resources.postgres_projects.ground_truth_project.id}"
       no_expiry: true
       lifecycle:
@@ -128,7 +128,7 @@ targets:
       postgres_projects:
         ground_truth_project:
           project_id: dev-matthew-giglia-ground-truth
-          display_name: "Semantic Ground Truth — Lakebase [dev]"
+          display_name: "Semantic Ground Truth [dev]"
           default_endpoint_settings:
             autoscaling_limit_min_cu: 0.5
             autoscaling_limit_max_cu: 2
@@ -138,7 +138,7 @@ targets:
       postgres_projects:
         ground_truth_project:
           project_id: ground-truth
-          display_name: "Semantic Ground Truth — Lakebase"
+          display_name: "Semantic Ground Truth"
           default_endpoint_settings:
             autoscaling_limit_min_cu: 0.5
             autoscaling_limit_max_cu: 4

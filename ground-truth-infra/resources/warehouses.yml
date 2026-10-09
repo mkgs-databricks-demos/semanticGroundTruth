@@ -10,7 +10,7 @@
 resources:
   sql_warehouses:
     infra_warehouse:
-      name: "Ground Truth Infra"
+      name: "Semantic Ground Truth"
 
       # Smallest serverless warehouse — infra tasks and metric view queries are infrequent
       cluster_size: "2X-Small"

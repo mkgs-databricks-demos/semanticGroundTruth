@@ -48,4 +48,4 @@ targets:
       user_name: matthew.giglia@databricks.com
     variables:
       catalog: prod_ground_truth
-      schema: app
+      schema: semantic_ground_truth
