@@ -38,10 +38,20 @@
 - Permissions: CAN_MANAGE (matthew.giglia), CAN_USE (users group); app SPN added post-Bundle 2
 
 **Lakeflow Jobs** (`resources/jobs/`)
-- `feedback_pipeline.job.yml` — ID `811289891166091` — daily 11 PM UTC
+- `feedback_pipeline.job.yml` — ID `811289891166091` — daily 11 PM UTC (Task 2 being reworked to `genie_task`)
 - `freshness_resurfacing.job.yml` — ID `1103481179431341` — daily 6 AM UTC
 - `metric_view_deploy.job.yml` — ID `423348439302077` — on-demand
 - `post_deploy_validation.job.yml` — ID `123170360460207` — on-demand
+- `post_deploy_setup.job.yml` — (planned) — auto-triggered by `job_run` on every deploy
+- `run_post_deploy.job_run.yml` — (planned) — deploy hook, fires post_deploy_setup
+
+**UC Secrets** (`resources/secrets/`) — planned
+- `slack_webhook.secret.yml` — `catalog.schema.slack_webhook_url`
+- `teams_webhook.secret.yml` — `catalog.schema.teams_webhook_url`
+- `git_token.secret.yml` — `catalog.schema.git_token`
+
+**MCP Service** (`resources/mcp/`) — planned
+- `ground_truth_mcp.mcp_service.yml` — Unity Gateway MCP registration
 
 **Lakebase** (`resources/lakebase/`)
 - `ground_truth_project.postgres_project.yml` — dev: `projects/dev-matthew-giglia-ground-truth` | prod: `projects/ground-truth`
@@ -54,17 +64,23 @@
 > `postgres_synced_tables` in DABs = Reverse ETL (Delta→Lakebase), NOT Lakebase→Delta.
 
 ### Source Files
-- **6 Python notebooks** — `src/notebooks/` — collect_feedback, create_feature_branch, freshness_check, list_fixtures, deploy_metric_view, post_deploy_validation
+- **6 Python notebooks** (deployed) — `src/notebooks/` — collect_feedback, create_feature_branch, freshness_check, list_fixtures, deploy_metric_view, post_deploy_validation
+- **5 Python notebooks** (planned) — `src/notebooks/` — setup_genie_automation, setup_job_params, setup_gateway_connection, setup_cdf_config, setup_app_role_sp
+- **1 notebook to deprecate** — `create_feature_branch.py` → `_deprecated/` (replaced by `genie_task`)
 - **4 metric view fixtures** — `fixtures/metric_views/` — mv_review_activity, mv_coverage_metrics, mv_user_leaderboard, mv_feedback_pipeline
-- **1 Genie Code skill prompt** — `fixtures/prompts/feedback_loop_prompt.md`
+- **1 Genie Code automation prompt** — `fixtures/prompts/feedback_loop_prompt.md` (consumed by `setup_genie_automation.py`)
 
-### Manual Post-Deploy Steps (not DAB-declarable)
-- UC Secrets: create scope `ground-truth-infra` with `slack_webhook_url`, `teams_webhook_url`, `git_token`
-- Lakebase Lakehouse Sync: configure in Lakebase App UI after Bundle 2 (creates `lb_*_history` Delta tables)
-- Unity Gateway connection `ground-truth-mcp`: follow `docs/runbooks/unity-gateway-setup.md`
-- Genie Code skill: `POST /api/2.1/unity-catalog/skills` (see `fixtures/prompts/feedback_loop_prompt.md`)
-- Lakebase `app_role` identity: update to SERVICE_PRINCIPAL after Bundle 2 SP known
-- Job params: set `genie_space_id` + `git_folder_id` in feedback_pipeline after skill registered
+### Post-Deploy Automation (replaces prior manual steps)
+
+**Declarative (deploy-time):** UC Secrets (3), MCP Service — deployed by `bundle deploy` (requires `engine: direct`, CLI ≥ 1.17.0)
+
+**Auto-triggered (via `job_run` resource):**
+- Group A (every deploy): Genie Code automation creation, feedback_pipeline job param patching
+- Group B (post-Bundle 2): Unity Gateway HTTP connection, Lakebase CDF config, app_role SP update
+
+**Remaining manual step:** Lakebase Lakehouse Sync — configure in Lakebase App UI after Bundle 2 (creates `lb_*_history` Delta tables). Planned for `setup_cdf_config.py` notebook but needs API verification.
+
+See `docs/plans/post_deploy_automation_plan.md` and `docs/plans/feedback_pipeline_rework_plan.md`.
 
 ---
 

@@ -3,6 +3,7 @@
 # Design sources: L100 §Deployment Architecture, L200-C1, L200-C6, L200-C9, L300-01 through L300-08
 bundle:
   name: "ground-truth-infra"
+  engine: direct  # Required for UC secrets, job_run, mcp_service resources (see docs/research/04)
 
 include:
   - resources/*.yml

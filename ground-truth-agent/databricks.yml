@@ -1,6 +1,7 @@
 # Declarative Automation Bundle configuration, more info here: https://docs.databricks.com/en/dev-tools/bundles/settings.html
 bundle:
   name: "ground-truth-agent"
+  engine: direct  # Required for UC secrets, job_run, mcp_service resources (see docs/research/04)
 
 include:
   - resources/*.yml

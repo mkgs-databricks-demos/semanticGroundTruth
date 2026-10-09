@@ -2,6 +2,7 @@
 
 | Date | Summary | Branch |
 |------|---------|--------|
+| 2026-10-09 | [Genie Code task research + DAB resource discovery + plan updates](2026-10-09_genie-task-research-and-plan-updates.md) | `mg-genie-bundle-scaffolds` |
 | 2026-10-08 | [docs/ restructure — final](2026-10-08_docs-restructure-final.md) | `mg-genie-bundle-scaffolds` |
 | 2026-10-08 | [Post-deploy cleanup and refactor](2026-10-08_post-deploy-cleanup-and-refactor.md) | `mg-genie-bundle-scaffolds` |
 | 2026-10-08 | [Phase 8: Deploy + Validate](2026-10-08_phase8-deploy-and-validate.md) | `mg-genie-bundle-scaffolds` |

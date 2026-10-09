@@ -33,22 +33,30 @@ Everything this bundle declares or creates.
 | `feedback_pipeline` | Lakeflow Job | `resources/jobs.yml` | L300-01 §Step 3, L300-04 |
 | `freshness_resurfacing` | Lakeflow Job | `resources/jobs.yml` | L300-01 §Step 3, L300-04 |
 | `metric_view_deploy` | Lakeflow Job | `resources/jobs.yml` | L300-01 §Step 3, L300-05 |
-| `post_deploy_validation` | Lakeflow Job | `resources/jobs.yml` | L300-01 §Step 3, L300-08 |
+| `post_deploy_validation` | Lakeflow Job | `resources/jobs/post_deploy_validation.job.yml` | L300-01 §Step 3, L300-08 |
+| `post_deploy_setup` | Lakeflow Job | `resources/jobs/post_deploy_setup.job.yml` | Post-deploy automation plan |
+| `slack_webhook` | UC Secret | `resources/secrets/slack_webhook.secret.yml` | L300-03 §Step 1 |
+| `teams_webhook` | UC Secret | `resources/secrets/teams_webhook.secret.yml` | L300-03 §Step 1 |
+| `git_token` | UC Secret | `resources/secrets/git_token.secret.yml` | L300-03 §Step 1 |
+| `ground_truth_mcp` | MCP Service | `resources/mcp/ground_truth_mcp.mcp_service.yml` | L300-07 §Step 2 |
+| `run_post_deploy` | Job Run (deploy hook) | `resources/jobs/run_post_deploy.job_run.yml` | Post-deploy automation plan |
 | ~~`schema_migrations`~~ | ~~Lakeflow Job~~ | ~~`resources/jobs.yml`~~ | **MOVED to Bundle 2 (App).** Follows lakeLoom pattern: TypeScript migrations run on app server startup via AppKit Lakebase client, not as a separate infra job. See `lakeloom-ai/server/migrations/migrate.ts`. |
 
 > Lakebase DAB support (Beta, Feb 2026). No `postgres_catalogs` — CDF via synced tables only. See **PROJECT_MEMORY.md § Lakebase DAB Research Notes** for full documentation references, substitution patterns, and approach hierarchy.
+>
+> UC Secrets, MCP Service, and Job Run resources require `engine: direct` (added to `databricks.yml`). See `docs/research/04_dab_secrets_jobruns_mcp.md`.
 
 ### Manual / CLI Resources (not DAB-declarable)
 
 | Resource | Type | Created Via | Design Source |
 |----------|------|-------------|---------------|
-| UC Secrets | `catalog.schema.secret` | SQL `CREATE SECRET` | L300-03 §Step 1 |
+| ~~UC Secrets~~ | ~~`catalog.schema.secret`~~ | ~~SQL `CREATE SECRET`~~ | **NOW DAB-DECLARABLE.** Moved to `resources/secrets/` as UC `secret` resources. |
 | Notification destinations | Workspace settings | Workspace UI | L300-03 §Step 3 |
-| Unity Gateway connection | HTTP connection | `databricks connections create` | L300-07 §Step 1 |
-| MCP Service config | Unity Gateway UI | Unity Gateway > MCPs | L300-07 §Step 2 |
-| Genie Code custom skill | Skills library | Workspace UI or API | L300-06 §Step 3 |
+| Unity Gateway connection | HTTP connection | `setup_gateway_connection.py` notebook (SDK) | L300-07 §Step 1 |
+| ~~MCP Service config~~ | ~~Unity Gateway UI~~ | ~~Unity Gateway > MCPs~~ | **NOW DAB-DECLARABLE.** Moved to `resources/mcp/` as `mcp_service` resource. |
+| ~~Genie Code custom skill~~ | ~~Skills library~~ | ~~Workspace UI or API~~ | **REPLACED** by Genie Code automation (`setup_genie_automation.py` notebook). See `docs/research/03_genie_code_workflow_tasks.md`. |
 
-> **Note:** Unity Gateway connections are NOT a DAB resource type as of Oct 2026. Lakebase resources moved to DAB-declared above.
+> **Note:** Unity Gateway **connections** are still NOT a DAB resource type — created via SDK notebook. MCP Service registration and UC Secrets have moved to DAB-declared resources above (requires `engine: direct`, CLI ≥ 1.17.0).
 
 ---
 
@@ -64,6 +72,9 @@ All variables needed in `databricks.yml`.
 | `lakebase_project_id` | ~~Replaced by DAB substitution~~ `${resources.postgres_projects.ground_truth_project.id}` | N/A | N/A | L300-02 |
 | `notification_slack_webhook` | Slack webhook URL | `""` | (customer provides) | L300-03 |
 | `notification_teams_webhook` | Teams webhook URL | `""` | (customer provides) | L300-03 |
+| `slack_webhook_url` | Secret value: Slack webhook URL (deploy-time) | (inject via `--var` or env) | (inject via `--var` or env) | L300-03, research 04 |
+| `teams_webhook_url` | Secret value: Teams webhook URL (deploy-time) | (inject via `--var` or env) | (inject via `--var` or env) | L300-03, research 04 |
+| `git_token` | Secret value: GitHub PAT (deploy-time) | (inject via `--var` or env) | (inject via `--var` or env) | L300-04, research 04 |
 
 ---
 
@@ -85,7 +96,12 @@ All variables needed in `databricks.yml`.
 |------|---------|---------------|-----|
 | ~~`run_migrations.py`~~ | ~~Migration runner~~ | ~~L300-02 §Step 4~~ | **MOVED to Bundle 2 (App).** Replaced by TypeScript migration runner in app server. |
 | `collect_feedback.py` | Query unprocessed votes, group by asset, compile feedback JSON | L300-04 §Step 1 | `feedback_pipeline` task 1 |
-| `create_feature_branch.py` | Create Git feature branches with proposed YAML edits | L300-04 §Step 4 | `feedback_pipeline` task 3 |
+| ~~`create_feature_branch.py`~~ | ~~Create Git feature branches with proposed YAML edits~~ | ~~L300-04 §Step 4~~ | **REPLACED** by `genie_task` in `feedback_pipeline`. See `feedback_pipeline_rework_plan.md`. Archive to `_deprecated/`. |
+| `setup_genie_automation.py` | Create/update Genie Code automation (scheduled insight) | Research 03, post-deploy plan | `post_deploy_setup` task 1 |
+| `setup_job_params.py` | Patch feedback_pipeline with genie_task configuration_id | Research 03, post-deploy plan | `post_deploy_setup` task 2 |
+| `setup_gateway_connection.py` | Create/update Unity Gateway HTTP connection + grants | L300-07, post-deploy plan | `post_deploy_setup` task 4 |
+| `setup_cdf_config.py` | Configure Lakebase Lakehouse Sync (CDF) | L300-02, post-deploy plan | `post_deploy_setup` task 5 |
+| `setup_app_role_sp.py` | Update app_role identity to SERVICE_PRINCIPAL | L300-02, post-deploy plan | `post_deploy_setup` task 6 |
 | `freshness_check.py` | Identify stale production assets, add to freshness campaigns | L300-04 §Step 3 | `freshness_resurfacing` |
 | `list_fixtures.py` | List `fixtures/*.yaml` files, emit array via `dbutils.jobs.taskValues.set()` for `for_each_task` input | L300-04 §Q1 | `metric_view_deploy` upstream task |
 | `deploy_metric_view.py` | Read fixture YAML, resolve env refs, execute CREATE VIEW SQL | L300-01 §Step 4 | `metric_view_deploy` forEach |
@@ -95,7 +111,7 @@ All variables needed in `databricks.yml`.
 
 | File | Purpose | Design Source |
 |------|---------|---------------|
-| `feedback_loop_prompt.md` | Genie Code skill prompt for YAML edit generation | L300-01 §Step 5, L300-06 |
+| `feedback_loop_prompt.md` | Genie Code automation prompt rules for YAML edit generation (consumed by `setup_genie_automation.py`) | L300-01 §Step 5, L300-06, research 03 |
 
 ### Metric View Fixtures (`fixtures/`)
 

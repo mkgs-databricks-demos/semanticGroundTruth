@@ -169,19 +169,21 @@ The notebook currently sets `taskValues` for `asset_count` and `feedback_table`.
 
 ## Deploy Sequence
 
+> **Updated 2026-10-09:** `job_run` resource (from `docs/research/04_dab_secrets_jobruns_mcp.md`) auto-triggers the post-deploy setup on every `bundle deploy`. No manual `bundle run` step needed.
+
 ```
 1. bundle deploy --target dev
-   └── Deploys updated feedback_pipeline.job.yml with genie_task
-       (configuration_id is a placeholder or the known value from prior setup)
+   ├── Deploys updated feedback_pipeline.job.yml with genie_task
+   │   (configuration_id is a placeholder or the known value from prior setup)
+   ├── Deploys UC secrets, MCP service declaratively
+   └── job_run resource AUTO-TRIGGERS post_deploy_setup:
+       ├── Task 1 (setup_genie_automation) creates/updates the automation
+       └── Task 2 (setup_job_params) patches feedback_pipeline with the real configuration_id
 
-2. bundle run post_deploy_setup --target dev
-   └── Task 2 (setup_genie_automation) creates/updates the automation
-   └── Task 3 (setup_job_params) patches feedback_pipeline with the real configuration_id
-
-3. Subsequent deploys:
+2. Subsequent deploys:
    └── Once configuration_id is known, hardcode it in the DAB YAML
-   └── bundle deploy alone is sufficient — no post-deploy step needed
-   └── To update the prompt: re-run post_deploy_setup (it PATCHes the automation)
+   └── bundle deploy is fully self-contained (job_run re-fires on every deploy)
+   └── Prompt updates: job_run auto-triggers setup_genie_automation, which PATCHes the automation
 ```
 
 ---
@@ -248,6 +250,6 @@ These items from the original design are superseded:
 
 ## Open Questions
 
-1. **First-deploy chicken-and-egg:** The `genie_task` in the DAB YAML needs a `configuration_id`, but the automation doesn't exist until post-deploy. Options: (a) placeholder value that fails gracefully, (b) two-pass deploy, (c) create automation in `bundle deploy` pre-deploy hook.
+1. **First-deploy chicken-and-egg:** The `genie_task` in the DAB YAML needs a `configuration_id`, but the automation doesn't exist until the `job_run` fires post-deploy. Options: (a) placeholder value that fails gracefully on the *feedback_pipeline* job but the *post_deploy_setup* succeeds and patches the real ID, (b) two-pass deploy, (c) use the `job_run`'s `only` field to ensure automation is created before feedback_pipeline is ever triggered.
 2. **taskValues handoff:** Does the `genie_task` need the `asset_count` from Task 1? The prompt tells it to read the staging table directly, but should it also respect an "empty batch" signal from Task 1?
-3. **Prompt iteration workflow:** When iterating on the prompt in `feedback_loop_prompt.md`, the developer must re-run `post_deploy_setup` to push the update to the automation. Should we add a `bundle run` command for this, or is the manual step acceptable?
+3. ~~**Prompt iteration workflow:** When iterating on the prompt in `feedback_loop_prompt.md`, the developer must re-run `post_deploy_setup` to push the update to the automation. Should we add a `bundle run` command for this, or is the manual step acceptable?~~ **RESOLVED** — the `job_run` resource with `lifecycle.triggers: [always]` auto-triggers the setup on every `bundle deploy`, so prompt updates in the fixture file are automatically pushed to the automation.
