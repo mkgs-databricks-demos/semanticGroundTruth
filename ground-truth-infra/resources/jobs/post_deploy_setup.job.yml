@@ -1,0 +1,131 @@
+# resources/jobs/post_deploy_setup.job.yml
+# Post-deploy setup: automates manual steps that can't be DAB-declared.
+# Auto-triggered by job_run resource on every `bundle deploy`.
+# Design source: docs/plans/post_deploy_automation_plan.md
+#
+# Gate: check_run_setup condition_task — skips all tasks when run_setup=false
+# Group A (unblocked): secrets, Genie Code automation, feedback_pipeline job params
+# Group B (post-Bundle 2): Unity Gateway connection, Lakebase CDF, app_role SP
+#
+# Secret scope is declarative; key values populated by setup_secrets task.
+# MCP Service is declarative.
+
+resources:
+  jobs:
+    post_deploy_setup:
+      name: "Semantic Ground Truth — Post-Deploy Setup"
+      description: "Automates post-deploy steps: secret key provisioning, Genie Code automation, job param wiring, Gateway connection, CDF config, app role."
+
+      parameters:
+        - name: run_setup
+          default: "${var.run_setup}"
+        - name: app_url
+          default: ""
+        - name: app_sp_client_id
+          default: ""
+
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "1"
+
+      tasks:
+        # --- Gate: Should setup run? (false in dev by default, override with --var run_setup=true) ---
+        - task_key: check_run_setup
+          description: "Skip all setup tasks when run_setup=false (routine dev deploys)"
+          condition_task:
+            left: "{{job.parameters.run_setup}}"
+            op: EQUAL_TO
+            right: "true"
+
+        # --- Group A: Unblocked (auto-triggered by job_run on every deploy) ---
+        - task_key: setup_secrets
+          description: "Populate workspace_url and other infra-derived keys in the secret scope"
+          depends_on:
+            - task_key: check_run_setup
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../../src/notebooks/setup_secrets.py
+            base_parameters:
+              secret_scope: "${resources.secret_scopes.ground_truth_secret_scope.name}"
+              workspace_url: "${workspace.host}"
+          environment_key: serverless
+
+        - task_key: setup_genie_automation
+          description: "Create or update the Genie Code automation (scheduled insight) for the feedback pipeline"
+          depends_on:
+            - task_key: check_run_setup
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../../src/notebooks/setup_genie_automation.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${resources.schemas.ground_truth_schema.name}"
+              git_folder_id: "4271072627166222"
+          environment_key: serverless
+
+        - task_key: setup_job_params
+          description: "Patch feedback_pipeline job with genie_task configuration_id from setup_genie_automation"
+          depends_on:
+            - task_key: setup_genie_automation
+          notebook_task:
+            notebook_path: ../../src/notebooks/setup_job_params.py
+            base_parameters:
+              feedback_job_id: "${resources.jobs.feedback_pipeline.id}"
+              catalog: "${var.catalog}"
+              schema: "${resources.schemas.ground_truth_schema.name}"
+          environment_key: serverless
+
+        # --- Gate: Bundle 2 ready? (Group B skipped when app_url empty or run_setup=false) ---
+        - task_key: check_bundle2_ready
+          description: "Check if Bundle 2 has deployed and provided an app URL"
+          depends_on:
+            - task_key: check_run_setup
+              outcome: "true"
+          condition_task:
+            left: "{{job.parameters.app_url}}"
+            op: NOT_EQUAL
+            right: ""
+
+        # --- Group B: Post-Bundle 2 ---
+        - task_key: setup_gateway_connection
+          description: "Create or update Unity Gateway HTTP connection for the MCP server"
+          depends_on:
+            - task_key: check_bundle2_ready
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../../src/notebooks/setup_gateway_connection.py
+            base_parameters:
+              connection_name: "semantic-ground-truth-mcp"
+              app_url: "{{job.parameters.app_url}}"
+              base_path: "/mcp"
+          environment_key: serverless
+
+        - task_key: setup_cdf_config
+          description: "Configure Lakebase Lakehouse Sync (CDF replication to Delta)"
+          depends_on:
+            - task_key: check_bundle2_ready
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../../src/notebooks/setup_cdf_config.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${resources.schemas.ground_truth_schema.name}"
+              lakebase_branch_id: "${resources.postgres_branches.production.id}"
+          environment_key: serverless
+
+        - task_key: setup_app_role_sp
+          description: "Update Lakebase app_role identity to SERVICE_PRINCIPAL for the Bundle 2 app"
+          depends_on:
+            - task_key: check_bundle2_ready
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../../src/notebooks/setup_app_role_sp.py
+            base_parameters:
+              role_resource_name: "${resources.postgres_roles.app_role.id}"
+              app_sp_client_id: "{{job.parameters.app_sp_client_id}}"
+          environment_key: serverless
+
+      email_notifications:
+        on_failure:
+          - matthew.giglia@databricks.com

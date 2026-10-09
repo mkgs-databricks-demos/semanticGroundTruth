@@ -35,9 +35,10 @@ Everything this bundle declares or creates.
 | `metric_view_deploy` | Lakeflow Job | `resources/jobs.yml` | L300-01 §Step 3, L300-05 |
 | `post_deploy_validation` | Lakeflow Job | `resources/jobs/post_deploy_validation.job.yml` | L300-01 §Step 3, L300-08 |
 | `post_deploy_setup` | Lakeflow Job | `resources/jobs/post_deploy_setup.job.yml` | Post-deploy automation plan |
-| `slack_webhook` | UC Secret | `resources/secrets/slack_webhook.secret.yml` | L300-03 §Step 1 |
-| `teams_webhook` | UC Secret | `resources/secrets/teams_webhook.secret.yml` | L300-03 §Step 1 |
-| `git_token` | UC Secret | `resources/secrets/git_token.secret.yml` | L300-03 §Step 1 |
+| `slack_webhook` | Workspace secret placeholder / superseded file | `resources/secrets/slack_webhook.secret.yml` | L300-03 §Step 1 |
+| `teams_webhook` | Workspace secret placeholder / superseded file | `resources/secrets/teams_webhook.secret.yml` | L300-03 §Step 1 |
+| `git_token` | Superseded file (token removed) | `resources/secrets/git_token.secret.yml` | L300-03 §Step 1 |
+| `ground_truth_scope` | Secret Scope | `resources/secrets/ground_truth_scope.secret_scope.yml` | Post-deploy automation plan |
 | `ground_truth_mcp` | MCP Service | `resources/mcp/ground_truth_mcp.mcp_service.yml` | L300-07 §Step 2 |
 | `run_post_deploy` | Job Run (deploy hook) | `resources/jobs/run_post_deploy.job_run.yml` | Post-deploy automation plan |
 | ~~`schema_migrations`~~ | ~~Lakeflow Job~~ | ~~`resources/jobs.yml`~~ | **MOVED to Bundle 2 (App).** Follows lakeLoom pattern: TypeScript migrations run on app server startup via AppKit Lakebase client, not as a separate infra job. See `lakeloom-ai/server/migrations/migrate.ts`. |
@@ -52,11 +53,11 @@ Everything this bundle declares or creates.
 |----------|------|-------------|---------------|
 | ~~UC Secrets~~ | ~~`catalog.schema.secret`~~ | ~~SQL `CREATE SECRET`~~ | **NOW DAB-DECLARABLE.** Moved to `resources/secrets/` as UC `secret` resources. |
 | Notification destinations | Workspace settings | Workspace UI | L300-03 §Step 3 |
-| Unity Gateway connection | HTTP connection | `setup_gateway_connection.py` notebook (SDK) | L300-07 §Step 1 |
+| Unity Gateway connection | HTTP connection | `setup_gateway_connection.py` notebook (SQL DDL with `secret()` refs) | L300-07 §Step 1 |
 | ~~MCP Service config~~ | ~~Unity Gateway UI~~ | ~~Unity Gateway > MCPs~~ | **NOW DAB-DECLARABLE.** Moved to `resources/mcp/` as `mcp_service` resource. |
 | ~~Genie Code custom skill~~ | ~~Skills library~~ | ~~Workspace UI or API~~ | **REPLACED** by Genie Code automation (`setup_genie_automation.py` notebook). See `docs/research/03_genie_code_workflow_tasks.md`. |
 
-> **Note:** Unity Gateway **connections** are still NOT a DAB resource type — created via SDK notebook. MCP Service registration and UC Secrets have moved to DAB-declared resources above (requires `engine: direct`, CLI ≥ 1.17.0).
+> **Note:** Unity Gateway **connections** are still NOT a DAB resource type. They also cannot be bootstrapped with placeholders: REST API requires DCR, SQL DDL without creds falls back to DCR, and SQL DDL with creds validates token exchange immediately. Therefore the connection is created only after Bundle 2 deploys the app and provisions valid SPN credentials; the hi-genie pattern is SQL DDL with `secret()` refs + explicit `token_endpoint`. MCP Service registration and the secret scope are DAB-declared resources (requires `engine: direct`, CLI ≥ 1.17.0).
 
 ---
 
@@ -99,7 +100,7 @@ All variables needed in `databricks.yml`.
 | ~~`create_feature_branch.py`~~ | ~~Create Git feature branches with proposed YAML edits~~ | ~~L300-04 §Step 4~~ | **REPLACED** by `genie_task` in `feedback_pipeline`. See `feedback_pipeline_rework_plan.md`. Archive to `_deprecated/`. |
 | `setup_genie_automation.py` | Create/update Genie Code automation (scheduled insight) | Research 03, post-deploy plan | `post_deploy_setup` task 1 |
 | `setup_job_params.py` | Patch feedback_pipeline with genie_task configuration_id | Research 03, post-deploy plan | `post_deploy_setup` task 2 |
-| `setup_gateway_connection.py` | Create/update Unity Gateway HTTP connection + grants | L300-07, post-deploy plan | `post_deploy_setup` task 4 |
+| `setup_gateway_connection.py` | Create Unity Gateway HTTP connection via SQL DDL (`CREATE CONNECTION ... client_id secret(...), client_secret secret(...)`) + grants | L300-07, post-deploy plan, hi-genie pattern | `post_deploy_setup` task 4 |
 | `setup_cdf_config.py` | Configure Lakebase Lakehouse Sync (CDF) | L300-02, post-deploy plan | `post_deploy_setup` task 5 |
 | `setup_app_role_sp.py` | Update app_role identity to SERVICE_PRINCIPAL | L300-02, post-deploy plan | `post_deploy_setup` task 6 |
 | `freshness_check.py` | Identify stale production assets, add to freshness campaigns | L300-04 §Step 3 | `freshness_resurfacing` |
@@ -242,18 +243,21 @@ The core automation — feedback pipeline, freshness checks, and metric view dep
 ---
 
 ### Phase 7: Unity Gateway Connection
-**L300:** 07 | **Effort:** Low | **Prerequisites:** Phase 1
+**L300:** 07 | **Effort:** Low | **Prerequisites:** Phase 1 + Bundle 2 app deploy
 
 **Deliverables:**
-- [ ] Unity Gateway connection `ground-truth-mcp` created with placeholder URL
-- [ ] Configured as MCP Service in Unity Gateway UI
+- [ ] `setup_gateway_connection.py` creates Unity Gateway connection `semantic-ground-truth-mcp`
+- [ ] Connection created via SQL DDL with `secret()` refs and explicit `token_endpoint`
+- [ ] MCP service re-deployed successfully after connection exists
 - [ ] UC grants set for workspace users
 
-**Note:** Connection URL updated to actual app URL in Bundle 2 post-deploy (L300-13).
+**Note:** Placeholder bootstrap does NOT work. Connection creation requires valid credentials at creation time. The hi-genie-orchestrator pattern is the reference implementation: create the connection only after Bundle 2 provisions real SPN credentials.
 
-**Validation gate:** Connection visible in Unity Gateway; grants confirmed
+**Validation gate:** Connection visible in Unity Gateway; grants confirmed; infra re-deploy registers MCP service
 
-**Resolved question:** ~~Can connections be DAB-declared?~~ No. No `connection` resource type in DABs as of Oct 2026. Remains manual CLI.
+**Resolved questions:**
+* ~~Can connections be DAB-declared?~~ No. No `connection` resource type in DABs as of Oct 2026.
+* ~~Can the connection be bootstrapped with a placeholder MCP URL?~~ No. REST API requires DCR; SQL DDL without creds falls back to DCR; SQL DDL with creds validates token exchange immediately.
 
 ---
 
@@ -262,7 +266,8 @@ The core automation — feedback pipeline, freshness checks, and metric view dep
 
 **Deliverables:**
 - [ ] `databricks bundle validate --strict --target dev` passes
-- [ ] `databricks bundle deploy --target dev` succeeds
+- [ ] `databricks bundle deploy --target dev` succeeds (pre-Bundle 2 MCP failure is expected)
+- [ ] `./deploy.sh --target dev --infra --run-setup` validates and deploys with clear warnings
 - [ ] `post_deploy_validation` job run passes all checks:
   - Lakebase accessible
   - Lakebase project, branches, endpoint, and database accessible (app server runs migrations on first startup)
@@ -296,7 +301,8 @@ Carried from all L300 specs. Must resolve before or during the relevant phase.
 | 8 | Git API for branch creation — Repos API or GitHub API? | 4 | L300-04 | **RESOLVED: Repos REST API.** | Databricks recommends Git folders / Repos REST API for branch creation, commit, and push from job notebooks. Use a service principal or bot account for unattended automation. Direct GitHub API calls are a fallback only. [Docs](https://docs.databricks.com/aws/en/repos/ci-cd) |
 | 9 | CDF table availability timing — race condition on first deploy? | 5 | L300-05 | **RESOLVED: Yes, race exists.** | Synced/CDF Delta tables only appear in UC after at least one row exists in the source Postgres table. Flush interval is ~15s. **Mitigation:** (a) Insert a seed row into each Lakebase table before creating metric views, or (b) have `post_deploy_validation` wait and retry until synced tables are visible, or (c) accept that metric views fail gracefully on first deploy and succeed after app populates data. [Docs](https://docs.databricks.com/aws/en/oltp/projects/lakebase-cdf) |
 | 10 | Genie Code skill registration — programmatic API or UI-only? | 6 | L300-06 | **RESOLVED: REST API.** | Skills are first-class UC/AI Gateway objects. `POST /api/2.1/unity-catalog/skills` to create, `PATCH` to update, `POST .../finalize` to publish. CLI does not have a skills command yet. UI remains the primary authoring surface. [API](https://docs.databricks.com/api/ai-gateway/v1/skill) |
-| 11 | ~~Unity Gateway connections as DAB resources?~~ | 7 | L300-07 | **Closed.** | No `connection` resource type in DABs as of Oct 2026. Remains manual CLI. |
+| 11 | ~~Unity Gateway connections as DAB resources?~~ | 7 | L300-07 | **Closed.** | No `connection` resource type in DABs as of Oct 2026. Remains notebook / SQL DDL driven. |
+| 12 | Can the MCP connection be bootstrapped before Bundle 2 with any placeholder MCP/DCR endpoint? | 7 | L300-07 | **RESOLVED: No.** | Every creation path validates credentials at creation time. REST API requires DCR; SQL DDL without creds falls back to DCR; SQL DDL with creds validates token exchange immediately. The hi-genie pattern is to create the connection only after the app deploys and real SPN credentials exist, then register MCP services. |
 
 ---
 

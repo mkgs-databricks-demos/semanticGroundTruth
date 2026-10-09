@@ -1,16 +1,18 @@
 ---
-# Semantic Ground Truth — Feedback Loop Skill
-# Design source: L300-06, L200-C6
-# Skill type: Genie Code custom skill
-# Registration: POST /api/2.1/unity-catalog/skills (see § Registration below)
-# Version: 1.0.0
+# Semantic Ground Truth — Feedback Loop Prompt Rules
+# Design source: L300-06, L200-C6, docs/plans/feedback_pipeline_rework_plan.md
+# Consumed by: src/notebooks/setup_genie_automation.py
+# The § Skill Prompt section is extracted at deploy time and embedded in the
+# Genie Code automation prompt ("Ground Truth Feedback Loop" scheduled insight).
+# Version: 1.1.0
 ---
 
 ## Purpose
 
-This skill enables Genie Code to generate proposed metric view YAML edits based on
-reviewer feedback aggregated by the `feedback_pipeline` job. It is invoked as part
-of the daily feedback loop to produce a pull-request-ready YAML diff.
+These rules govern how Genie Code generates proposed metric view YAML edits
+based on reviewer feedback aggregated by the `feedback_pipeline` job. The
+`setup_genie_automation` notebook reads this file, extracts the § Skill Prompt
+section, and embeds it in the automation's `user_prompt`.
 
 ## Skill Prompt
 
@@ -90,43 +92,9 @@ measures:
 
 ---
 
-## Registration
-
-Skill registration is done via REST API (no CLI command available as of Oct 2026).
-
-```bash
-# POST /api/2.1/unity-catalog/skills
-curl -X POST "${DATABRICKS_HOST}/api/2.1/unity-catalog/skills" \
-  -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "ground_truth_feedback_loop",
-    "comment": "Generates metric view YAML edits from reviewer feedback for semantic ground truth assets.",
-    "skill_type": "GENIE_CODE",
-    "prompt": "<contents of this file from ## Skill Prompt to end of Output section>"
-  }'
-
-# Publish (finalize) the skill after creation:
-curl -X POST "${DATABRICKS_HOST}/api/2.1/unity-catalog/skills/ground_truth_feedback_loop/finalize" \
-  -H "Authorization: Bearer ${DATABRICKS_TOKEN}"
-```
-
-**After registration:** copy the returned `skill_id` into:
-- `resources/jobs.yml` → `feedback_pipeline` task 2 → `genie_space_id` parameter
-- `PROJECT_MEMORY.md` § Skill IDs
-
-**Update check:** To update the prompt after changes to this file:
-```bash
-curl -X PATCH "${DATABRICKS_HOST}/api/2.1/unity-catalog/skills/ground_truth_feedback_loop" \
-  -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "<updated prompt>"}'
-```
-
----
-
 ## Version History
 
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-10-08 | Initial version — feedback loop YAML edit generation |
+| 1.1.0 | 2026-10-11 | Reframed as Genie Code automation prompt rules. Removed UC skill registration section (superseded by setup_genie_automation.py). |

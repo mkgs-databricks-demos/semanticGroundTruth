@@ -1,0 +1,29 @@
+# resources/mcp/ground_truth_mcp.mcp_service.yml
+# MCP Service: Registers the Ground Truth app's MCP server in Unity Gateway
+# Design source: L300-07 §Step 2, docs/research/04_dab_secrets_jobruns_mcp.md §4
+#
+# Dependency: The source_connection (HTTP connection) must exist first.
+# Connection is created by setup_gateway_connection notebook (post_deploy_setup job)
+# AFTER Bundle 2 deploys the app — SQL DDL with secret() refs, hi-genie pattern.
+# Pre-Bundle 2: this resource will fail (expected — no connection yet).
+# Post-Bundle 2: re-deploy infra to register the MCP service.
+# Requires: engine: direct, CLI ≥ 1.17.0
+
+resources:
+  mcp_services:
+    ground_truth_mcp:
+      parent: schemas/${var.catalog}.${resources.schemas.ground_truth_schema.name}
+      mcp_service_id: semantic-ground-truth-mcp
+      comment: "Semantic Ground Truth app MCP service — exposes review, campaign, and metric view tools via Unity Gateway"
+      config:
+        source_connection:
+          # UC connections are metastore-level (flat names, no catalog.schema prefix)
+          name: connections/semantic-ground-truth-mcp
+        include_tool_selectors:
+          - "review_*"
+          - "campaign_*"
+          - "metric_view_*"
+      grants:
+        - principal: data-engineers
+          privileges:
+            - EXECUTE

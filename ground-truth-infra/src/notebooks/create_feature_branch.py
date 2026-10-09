@@ -1,15 +1,27 @@
 # Databricks notebook source
-# Design source: L300-04 §Step 4, L200-C6
-# Job: feedback_pipeline — Task 2 of 2
-# Schedule: Daily 11 PM (runs after collect_feedback)
+# ==========================================================================
+# DEPRECATED — 2026-10-11
 #
-# Calls the Genie Code API to generate proposed YAML edits from the feedback
-# staging table, then creates a Git feature branch with the proposed changes
-# via the Databricks Repos REST API.
+# This notebook is superseded by a native genie_task in feedback_pipeline.
+# The genie_task ("Ground Truth Feedback Loop" automation) natively handles
+# reading the staging table, generating YAML, and committing to Git.
 #
-# Note: genie_code_task is not yet available as a DAB YAML task type (Oct 2026).
-# This notebook combines the Genie Code call + branch creation into a single task.
-# (Resolved question #2 and #3 from build plan §Phase 4).
+# See:
+#   - docs/plans/feedback_pipeline_rework_plan.md
+#   - resources/jobs/feedback_pipeline.job.yml (genie_task block)
+#   - src/notebooks/setup_genie_automation.py (creates the automation)
+#   - src/notebooks/setup_job_params.py (wires the job task)
+#
+# Kept for reference only. No job YAML references this file.
+# ==========================================================================
+#
+# Original design source: L300-04 §Step 4, L200-C6
+# Original job: feedback_pipeline — Task 2 of 2
+# Original schedule: Daily 11 PM (runs after collect_feedback)
+#
+# Called the Genie Spaces API (wrong product) to generate proposed YAML edits.
+# Three issues: wrong API (Genie Spaces = SQL Q&A, not YAML gen), wrong product
+# conflation, unnecessary complexity. See rework plan for full analysis.
 
 # COMMAND ----------
 # %pip install --upgrade databricks-sdk

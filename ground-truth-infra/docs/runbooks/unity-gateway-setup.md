@@ -2,9 +2,11 @@
 
 **Design source:** L300-07  
 **Bundle:** Bundle 1 (ground-truth-infra)  
-**Status:** Partially automated. Step 1 (HTTP connection) is created by `setup_gateway_connection.py` notebook, auto-triggered on deploy via `job_run` resource. Step 2 (MCP Service registration) is now a declarative DAB resource (`mcp_service`). Manual steps eliminated.
+**Status:** Partially automated. Step 1 (HTTP connection) is created by `setup_gateway_connection.py` notebook via SQL DDL, auto-triggered on deploy via `job_run` resource. Step 2 (MCP Service registration) is a declarative DAB resource (`mcp_service`).
 
-> **Updated 2026-10-09:** MCP Services are now DAB-declarable (`mcp_service` resource, CLI 1.17.0+, requires `engine: direct`). See `docs/research/04_dab_secrets_jobruns_mcp.md` §4. Unity Gateway **connections** are still NOT a DAB resource type — created via SDK in `setup_gateway_connection.py`.
+> **Updated 2026-10-11:** HTTP connections with `is_mcp_connection=true` require valid credentials at creation time. Every creation path validates credentials: REST API uses DCR (workspace may not support it), SQL DDL without creds falls back to DCR, SQL DDL with creds validates the token exchange immediately. Therefore the connection can only be created AFTER Bundle 2 deploys the app (which provisions the SPN with valid credentials). Pattern from hi-genie-orchestrator: SQL DDL with `secret()` refs + explicit `token_endpoint`. See `create_app_connection.sql` in the hi-genie project for reference.
+>
+> MCP Services are DAB-declarable (`mcp_service` resource, CLI 1.17.0+, `engine: direct`). Unity Gateway **connections** are NOT a DAB resource type — created via SQL DDL in `setup_gateway_connection.py`.
 
 ---
 
@@ -25,54 +27,44 @@ Bundle 3 Agent
 
 ## Step 1: Create the HTTP Connection (automated)
 
-**Method:** `src/notebooks/setup_gateway_connection.py` (Group B task in `post_deploy_setup` job)
-**Trigger:** Auto-triggered by `job_run` resource when `app_url` parameter is set
+**Method:** `src/notebooks/setup_gateway_connection.py` (Group B task in `post_deploy_setup` job)  
+**Trigger:** Auto-triggered by `job_run` resource when `app_url` parameter is set  
+**Prerequisite:** Bundle 2 must be deployed first (provides the app SPN credentials)
 
-The notebook creates or updates the connection via the Python SDK:
+### Why SQL DDL (not REST API / SDK)
 
-```python
-# Simplified logic from setup_gateway_connection.py
-from databricks.sdk import WorkspaceClient
-w = WorkspaceClient()
+HTTP connections with MCP support require credential validation at creation time:
 
-try:
-    w.connections.get("ground-truth-mcp")
-    # Exists — update with real app URL
-    w.connections.update("ground-truth-mcp", options={"host": app_url, "port": "443", "base_path": "/mcp"})
-except Exception:
-    # Create new
-    w.connections.create(
-        name="ground-truth-mcp",
-        connection_type="HTTP",
-        comment="MCP server for Semantic Ground Truth app.",
-        options={"host": app_url, "port": "443", "base_path": "/mcp"}
-    )
+| Method | Result on this workspace |
+| --- | --- |
+| REST API (`connections.create`) | Fails — requires DCR; workspace OIDC lacks `registration_endpoint` |
+| Python SDK (`w.connections.create`) | Fails — same DCR requirement |
+| SQL DDL without credentials | Fails — falls back to DCR |
+| **SQL DDL with `secret()` refs** | **Works** — creates OAUTH_M2M connection, validates token immediately |
 
-# Grant USE CONNECTION
-w.grants.update("connection", "ground-truth-mcp",
-    changes=[PermissionsChange(add=[Privilege.USE_CONNECTION], principal="users")])
+The hi-genie-orchestrator pattern uses SQL DDL with explicit credentials from a secret scope:
+
+```sql
+-- Pattern from hi-genie create_app_connection.sql
+CREATE CONNECTION IF NOT EXISTS `semantic-ground-truth-mcp`
+TYPE HTTP
+OPTIONS (
+  host 'https://<app-url>.databricksapps.com',
+  base_path '/mcp',
+  client_id secret('<scope>', '<client_id_key>'),
+  client_secret secret('<scope>', '<client_secret_key>'),
+  oauth_scope 'all-apis',
+  token_endpoint 'https://fevm-hls-fde.cloud.databricks.com/oidc/v1/token'
+)
 ```
 
-**Manual fallback (curl):**
+### Connection naming
 
-```bash
-export DATABRICKS_HOST="https://fevm-hls-fde.cloud.databricks.com"
-export DATABRICKS_TOKEN="<token>"
+UC connections are **metastore-level** (flat names, no dots). The connection name is `semantic-ground-truth-mcp`, NOT `catalog.schema.semantic-ground-truth-mcp`.
 
-curl -X POST "${DATABRICKS_HOST}/api/2.1/unity-catalog/connections" \
-  -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "ground-truth-mcp",
-    "connection_type": "HTTP",
-    "comment": "MCP server for Semantic Ground Truth app (URL updated by Bundle 2 post-deploy).",
-    "options": {
-      "host": "https://placeholder.databricksapps.com",
-      "port": "443",
-      "base_path": "/mcp"
-    }
-  }'
-```
+### Manual fallback
+
+Create via SQL editor on the infra SQL warehouse, substituting real values for the secret scope keys after Bundle 2 has deployed and SPN credentials are provisioned.
 
 ---
 
@@ -87,11 +79,12 @@ resources:
   mcp_services:
     ground_truth_mcp:
       parent: schemas/${var.catalog}.${resources.schemas.ground_truth_schema.name}
-      mcp_service_id: ground-truth-mcp
-      comment: "Semantic Ground Truth app MCP service for Unity Gateway"
+      mcp_service_id: semantic-ground-truth-mcp
+      comment: "Semantic Ground Truth app MCP service ..."
       config:
         source_connection:
-          name: connections/${var.catalog}.${resources.schemas.ground_truth_schema.name}.ground-truth-mcp
+          # UC connections are metastore-level (flat names, no catalog.schema prefix)
+          name: connections/semantic-ground-truth-mcp
         include_tool_selectors:
           - "review_*"
           - "campaign_*"
@@ -102,7 +95,7 @@ resources:
             - EXECUTE
 ```
 
-**Dependency:** The `source_connection` references the HTTP connection from Step 1. The connection must exist before the MCP service can be deployed. On first deploy (pre-Bundle 2), the MCP service may fail if the connection hasn't been created yet — this is expected and resolves after the Group B post-deploy tasks run.
+**Dependency:** The `source_connection` references the HTTP connection from Step 1. The connection must exist before the MCP service can be deployed. Pre-Bundle 2: the MCP service will fail (connection doesn't exist yet) — this is expected. Post-Bundle 2: re-deploy infra to register the MCP service.
 
 > ~~Manual UI steps (Navigate to Unity Gateway → MCPs → Register MCP Service) are no longer needed.~~ The `mcp_service` resource handles registration, tool selection, and grants declaratively.
 
@@ -132,7 +125,7 @@ databricks bundle run post_deploy_setup --target dev \
 databricks bundle deploy --target dev
 ```
 
-The `deploy.sh` script can also call `update_gateway_connection()` as before.
+The `deploy.sh` script checks connection existence but does NOT create it (DCR limitation).
 
 ---
 

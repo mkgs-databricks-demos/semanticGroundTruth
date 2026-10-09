@@ -1,6 +1,6 @@
 # resources/jobs/feedback_pipeline.job.yml
-# Daily 11 PM: collect unprocessed votes → call Genie Code API → create feature branch
-# Design source: L300-04, L300-05
+# Daily 11 PM: collect unprocessed votes → Genie Code generates YAML edits → Git feature branch
+# Design source: L300-04, L300-05, docs/plans/feedback_pipeline_rework_plan.md
 
 resources:
   jobs:
@@ -28,18 +28,25 @@ resources:
               cutoff_hours: "24"
           environment_key: serverless
 
+        # Task 2: genie_task replaces the old notebook_task (create_feature_branch.py).
+        # configuration_id is a placeholder — patched by post_deploy_setup job
+        # (setup_genie_automation → setup_job_params) on first deploy.
+        # Once known, hardcode the real value here and remove PENDING_SETUP.
         - task_key: create_feature_branch
-          description: "Call Genie Code API, generate proposed YAML edits, create Git feature branch"
+          description: "Genie Code reads feedback staging, generates YAML edits, creates Git feature branch"
           depends_on:
             - task_key: collect_feedback
-          notebook_task:
-            notebook_path: ../../src/notebooks/create_feature_branch.py
-            base_parameters:
+          genie_task:
+            configuration_id: "PENDING_SETUP"  # patched by setup_job_params after first deploy
+            parameters:
               catalog: "${var.catalog}"
               schema: "${resources.schemas.ground_truth_schema.name}"
-              genie_space_id: ""  # set after Genie skill registration
-              git_folder_id: ""   # set to Repos folder ID for YAML fixtures
-          environment_key: serverless
+          timeout_seconds: 1800
+          health:
+            rules:
+              - metric: RUN_DURATION_SECONDS
+                op: GREATER_THAN
+                value: 600
 
       email_notifications:
         on_failure:

@@ -1,0 +1,28 @@
+# resources/jobs/run_post_deploy.job_run.yml
+# Deploy hook: auto-triggers the post_deploy_setup job on every `bundle deploy`.
+# Design source: docs/research/04_dab_secrets_jobruns_mcp.md §3, docs/plans/post_deploy_automation_plan.md
+#
+# The `only` field limits auto-triggered runs to Group A tasks (unblocked).
+# Group B tasks require app_url — run the full job manually after Bundle 2.
+# lifecycle.triggers: [always] fires on every deploy, not just config changes.
+#
+# Requires: engine: direct, CLI ≥ 1.7.0 (triggers: CLI ≥ 1.13.0)
+
+resources:
+  job_runs:
+    run_post_deploy:
+      job_id: ${resources.jobs.post_deploy_setup.id}
+      job_parameters:
+        run_setup: "${var.run_setup}"
+        app_url: ""
+        app_sp_client_id: ""
+      only:
+        - check_run_setup
+        - +setup_secrets
+        - +setup_genie_automation
+        - +setup_job_params
+      # lifecycle:
+      #   triggers:
+      #     - ???  # TODO: research exact map format for `always` trigger (CLI ≥ 1.13.0)
+      #            # Without triggers, fires only on config change (first deploy).
+      #            # Workaround: `databricks bundle run run_post_deploy` after subsequent deploys.

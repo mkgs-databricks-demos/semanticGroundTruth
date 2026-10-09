@@ -3,7 +3,7 @@
 # Design sources: L100 §Deployment Architecture, L200-C1, L200-C6, L200-C9, L300-01 through L300-08
 bundle:
   name: "ground-truth-infra"
-  engine: direct  # Required for UC secrets, job_run, mcp_service resources (see docs/research/04)
+  engine: direct  # Required for secret_scope, job_run, mcp_service resources (see docs/research/04)
 
 include:
   - resources/*.yml
@@ -22,6 +22,14 @@ variables:
   notification_teams_webhook:
     description: "Microsoft Teams incoming webhook URL for job alert notifications"
     default: ""
+  # Post-deploy setup control — skip on routine dev deploys, run on prod/first deploy
+  run_setup:
+    description: "Whether post_deploy_setup job_run should execute tasks (false = skip via condition gate)"
+    default: "true"
+  # Workspace secret scope (lakeLoom pattern — app env var injection via valueFrom)
+  secret_scope_name:
+    description: "Workspace secret scope name for Ground Truth app runtime secrets"
+    default: semantic_ground_truth_credentials
 
 targets:
   # The 'dev' target, for development purposes. This target is the default.
@@ -36,6 +44,7 @@ targets:
       # DAB dev mode prepends dev_<user>_ to schema names.
       # Using 'semantic_ground_truth' here → actual UC schema: dev_matthew_giglia_semantic_ground_truth
       schema: semantic_ground_truth
+      run_setup: "false"  # Skip post-deploy setup on routine dev deploys; override with --var run_setup=true
 
   # The 'prod' target, used for production deployment.
   prod:
