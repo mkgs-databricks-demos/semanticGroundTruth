@@ -14,13 +14,13 @@ Bundle 1 of 3 for the **Semantic Ground Truth App**. Deploys all shared infrastr
 | Metric View Fixtures | 4 YAMLs | mv_review_activity, mv_coverage_metrics, mv_user_leaderboard, mv_feedback_pipeline |
 | UC Secrets | 3 secrets | slack_webhook_url, teams_webhook_url, git_token |
 | Unity Gateway | HTTP connection | ground-truth-mcp (placeholder; updated by Bundle 2) |
-| Genie Code Skill | Feedback loop prompt | Versioned in `src/prompts/feedback_loop_prompt.md` |
+| Genie Code Skill | Feedback loop prompt | `fixtures/prompts/feedback_loop_prompt.md` |
 
 ## Targets
 
 | Target | Catalog | Mode |
 |--------|---------|------|
-| `dev` | `dev_ground_truth` | Development (default) |
+| `dev` | `hls_fde_dev` | Development (default) — schema auto-prefixed `dev_<user>_` |
 | `prod` | `prod_ground_truth` | Production |
 
 ## Deploy
@@ -43,7 +43,7 @@ databricks bundle run metric_view_deploy --target dev
 
 ## Build Plan
 
-See [`docs/plan/infra_build_plan.md`](docs/plan/infra_build_plan.md) for the detailed 8-phase build plan:
+See [`docs/plans/infra_build_plan.md`](docs/plans/infra_build_plan.md) for the detailed 8-phase build plan:
 
 1. Bundle Configuration (variables, schema resource)
 2. Lakebase Project + Schema (DAB-declared)
@@ -61,15 +61,19 @@ ground-truth-infra/
 ├── databricks.yml
 ├── PROJECT_MEMORY.md
 ├── resources/
-│   ├── schemas.yml
-│   ├── warehouses.yml
-│   ├── lakebase.yml
-│   └── jobs.yml
+│   ├── jobs/                        (4 .job.yml files — one per job)
+│   ├── lakebase/                    (5 files — project, branches, role, db)
+│   ├── ground_truth_schema.schema.yml
+│   └── infra_warehouse.warehouse.yml
 ├── src/
-│   ├── notebooks/   (5 Python notebooks)
-│   └── prompts/     (feedback loop skill)
-├── fixtures/    (4 metric view YAMLs)
-└── docs/plan/   (build plan)
+│   └── notebooks/                   (6 Python notebooks)
+├── fixtures/
+│   ├── metric_views/                (4 mv_*.yaml — deployed by metric_view_deploy job)
+│   └── prompts/                     (feedback_loop_prompt.md — registered as UC skill)
+└── docs/
+    ├── plans/                       (infra_build_plan.md)
+    ├── runbooks/                    (unity-gateway-setup.md)
+    └── sessions/                    (session summaries + INDEX.md)
 ```
 
 ## Related Bundles

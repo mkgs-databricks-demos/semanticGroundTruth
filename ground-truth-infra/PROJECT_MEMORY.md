@@ -1,6 +1,6 @@
 # PROJECT_MEMORY — ground-truth-infra
 
-> Last updated: 2026-10-08 — post-deploy cleanup and refactor complete. Bundle 1 fully deployed to dev.
+> Last updated: 2026-10-08 — docs/ restructure complete. Bundle 1 fully deployed to dev. Branch ready to merge.
 
 ## Bundle Identity
 
@@ -144,6 +144,7 @@ Key resolutions:
 | 2026-10-08 | Open questions resolved | All 11 L300 open questions resolved |
 | 2026-10-08 | Phases 1–8 complete | All resources declared, deployed, and validated in dev |
 | 2026-10-08 | Post-deploy refactor | Naming cleanup, folder restructure, one-resource-per-YAML split |
+| 2026-10-08 | docs/ restructure | `docs/plans/`, `docs/sessions/` established; fixtures/ is now exclusively deployable config |
 
 ---
 
