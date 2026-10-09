@@ -2,6 +2,7 @@
 
 | Date | Summary | Branch |
 |------|---------|--------|
+| 2026-10-08 | [Post-deploy cleanup and refactor](2026-10-08_post-deploy-cleanup-and-refactor.md) | `mg-genie-bundle-scaffolds` |
 | 2026-10-08 | [Phase 8: Deploy + Validate](2026-10-08_phase8-deploy-and-validate.md) | `mg-genie-bundle-scaffolds` |
 | 2026-10-08 | [Phase 7: Unity Gateway connection](2026-10-08_phase7-unity-gateway.md) | `mg-genie-bundle-scaffolds` |
 | 2026-10-08 | [Phase 6: Genie Code skills](2026-10-08_phase6-genie-code-skills.md) | `mg-genie-bundle-scaffolds` |

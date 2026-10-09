@@ -1,5 +1,7 @@
 # PROJECT_MEMORY — ground-truth-infra
 
+> Last updated: 2026-10-08 — post-deploy cleanup and refactor complete. Bundle 1 fully deployed to dev.
+
 ## Bundle Identity
 
 **Bundle name:** `ground-truth-infra`
@@ -13,44 +15,56 @@
 
 ## Targets
 
-| Target | Mode | Catalog | Schema | Status |
-|--------|------|---------|--------|--------|
-| `dev` | development (default) | `dev_ground_truth` | `app` | Scaffolded — no variables yet |
-| `prod` | production | `prod_ground_truth` | `app` | Scaffolded — no variables yet |
-| `staging` | — | `staging_ground_truth` | `app` | Not yet created (L300-01 proposed it) |
+| Target | Mode | Catalog | Schema (var) | Deployed UC Schema | Status |
+|--------|------|---------|---------|--------|--------|
+| `dev` | development (default) | `hls_fde_dev` | `ground_truth` | `hls_fde_dev.dev_matthew_giglia_ground_truth` | ✅ Deployed |
+| `prod` | production | `prod_ground_truth` | `semantic_ground_truth` | `prod_ground_truth.semantic_ground_truth` | Not yet deployed |
+
+> DAB dev mode auto-prepends `dev_<user>_` to schema names. Set `var.schema` to the unprefixed name.
+> `staging` target deferred — not needed for initial deploy.
 
 ---
 
 ## What This Bundle Owns
 
-### DAB Resources
-- **UC Schema** — `${var.catalog}.${var.schema}`
-- **SQL Warehouse** — Serverless PRO, 2X-Small
-- **Lakeflow Jobs** — feedback_pipeline, freshness_resurfacing, metric_view_deploy, post_deploy_validation
+### DAB Resources (all deployed to dev)
 
-### DAB-Declared Lakebase Resources (`resources/lakebase.yml`)
-- **Lakebase project** (`postgres_projects`) — `ground-truth`
-- **Lakebase branches** (`postgres_branches`) — production (auto), dev (copy-on-write)
-- **Lakebase endpoint** (`postgres_endpoints`) — app compute endpoint
-- **Lakebase role** (`postgres_roles`) — app role for database ownership
-- **Lakebase database** (`postgres_databases`) — app database
-- **Lakebase synced tables** (`postgres_synced_tables`) — 6 CDF tables: assets, votes, user_activity, confidence_scores, campaigns, feedback_batches → Delta `lb_*_history` in existing UC schema
-- **Lakebase tables** — 11 tables from L200-C1 (created by app-side TypeScript migrations on server startup, not infra)
+**UC Schema**
+- `resources/ground_truth_schema.schema.yml` — `hls_fde_dev.dev_matthew_giglia_ground_truth` (dev)
 
-> **No `postgres_catalogs`** — UC catalog binding removed. Requires CREATE CATALOG on metastore. Using CDF via `postgres_synced_tables` instead.
-- **Lakebase CDF** — 6 tables with `REPLICA IDENTITY FULL` → Delta tables in UC (`lb_*_history`)
+**SQL Warehouse**
+- `resources/infra_warehouse.warehouse.yml` — `Semantic Ground Truth`, 2X-Small serverless PRO
+- ID (dev): `0ea84986a23a47c3`
+- Permissions: CAN_MANAGE (matthew.giglia), CAN_USE (users group); app SPN added post-Bundle 2
 
-> Lakebase DAB support added Feb 2026 (Beta). Replaces manual CLI from L300-02.
-- **UC Secrets** — `slack_webhook_url`, `teams_webhook_url`, `git_token`
-- **Unity Gateway connection** — `ground-truth-mcp` (placeholder URL; updated by Bundle 2)
-- **Genie Code skill** — feedback loop prompt
-- **Notification destinations** — Slack, Teams, webhook (workspace settings)
+**Lakeflow Jobs** (`resources/jobs/`)
+- `feedback_pipeline.job.yml` — ID `811289891166091` — daily 11 PM UTC
+- `freshness_resurfacing.job.yml` — ID `1103481179431341` — daily 6 AM UTC
+- `metric_view_deploy.job.yml` — ID `423348439302077` — on-demand
+- `post_deploy_validation.job.yml` — ID `123170360460207` — on-demand
+
+**Lakebase** (`resources/lakebase/`)
+- `ground_truth_project.postgres_project.yml` — dev: `projects/dev-matthew-giglia-ground-truth` | prod: `projects/ground-truth`
+- `production.postgres_branch.yml` — `is_protected: true`, `replace_existing: true`
+- `development.postgres_branch.yml` — copy-on-write snapshot of production
+- `app_role.postgres_role.yml` — `ground_truth_app_role`; identity_type added post-Bundle 2
+- `app_db.postgres_database.yml` — `ground_truth_app` on production branch
+
+> CDF tables (`lb_*_history`) configured via Lakebase App UI Lakehouse Sync after Bundle 2 deploys.
+> `postgres_synced_tables` in DABs = Reverse ETL (Delta→Lakebase), NOT Lakebase→Delta.
 
 ### Source Files
-- **~~10 SQL migrations~~** — **MOVED to Bundle 2 (App).** App-side TypeScript migrations run on server startup (lakeLoom pattern: `server/migrations/migrate.ts`).
-- **5 Python notebooks** — `src/notebooks/` (collect_feedback, create_feature_branch, freshness_check, deploy_metric_view, post_deploy_validation)
-- **1 prompt** — `src/prompts/feedback_loop_prompt.md`
-- **4 metric view fixtures** — `fixtures/mv_*.yaml` (review_activity, coverage_metrics, user_leaderboard, feedback_pipeline)
+- **6 Python notebooks** — `src/notebooks/` — collect_feedback, create_feature_branch, freshness_check, list_fixtures, deploy_metric_view, post_deploy_validation
+- **4 metric view fixtures** — `fixtures/metric_views/` — mv_review_activity, mv_coverage_metrics, mv_user_leaderboard, mv_feedback_pipeline
+- **1 Genie Code skill prompt** — `fixtures/prompts/feedback_loop_prompt.md`
+
+### Manual Post-Deploy Steps (not DAB-declarable)
+- UC Secrets: create scope `ground-truth-infra` with `slack_webhook_url`, `teams_webhook_url`, `git_token`
+- Lakebase Lakehouse Sync: configure in Lakebase App UI after Bundle 2 (creates `lb_*_history` Delta tables)
+- Unity Gateway connection `ground-truth-mcp`: follow `docs/runbooks/unity-gateway-setup.md`
+- Genie Code skill: `POST /api/2.1/unity-catalog/skills` (see `fixtures/prompts/feedback_loop_prompt.md`)
+- Lakebase `app_role` identity: update to SERVICE_PRINCIPAL after Bundle 2 SP known
+- Job params: set `genie_space_id` + `git_folder_id` in feedback_pipeline after skill registered
 
 ---
 
@@ -90,7 +104,7 @@ All at `../docs/design/` (solution root).
 
 ## Build Plan
 
-See `docs/plan/infra_build_plan.md` for the detailed 8-phase plan with deliverables, validation gates, and open questions.
+See `docs/infra_build_plan.md` for the detailed 8-phase plan with deliverables, validation gates, and open questions.
 
 **Phase summary:** Config → Lakebase → Secrets/Warehouse/Notifications → Jobs → Metric Views → Genie Code Skills → Unity Gateway → Deploy+Validate
 
@@ -126,8 +140,10 @@ Key resolutions:
 | Date | Status | Notes |
 |------|--------|-------|
 | 2026-10-08 | Scaffold created | Empty DAB via workspace GUI; dev+prod targets; no variables/resources |
-| 2026-10-08 | Build plan created | `docs/plan/infra_build_plan.md`; PROJECT_MEMORY.md created |
-| 2026-10-08 | Open questions resolved | All 11 L300 open questions resolved. Key: Lakebase DAB-declarable (Beta), migrations moved to Bundle 2, `for_each_task` needs upstream notebook, `genie_code_task` available (Beta, no structured output), cross-bundle vars via deploy.sh. Build plan updated with findings. Session summary + README written. |
+| 2026-10-08 | Build plan created | `docs/infra_build_plan.md`; PROJECT_MEMORY.md created |
+| 2026-10-08 | Open questions resolved | All 11 L300 open questions resolved |
+| 2026-10-08 | Phases 1–8 complete | All resources declared, deployed, and validated in dev |
+| 2026-10-08 | Post-deploy refactor | Naming cleanup, folder restructure, one-resource-per-YAML split |
 
 ---
 
@@ -141,7 +157,13 @@ DABs support Lakebase resource types (Beta, Feb 2026 — confirmed via [Manage L
 
 The [Typical Lakebase project setup](https://docs.databricks.com/aws/en/oltp/projects/dabs-typical-project) page provides a full canonical YAML example including project → production branch → endpoint → app role → app database → UC catalog binding → synced tables → Databricks App with `resources.postgres` block. We follow this pattern but **skip the UC catalog binding** (`postgres_catalogs`) — we use synced tables (CDF) only.
 
-**Substitution pattern (from docs):** `${resources.postgres_projects.my_app.id}`, `${resources.postgres_branches.dev_branch.id}`, `${resources.postgres_roles.app_role.id}`, `${resources.postgres_databases.app_db.name}`, `${resources.postgres_branches.production.name}`. These ensure proper dependency ordering during deployment.
+**Substitution pattern (from docs):** `${resources.postgres_projects.my_app.id}`, `${resources.postgres_branches.production.id}`, `${resources.postgres_roles.app_role.id}`, `${resources.postgres_databases.app_db.name}`, `${resources.postgres_branches.production.name}`. These ensure proper dependency ordering during deployment.
+
+**Critical deploy findings (confirmed against live deploy, Oct 2026):**
+- `.id` for ALL Lakebase resources returns the **full resource path** (e.g. `projects/dev-matthew-giglia-ground-truth`). Never prepend `projects/` manually.
+- Branch `parent` field: use `${resources.postgres_projects.ground_truth_project.id}` directly (already `projects/{id}`).
+- `app_db.role` field: use `${resources.postgres_roles.app_role.id}` directly (already full path).
+- Jobs `environment_key: serverless` requires a matching `environments: [{environment_key: serverless, spec: {client: "1"}}]` block at the job level.
 
 **Approach hierarchy (per project conventions):**
 1. **DABs (primary)** — Declarative YAML in `resources/lakebase.yml`. Fully supported for project, branches, endpoints, roles, databases, synced tables. This is the approach used in this plan (UC catalog binding excluded — CDF via synced tables only).
@@ -161,3 +183,5 @@ The [Typical Lakebase project setup](https://docs.databricks.com/aws/en/oltp/pro
 | Directory name | `bundle-infra/` | `ground-truth-infra/` | Matches bundle name; created via GUI |
 | Staging target | Included | Deferred | Not needed for initial dev; add when ready |
 | `workspace.root_path` | `/Workspace/Shared/.bundles/...` | `/Users/matthew.giglia@databricks.com/.bundle/...` (prod) | GUI default; adjust when deploying shared |
+| Dev catalog | `dev_ground_truth` | `hls_fde_dev` | Workspace convention; `dev_ground_truth` doesn’t exist |
+| Resource YAML layout | One file per type | One file per resource, subdirs by category | User preference — applied post-deploy |
