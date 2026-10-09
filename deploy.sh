@@ -9,6 +9,13 @@
 # Pre-deploy steps (before infra bundle deploy):
 #   - Resolves catalog, schema, workspace URL from bundle summary
 #   - Resolves MCP connection name (connection created post-Bundle 2)
+#   - Resolves M2M SPN secret key names and display-name prefix
+#
+# Post-deploy steps (after infra bundle deploy):
+#   - check_m2m_credentials: non-fatal check of the M2M SPN credential contract.
+#     client_id is auto-provisioned by the ensure_m2m_service_principal task;
+#     client_secret is admin-provisioned. Prints an ADMIN ACTION block when the
+#     secret is missing (see ground-truth-infra/docs/runbooks/m2m-service-principal.md).
 #
 # NOTE on MCP connection & service (hi-genie-orchestrator pattern):
 #   HTTP connections ALWAYS require valid credentials at creation time:
@@ -16,7 +23,9 @@
 #     - SQL DDL without creds → falls back to DCR
 #     - SQL DDL with creds → validates token exchange immediately
 #   Therefore: connection + MCP service are POST-deploy steps, created after
-#   Bundle 2 deploys the app (which provisions the SPN with valid credentials).
+#   Bundle 2 deploys the app. The connection uses the bundle-owned M2M SPN
+#   credentials (created by the ensure_m2m_service_principal task), NOT the
+#   app's auto-provisioned SPN. See docs/plans/m2m_service_principal_plan.md.
 #   The setup_gateway_connection notebook (post_deploy_setup job) handles both
 #   connection creation (via SQL DDL with secret() refs) and MCP service
 #   registration. The MCP service DAB resource is kept for declarative tracking
@@ -82,6 +91,9 @@ WORKSPACE_HOST=""
 SQL_WAREHOUSE_ID=""
 LAKEBASE_PROJECT_ID=""
 MCP_CONNECTION_NAME=""
+M2M_CLIENT_ID_KEY=""
+M2M_CLIENT_SECRET_KEY=""
+M2M_SPN_PREFIX=""
 
 # --------------------------------------------------------------------------- #
 # Defaults
@@ -118,8 +130,13 @@ Deployment order:
 
 First deployment:
   ./deploy.sh --target dev --infra --run-setup
+  # Creates the M2M SPN and stores its client_id in the secret scope.
   # MCP service will fail (no connection yet — expected pre-Bundle 2).
-  # Then: admin provisions webhook secrets (see docs/runbooks/)
+  # Then: workspace admin generates the M2M OAuth secret and stores it
+  #   (ground-truth-infra/docs/runbooks/m2m-service-principal.md),
+  #   and provisions webhook secrets (see docs/runbooks/)
+  ./deploy.sh --target dev --infra --run-setup
+  # Verifies the M2M token exchange.
   ./deploy.sh --target dev --app
   # Then: run post_deploy_setup with app_url to create MCP connection,
   # and re-deploy infra to register the MCP service:
@@ -306,6 +323,11 @@ for proj_name, proj in pg_projects.items():
         if project_id:
             break
 
+# --- M2M service principal contract ---
+m2m_id_key     = get_var('m2m_client_id_dbs_key')
+m2m_secret_key = get_var('m2m_client_secret_dbs_key')
+m2m_prefix     = get_var('m2m_spn_prefix', 'semantic-ground-truth-m2m')
+
 # --- workspace host ---
 workspace_host = ''
 workspace_block = data.get('workspace', {})
@@ -324,6 +346,9 @@ print(f'SCOPE_NAME=\"{safe(scope)}\"')
 print(f'WORKSPACE_HOST=\"{safe_url(workspace_host)}\"')
 print(f'SQL_WAREHOUSE_ID=\"{safe(warehouse_id)}\"')
 print(f'LAKEBASE_PROJECT_ID=\"{safe(project_id)}\"')
+print(f'M2M_CLIENT_ID_KEY=\"{safe(m2m_id_key)}\"')
+print(f'M2M_CLIENT_SECRET_KEY=\"{safe(m2m_secret_key)}\"')
+print(f'M2M_SPN_PREFIX=\"{safe(m2m_prefix)}\"')
 " 2>/dev/null)" || fail "Could not parse bundle summary JSON."
 
   if [[ -n "${RESOLVE_ERROR:-}" ]]; then
@@ -337,14 +362,17 @@ print(f'LAKEBASE_PROJECT_ID=\"{safe(project_id)}\"')
   ok "  scope=${SCOPE_NAME}, warehouse=${SQL_WAREHOUSE_ID}"
   ok "  workspace=${WORKSPACE_HOST}"
   ok "  mcp_connection=${MCP_CONNECTION_NAME}"
+  ok "  m2m_spn_prefix=${M2M_SPN_PREFIX}"
+  ok "  m2m_keys=${M2M_CLIENT_ID_KEY}, ${M2M_CLIENT_SECRET_KEY}"
 }
 
 # --------------------------------------------------------------------------- #
 # ensure_http_connection — check if the HTTP connection exists for MCP service
 #
-# Connection creation requires valid SPN credentials (only available after
-# Bundle 2 deploys the app). The setup_gateway_connection notebook creates
-# the connection via SQL DDL with secret() references (hi-genie pattern):
+# Connection creation requires valid M2M SPN credentials (admin-provisioned
+# client_secret) and the app URL (only available after Bundle 2 deploys the
+# app). The setup_gateway_connection notebook creates the connection via SQL
+# DDL with secret() references to the M2M SPN keys (hi-genie pattern):
 #
 #   CREATE CONNECTION IF NOT EXISTS `name` TYPE HTTP OPTIONS (
 #     host 'https://<app-url>',
@@ -370,6 +398,114 @@ ensure_http_connection() {
     warn "It will be created by setup_gateway_connection after Bundle 2 deploys."
     return 1
   fi
+}
+
+# --------------------------------------------------------------------------- #
+# check_m2m_credentials — verify the M2M SPN credential contract (non-fatal)
+#
+# The ensure_m2m_service_principal task (post_deploy_setup job) creates the
+# bundle-owned OAuth M2M SPN and stores its client_id in the secret scope.
+# The client_secret must be generated and stored by a workspace admin.
+# This check NEVER fails the deploy — it reports status and prints admin
+# instructions when the secret is missing. Secret values are never read.
+# See: ground-truth-infra/docs/runbooks/m2m-service-principal.md
+# --------------------------------------------------------------------------- #
+check_m2m_credentials() {
+  log "Checking M2M service principal credentials (scope: ${SCOPE_NAME})"
+
+  if [[ -z "${M2M_CLIENT_ID_KEY}" || -z "${M2M_CLIENT_SECRET_KEY}" ]]; then
+    warn "M2M secret key names not resolved from bundle summary — skipping check."
+    return 0
+  fi
+
+  local secrets_json
+  if ! secrets_json=$(databricks secrets list-secrets "${SCOPE_NAME}" --output json 2>/dev/null); then
+    warn "Could not list secrets in scope '${SCOPE_NAME}' (missing scope or no access) — skipping check."
+    return 0
+  fi
+
+  # Key names are passed via env vars (not interpolated into Python source)
+  local key_status
+  key_status=$(echo "${secrets_json}" | M2M_ID_KEY="${M2M_CLIENT_ID_KEY}" M2M_SECRET_KEY="${M2M_CLIENT_SECRET_KEY}" python3 -c '
+import json, os, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    print("unknown unknown")
+    sys.exit(0)
+items = data if isinstance(data, list) else data.get("secrets", [])
+keys = {i.get("key") for i in items if isinstance(i, dict)}
+id_present = "yes" if os.environ["M2M_ID_KEY"] in keys else "no"
+secret_present = "yes" if os.environ["M2M_SECRET_KEY"] in keys else "no"
+print(f"{id_present} {secret_present}")
+' 2>/dev/null) || key_status="unknown unknown"
+
+  local id_present secret_present
+  read -r id_present secret_present <<< "${key_status}"
+
+  if [[ "${id_present}" == "unknown" || -z "${id_present}" ]]; then
+    warn "Could not parse secret scope listing — skipping check."
+    return 0
+  fi
+
+  if [[ "${id_present}" != "yes" ]]; then
+    warn "M2M client_id key '${M2M_CLIENT_ID_KEY}' not found in scope."
+    warn "The M2M SPN is created by the post_deploy_setup job. Re-run with:"
+    warn "  ./deploy.sh --target ${TARGET} --infra --run-setup"
+    return 0
+  fi
+  ok "M2M client_id present: ${M2M_CLIENT_ID_KEY}"
+
+  if [[ "${secret_present}" == "yes" ]]; then
+    ok "M2M client_secret present: ${M2M_CLIENT_SECRET_KEY}"
+    ok "Token exchange is verified by ensure_m2m_service_principal on --run-setup deploys."
+    return 0
+  fi
+
+  # Secret missing — resolve SPN details for the admin instructions
+  local spn_display_name="${M2M_SPN_PREFIX}-${SCHEMA}"
+  local spn_object_id="" spn_application_id="" spn_info
+  if spn_info=$(databricks service-principals list --filter "displayName eq \"${spn_display_name}\"" --output json 2>/dev/null); then
+    read -r spn_object_id spn_application_id <<< "$(echo "${spn_info}" | python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = []
+items = data if isinstance(data, list) else data.get("Resources", [])
+if items:
+    print(items[0].get("id", ""), items[0].get("applicationId", ""))
+' 2>/dev/null)"
+  fi
+  spn_object_id=$(safe "${spn_object_id:-UNKNOWN}")
+  spn_application_id=$(safe "${spn_application_id:-UNKNOWN}")
+
+  warn "M2M client_secret key '${M2M_CLIENT_SECRET_KEY}' not found in scope."
+  cat <<EOF
+
+  ┌─ ADMIN ACTION REQUIRED ────────────────────────────────────────────
+  │ The M2M service principal exists but has no OAuth client secret yet.
+  │   SPN display name:  ${spn_display_name}
+  │   Application ID:    ${spn_application_id}
+  │   Workspace obj ID:  ${spn_object_id}
+  │
+  │ 1. Generate the OAuth secret (workspace admin):
+  │      Settings > Identity and access > Service principals > Manage
+  │      > ${spn_display_name} > Secrets > Generate secret (<= 730 days)
+  │    CLI alternative:
+  │      databricks service-principal-secrets-proxy create ${spn_object_id}
+  │
+  │ 2. Store it in the bundle scope (interactive prompt, keeps it out of history):
+  │      databricks secrets put-secret ${SCOPE_NAME} ${M2M_CLIENT_SECRET_KEY}
+  │
+  │ 3. Verify the token exchange:
+  │      ./deploy.sh --target ${TARGET} --infra --run-setup
+  │
+  │ Runbook: ${INFRA_BUNDLE}/docs/runbooks/m2m-service-principal.md
+  └──────────────────────────────────────────────────────────────────
+
+EOF
+  return 0
 }
 
 # =========================================================================== #
@@ -402,6 +538,12 @@ if [[ "${DEPLOY_INFRA}" == true ]]; then
 
   # Step 1c: Deploy the infra bundle
   deploy_bundle "${INFRA_BUNDLE}" "${INFRA_EXTRA_ARGS[@]+${INFRA_EXTRA_ARGS[@]}}"
+
+  # Step 1d: Check the M2M SPN credential contract (non-fatal).
+  # Prints the ADMIN ACTION block if the client_secret hasn't been provisioned.
+  if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
+    check_m2m_credentials
+  fi
 fi
 
 # --------------------------------------------------------------------------- #
@@ -411,6 +553,9 @@ if [[ "${DEPLOY_APP}" == true ]]; then
   # TODO: After Bundle 2 is scaffolded:
   # 1. deploy_bundle "${APP_BUNDLE}"
   # 2. Resolve app URL from app bundle summary
+  # 2b. Grant CAN_USE on the app to the M2M SPN (resolve application_id by
+  #     display name "${M2M_SPN_PREFIX}-${SCHEMA}" and pass as --var, or via
+  #     a post-process job — see m2m_service_principal_plan.md §7.1)
   # 3. Run post_deploy_setup job (creates connection via SQL DDL + registers MCP)
   # 4. Re-deploy infra to register MCP service DAB resource
   warn "Bundle 2 (${APP_BUNDLE}) not yet implemented — skipping."
