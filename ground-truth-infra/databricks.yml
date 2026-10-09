@@ -11,10 +11,10 @@ include:
 variables:
   catalog:
     description: "Target Unity Catalog catalog name"
-    default: dev_ground_truth
+    default: hls_fde_dev
   schema:
     description: "Target Unity Catalog schema name"
-    default: app
+    default: ground_truth
   notification_slack_webhook:
     description: "Slack incoming webhook URL for job alert notifications"
     default: ""
@@ -31,8 +31,10 @@ targets:
       host: https://fevm-hls-fde.cloud.databricks.com
       root_path: /Users/matthew.giglia@databricks.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: dev_ground_truth
-      schema: app
+      catalog: hls_fde_dev
+      # DAB dev mode prepends dev_<user>_ to schema names.
+      # Using 'ground_truth' here → actual UC schema: dev_matthew_giglia_ground_truth
+      schema: ground_truth
 
   # The 'prod' target, used for production deployment.
   prod:

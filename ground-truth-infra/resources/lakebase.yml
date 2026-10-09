@@ -58,7 +58,7 @@ resources:
     # without needing to create it from scratch.
     production:
       branch_id: production
-      parent: "projects/${resources.postgres_projects.ground_truth_project.id}"
+      parent: "${resources.postgres_projects.ground_truth_project.id}"
       no_expiry: true
       is_protected: true
       replace_existing: true
@@ -69,7 +69,7 @@ resources:
     # Used for testing schema changes, queries, and data changes without affecting production.
     dev_branch:
       branch_id: dev
-      parent: "projects/${resources.postgres_projects.ground_truth_project.id}"
+      parent: "${resources.postgres_projects.ground_truth_project.id}"
       no_expiry: true
       lifecycle:
         prevent_destroy: false
@@ -98,7 +98,9 @@ resources:
       database_id: ground-truth-app
       parent: "${resources.postgres_branches.production.name}"
       postgres_database: ground_truth_app
-      role: "${resources.postgres_branches.production.name}/roles/${resources.postgres_roles.app_role.id}"
+      # .id for Lakebase resources returns the full resource path.
+      # postgres_roles.app_role.id = projects/{project_id}/branches/{branch_id}/roles/{role_id}
+      role: "${resources.postgres_roles.app_role.id}"
       lifecycle:
         prevent_destroy: true
 

@@ -27,6 +27,11 @@ resources:
         quartz_cron_expression: "0 0 23 * * ?"  # Daily 11 PM UTC
         timezone_id: UTC
 
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "1"
+
       tasks:
         - task_key: collect_feedback
           description: "Query unprocessed votes, group by asset, write feedback staging table"
@@ -36,8 +41,6 @@ resources:
               catalog: "${var.catalog}"
               schema: "${resources.schemas.ground_truth_schema.name}"
               cutoff_hours: "24"
-          existing_cluster_id: ""
-          # Uses serverless compute (no cluster_id required for serverless)
           environment_key: serverless
 
         - task_key: create_feature_branch
@@ -69,6 +72,11 @@ resources:
         quartz_cron_expression: "0 0 6 * * ?"  # Daily 6 AM UTC
         timezone_id: UTC
 
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "1"
+
       tasks:
         - task_key: freshness_check
           description: "Identify stale assets and add to freshness campaign staging"
@@ -91,6 +99,11 @@ resources:
     metric_view_deploy:
       name: "metric_view_deploy [${bundle.target}]"
       description: "Deploys metric view fixtures from fixtures/ directory. Run on-demand after fixture changes."
+
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "1"
 
       tasks:
         - task_key: list_fixtures
@@ -126,6 +139,11 @@ resources:
     post_deploy_validation:
       name: "post_deploy_validation [${bundle.target}]"
       description: "End-to-end validation of Bundle 1 infrastructure. Run after full bundle deploy."
+
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "1"
 
       tasks:
         - task_key: validate_infra
