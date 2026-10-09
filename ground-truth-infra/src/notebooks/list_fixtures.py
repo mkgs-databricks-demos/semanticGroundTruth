@@ -20,10 +20,10 @@ import os
 try:
     fixtures_path = dbutils.widgets.get("fixtures_path")
 except Exception:
-    # Default: fixtures/ directory relative to the bundle root (mounted at /Workspace/...)
+    # Default: fixtures/metric_views/ directory relative to the bundle root.
     # When running from a job, the working directory is the bundle root.
     # The YAML files are uploaded as part of the bundle deploy to:
-    # /Workspace/Users/<user>/.bundle/ground-truth-infra/<target>/files/fixtures/
+    # /Workspace/Users/<user>/.bundle/ground-truth-infra/<target>/files/fixtures/metric_views/
     fixtures_path = os.path.join(
         "/Workspace",
         "Users",
@@ -33,6 +33,7 @@ except Exception:
         "dev",  # will be parameterized via job parameter
         "files",
         "fixtures",
+        "metric_views",
     )
 
 print(f"fixtures_path={fixtures_path}")
