@@ -63,8 +63,20 @@ databricks bundle deploy --target dev
 
 | Target | Catalog | Mode |
 |--------|---------|------|
-| `dev` | `dev_ground_truth` | Development (default) |
+| `dev` | `hls_fde_dev` | Development (default) |
 | `prod` | `prod_ground_truth` | Production |
+
+> **Note:** L300-01 originally proposed `dev_ground_truth` as the dev catalog. Actual workspace convention uses `hls_fde_dev`. DAB dev mode auto-prefixes schema names with `dev_<user>_`.
+
+## Current Status
+
+| Bundle | Status | Branch |
+|--------|--------|--------|
+| **Infra** (Bundle 1) | ✅ **Deployed to dev** — all 8 phases complete | `mg-genie-bundle-scaffolds` |
+| **App** (Bundle 2) | Scaffolded (empty DAB) | `main` |
+| **Agent** (Bundle 3) | Scaffolded (empty DAB) | `main` |
+
+Bundle 1 resources live in `hls_fde_dev.dev_matthew_giglia_ground_truth`. Remaining post-deploy manual steps (UC secrets, Unity Gateway connection, Genie Code skill registration) are documented in the infra `PROJECT_MEMORY.md`.
 
 ## License
 
