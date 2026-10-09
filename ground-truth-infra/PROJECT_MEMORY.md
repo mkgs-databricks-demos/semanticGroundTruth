@@ -130,7 +130,7 @@ Key resolutions:
 - **Warehouse references:** `${resources.sql_warehouses.infra_warehouse.id}`
 - **Notebook paths:** Must match actual file extension on disk; validate with directory listing
 - **Migrations:** MOVED to Bundle 2 (App). lakeLoom TypeScript pattern — app server runs migrations on startup.
-- **Session summaries:** `fixtures/sessions/YYYY-MM-DD_description.md` + `fixtures/sessions/INDEX.md`
+- **Session summaries:** `docs/sessions/YYYY-MM-DD_description.md` + `docs/sessions/INDEX.md`
 - **Git workflow:** Feature branches only; `mg-genie-<description>`
 
 ---
