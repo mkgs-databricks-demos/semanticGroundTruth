@@ -36,7 +36,7 @@ All design artifacts are in `docs/`:
 | L100 | `docs/design/L100_semantic_ground_truth_app.md` | System-level constitution |
 | L200 | `docs/design/L200-C[1-9]_*.md` | Component designs (9 documents) |
 | L300 | `docs/design/L300-[01-16]_*.md` | Implementation specs (16 documents) |
-| Research | `docs/research/` | UC Semantics API surface, Wilson score + Lakebase CDF, Genie Code workflow tasks |
+| Research | `docs/research/` | UC Semantics API surface, Wilson score + Lakebase CDF, Genie Code workflow tasks, DAB secrets/job_runs/MCP |
 | Semantics | `docs/semantics/` | Core terminology definitions |
 | Pitch | `docs/pitch/` | Customer pitch, SOW timing estimates, HIPAA compliance matrix |
 | Diagrams | `docs/diagrams/` | 13 diagrams (Mermaid source + SVG + interactive HTML) |
