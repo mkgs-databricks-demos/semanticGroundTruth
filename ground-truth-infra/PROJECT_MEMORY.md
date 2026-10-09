@@ -104,7 +104,7 @@ All at `../docs/design/` (solution root).
 
 ## Build Plan
 
-See `docs/infra_build_plan.md` for the detailed 8-phase plan with deliverables, validation gates, and open questions.
+See `docs/plans/infra_build_plan.md` for the detailed 8-phase plan with deliverables, validation gates, and open questions.
 
 **Phase summary:** Config → Lakebase → Secrets/Warehouse/Notifications → Jobs → Metric Views → Genie Code Skills → Unity Gateway → Deploy+Validate
 
@@ -112,7 +112,7 @@ See `docs/infra_build_plan.md` for the detailed 8-phase plan with deliverables, 
 
 ## Open Questions — ALL RESOLVED
 
-All 11 open questions from the L300 specs have been resolved. See `docs/plan/infra_build_plan.md` § Consolidated Open Questions for full findings.
+All 11 open questions from the L300 specs have been resolved. See `docs/plans/infra_build_plan.md` § Consolidated Open Questions for full findings.
 
 Key resolutions:
 1. **`for_each_task` syntax** — `file_list()` does NOT exist. Use upstream notebook + `taskValues`.
@@ -140,7 +140,7 @@ Key resolutions:
 | Date | Status | Notes |
 |------|--------|-------|
 | 2026-10-08 | Scaffold created | Empty DAB via workspace GUI; dev+prod targets; no variables/resources |
-| 2026-10-08 | Build plan created | `docs/infra_build_plan.md`; PROJECT_MEMORY.md created |
+| 2026-10-08 | Build plan created | `docs/plans/infra_build_plan.md`; PROJECT_MEMORY.md created |
 | 2026-10-08 | Open questions resolved | All 11 L300 open questions resolved |
 | 2026-10-08 | Phases 1–8 complete | All resources declared, deployed, and validated in dev |
 | 2026-10-08 | Post-deploy refactor | Naming cleanup, folder restructure, one-resource-per-YAML split |
