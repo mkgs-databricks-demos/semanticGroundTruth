@@ -59,17 +59,17 @@ Bundle 2 (later):
 
 ## 3. Naming and Secret Key Contract
 
-Both `dev` and `prod` targets point at the **same workspace** (`fevm-hls-fde`) and the **same scope name** (`semantic_ground_truth_credentials`). Keys and SPN names must therefore be schema-qualified to avoid collisions (same convention as lakeLoom / scAuditor).
+Both `dev` and `prod` targets point at the **same workspace** (`fevm-hls-fde`) and the **same scope name** (`semantic_ground_truth_credentials`). Keys and SPN names must therefore be target-qualified to avoid collisions.
 
 | Item | Value (dev) | Value (prod) |
 |------|-------------|--------------|
 | SPN display name | `semantic-ground-truth-m2m-dev` | `semantic-ground-truth-m2m-prod` |
-| Client ID key | `m2m_client_id_dev_matthew_giglia_semantic_ground_truth` | `m2m_client_id_semantic_ground_truth` |
-| Client secret key | `m2m_client_secret_dev_matthew_giglia_semantic_ground_truth` | `m2m_client_secret_semantic_ground_truth` |
+| Client ID key | `m2m_client_id_dev` | `m2m_client_id_prod` |
+| Client secret key | `m2m_client_secret_dev` | `m2m_client_secret_prod` |
 | Who writes client ID | `ensure_m2m_service_principal` task (automated) | same |
 | Who writes client secret | Workspace admin (manual) | same |
 
-The SPN display name is `${m2m_spn_prefix}-${bundle.target}` (decided 2026-10-11; the original schema-based name was 65 chars and repeated the project name). The notebook receives `bundle_target` as a parameter, so no new per-target values are needed beyond the key variables. Secret key names stay schema-qualified.
+The SPN display name is `${m2m_spn_prefix}-${bundle.target}` (decided 2026-10-11; the original schema-based name was 65 chars and repeated the project name). The notebook receives `bundle_target` as a parameter, so no new per-target values are needed beyond the key variables. Secret key names follow the same convention, `m2m_client_{id,secret}_${bundle.target}` (simplified 2026-10-13 from the schema-qualified names, e.g. `m2m_client_secret_dev_matthew_giglia_semantic_ground_truth`).
 
 > Note: in `dev` (development mode) every developer deploying this bundle resolves to the same `semantic-ground-truth-m2m-dev` SPN. That is acceptable for a single-developer workspace; revisit if more developers deploy dev here.
 
@@ -91,12 +91,12 @@ variables:
 targets:
   dev:
     variables:
-      m2m_client_id_dbs_key: m2m_client_id_dev_matthew_giglia_semantic_ground_truth
-      m2m_client_secret_dbs_key: m2m_client_secret_dev_matthew_giglia_semantic_ground_truth
+      m2m_client_id_dbs_key: m2m_client_id_dev
+      m2m_client_secret_dbs_key: m2m_client_secret_dev
   prod:
     variables:
-      m2m_client_id_dbs_key: m2m_client_id_semantic_ground_truth
-      m2m_client_secret_dbs_key: m2m_client_secret_semantic_ground_truth
+      m2m_client_id_dbs_key: m2m_client_id_prod
+      m2m_client_secret_dbs_key: m2m_client_secret_prod
 ```
 
 These hold key **names**, not secret values, so they do not violate the no-plaintext-default rule (PROJECT_MEMORY fix #7).
@@ -184,7 +184,7 @@ Add `+ensure_m2m_service_principal` to the `only:` list so the auto-triggered ru
 
 ### 4.5 `resources/secrets/ground_truth_scope.secret_scope.yml`
 
-Comment-only update to the "Keys planned" block: add `m2m_client_id_<schema>` under AUTO-PROVISIONED and `m2m_client_secret_<schema>` under ADMIN-PROVISIONED.
+Comment-only update to the "Keys planned" block: add `m2m_client_id_<target>` under AUTO-PROVISIONED and `m2m_client_secret_<target>` under ADMIN-PROVISIONED.
 
 ### 4.6 `src/notebooks/setup_gateway_connection.py` (scaffold → impl, separate PR)
 

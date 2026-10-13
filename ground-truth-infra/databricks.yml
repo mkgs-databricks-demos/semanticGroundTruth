@@ -65,9 +65,10 @@ targets:
       # Using 'semantic_ground_truth' here → actual UC schema: dev_matthew_giglia_semantic_ground_truth
       schema: semantic_ground_truth
       run_setup: "true"  # Run post-deploy setup on dev deploys; override with --var run_setup=false to skip
-      # M2M SPN secret keys — schema-qualified to avoid dev/prod collisions in same workspace
-      m2m_client_id_dbs_key: m2m_client_id_dev_matthew_giglia_semantic_ground_truth
-      m2m_client_secret_dbs_key: m2m_client_secret_dev_matthew_giglia_semantic_ground_truth
+      # M2M SPN secret keys — target-qualified (m2m_client_*_${bundle.target}) to avoid
+      # dev/prod collisions in the shared workspace scope; matches the SPN naming.
+      m2m_client_id_dbs_key: m2m_client_id_dev
+      m2m_client_secret_dbs_key: m2m_client_secret_dev
 
   # The 'prod' target, used for production deployment.
   prod:
@@ -82,5 +83,5 @@ targets:
     variables:
       catalog: prod_ground_truth
       schema: semantic_ground_truth
-      m2m_client_id_dbs_key: m2m_client_id_semantic_ground_truth
-      m2m_client_secret_dbs_key: m2m_client_secret_semantic_ground_truth
+      m2m_client_id_dbs_key: m2m_client_id_prod
+      m2m_client_secret_dbs_key: m2m_client_secret_prod

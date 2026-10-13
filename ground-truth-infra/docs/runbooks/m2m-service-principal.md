@@ -14,12 +14,12 @@
 
 ## Identifying the SPN
 
-The SPN display name is `semantic-ground-truth-m2m-<target>`, where `<target>` is the bundle target (`${bundle.target}`). Secret key names remain schema-qualified.
+The SPN display name is `semantic-ground-truth-m2m-<target>`, where `<target>` is the bundle target (`${bundle.target}`). Secret key names follow the same convention: `m2m_client_id_<target>` / `m2m_client_secret_<target>`.
 
 | Target | SPN Display Name | Client secret key |
 |--------|------------------|-------------------|
-| dev | `semantic-ground-truth-m2m-dev` | `m2m_client_secret_dev_matthew_giglia_semantic_ground_truth` |
-| prod | `semantic-ground-truth-m2m-prod` | `m2m_client_secret_semantic_ground_truth` |
+| dev | `semantic-ground-truth-m2m-dev` | `m2m_client_secret_dev` |
+| prod | `semantic-ground-truth-m2m-prod` | `m2m_client_secret_prod` |
 
 To confirm the SPN exists:
 
@@ -71,13 +71,13 @@ The CLI returns both the secret value and the credential ID.
 Dev target:
 
 ```bash
-databricks secrets put-secret semantic_ground_truth_credentials m2m_client_secret_dev_matthew_giglia_semantic_ground_truth
+databricks secrets put-secret semantic_ground_truth_credentials m2m_client_secret_dev
 ```
 
 Prod target:
 
 ```bash
-databricks secrets put-secret semantic_ground_truth_credentials m2m_client_secret_semantic_ground_truth
+databricks secrets put-secret semantic_ground_truth_credentials m2m_client_secret_prod
 ```
 
 The CLI will prompt for the value. Paste the secret and press Enter, then Ctrl+D.
