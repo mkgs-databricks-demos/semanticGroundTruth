@@ -199,16 +199,53 @@ if ask_question:
 # COMMAND ----------
 
 # --- Step 4b: genie_poll_response ---
-TERMINAL_STATUSES = {"COMPLETED", "FAILED", "CANCELLED", "ERROR", "COMPLETE"}
+# Genie One response shapes (observed 2026-10-13):
+#   - genie_ask returns JSON: {response_id, conversation_id, status: "in_progress"}
+#   - genie_poll_response while in-flight: JSON {status: "in_progress", ...}
+#   - genie_poll_response when done: rendered MARKDOWN text (not JSON) starting
+#     with <!-- agent: Genie has finished ... -->. The answer is the text itself.
+#   - genie_poll_response on error: isError=true, text has the error message.
+#
+# Completion detection:
+#   1. isError=true                       → FAILED
+#   2. Text is non-empty AND not parseable as JSON with status=in_progress → COMPLETED
+#   3. JSON with status in {completed, failed, cancelled, error} → terminal
+#   4. Otherwise (empty text or JSON in_progress)            → keep polling
+
 POLL_INTERVAL_BASE = 3  # seconds; doubles each retry up to 15s
+
+def _classify_poll(poll_result):
+    """Return (status_label, text, parsed_json) for a poll response."""
+    is_error = bool(poll_result.get("isError"))
+    text = extract_text_content(poll_result)
+    data = parse_text_as_json(poll_result)
+
+    if is_error:
+        return "FAILED", text, data
+
+    # If the text parses as JSON with a status field, use it
+    json_status = (data.get("status") or data.get("state") or "").upper()
+    if json_status in {"COMPLETED", "COMPLETE", "FAILED", "CANCELLED", "ERROR"}:
+        return json_status, text, data
+    if json_status == "IN_PROGRESS" or json_status == "EXECUTING_QUERY":
+        return "IN_PROGRESS", text, data
+
+    # Non-JSON, non-empty text = Genie finished and returned rendered markdown
+    if text and "_raw_text" in data:
+        return "COMPLETED", text, data
+
+    # Empty or unrecognised
+    return "IN_PROGRESS" if not text else "UNKNOWN", text, data
+
 
 if ask_question and poll_status != "skipped_no_ids":
     print(f"Polling genie_poll_response (timeout={poll_timeout_seconds}s) ...")
     start = time.time()
     polls = 0
     interval = POLL_INTERVAL_BASE
-    last_status = "UNKNOWN"
+    last_status = "IN_PROGRESS"
     last_text = ""
+    poll_data = {}
 
     while True:
         elapsed = time.time() - start
@@ -232,58 +269,45 @@ if ask_question and poll_status != "skipped_no_ids":
             interval = min(interval * 2, 15)
             continue
 
-        poll_is_error = bool(poll_result.get("isError"))
-        last_text = extract_text_content(poll_result)
-        poll_data = parse_text_as_json(poll_result)
+        last_status, last_text, poll_data = _classify_poll(poll_result)
+        print(f"  Poll #{polls}: status={last_status}  elapsed={elapsed:.0f}s  text_len={len(last_text)}")
 
-        # Status may be top-level or nested under a key
-        last_status = (
-            poll_data.get("status")
-            or poll_data.get("state")
-            or ("ERROR" if poll_is_error else "UNKNOWN")
-        )
-        if isinstance(last_status, str):
-            last_status = last_status.upper()
-
-        print(f"  Poll #{polls}: status={last_status}  elapsed={elapsed:.0f}s")
-
-        if last_status in TERMINAL_STATUSES or poll_is_error:
+        if last_status not in {"IN_PROGRESS", "EXECUTING_QUERY", "UNKNOWN"}:
             break
 
         time.sleep(interval)
         interval = min(interval * 2, 15)
 
     # Evaluate final state
-    if poll_is_error:
+    if last_status == "FAILED":
         poll_status = "error"
-        print(f"  genie_poll_response isError=true: {last_text[:500]}")
+        print(f"  genie_poll_response FAILED: {last_text[:500]}")
         raise AssertionError(
-            f"genie_poll_response returned isError=true after {polls} poll(s): {last_text[:300]}"
+            f"genie_poll_response returned error after {polls} poll(s): {last_text[:300]}"
         )
     elif last_status in {"COMPLETED", "COMPLETE"}:
         poll_status = "completed"
-        # Extract the answer — shape varies; try common keys
-        answer = (
-            poll_data.get("answer")
-            or poll_data.get("result")
-            or poll_data.get("content")
-            or last_text
-        )
-        poll_answer = str(answer)[:2000]
-        print(f"\n  Answer ({type(answer).__name__}):")
-        print(f"  {poll_answer[:1000]}")
+        poll_answer = last_text[:2000]
+        # Strip the HTML comment prefix for display
+        display = poll_answer.lstrip()
+        if display.startswith("<!--"):
+            end = display.find("-->")
+            if end > 0:
+                display = display[end + 3:].strip()
+        print(f"\n  Answer (first 800 chars):")
+        print(f"  {display[:800]}")
         print(f"\nStep 4b PASSED: genie_poll_response completed in {polls} poll(s), {elapsed:.0f}s")
     elif poll_status == "timeout":
         # Warn but don't fail — Genie may be slow; reachability was already proved
         print(f"  WARNING: poll timed out; genie_ask was accepted but answer not received.")
-        print(f"  Last response: {last_text[:500]}")
+        print(f"  Last text ({len(last_text)} chars): {last_text[:300]}")
     else:
         poll_status = last_status.lower()
         print(f"  Terminal status: {last_status}")
         print(f"  Response: {last_text[:500]}")
         raise AssertionError(f"genie_poll_response ended with status={last_status}")
 
-    print(f"  Raw response keys (last poll): {list(poll_data.keys())}")
+    print(f"  Response shape: keys={list(poll_data.keys())}, is_json={'_raw_text' not in poll_data}")
 
 # COMMAND ----------
 
