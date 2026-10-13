@@ -540,10 +540,11 @@ EOF
 # (start_time >= DEPLOY_START_MS) via `databricks jobs get-run-output`.
 # Only key names are reported — secret values are never read.
 # --------------------------------------------------------------------------- #
-report_secret_scope_keys() {
-  log "Secret scope key report (setup_secrets task)"
-
-  # Job ID is empty in the pre-deploy summary on the very first deploy
+# --------------------------------------------------------------------------- #
+# resolve_post_deploy_job_id — fill POST_DEPLOY_JOB_ID if the pre-deploy
+# summary didn't have it (very first deploy)
+# --------------------------------------------------------------------------- #
+resolve_post_deploy_job_id() {
   if [[ -z "${POST_DEPLOY_JOB_ID}" ]]; then
     POST_DEPLOY_JOB_ID=$(cd "${SCRIPT_DIR}/${INFRA_BUNDLE}" && databricks bundle summary --target "${TARGET}" --output json 2>/dev/null | python3 -c '
 import json, sys
@@ -555,6 +556,64 @@ print(d.get("resources", {}).get("jobs", {}).get("post_deploy_setup", {}).get("i
 ' 2>/dev/null) || POST_DEPLOY_JOB_ID=""
     POST_DEPLOY_JOB_ID=$(safe "${POST_DEPLOY_JOB_ID}")
   fi
+}
+
+# --------------------------------------------------------------------------- #
+# post_deploy_run_is_fresh — "yes" if the latest post_deploy_setup run started
+# during this deploy (start_time >= DEPLOY_START_MS - 60 s), else "no"
+# --------------------------------------------------------------------------- #
+post_deploy_run_is_fresh() {
+  PD_JOB_ID="${POST_DEPLOY_JOB_ID}" PD_START_MS="${DEPLOY_START_MS:-0}" python3 -c '
+import json, os, subprocess
+r = subprocess.run(["databricks", "jobs", "list-runs", "--job-id", os.environ["PD_JOB_ID"],
+                    "--limit", "1", "--output", "json"], capture_output=True, text=True)
+try:
+    data = json.loads(r.stdout) if r.returncode == 0 else []
+except Exception:
+    data = []
+items = data if isinstance(data, list) else data.get("runs", [])
+start_ms = int(os.environ.get("PD_START_MS") or 0) - 60000
+fresh = bool(items) and int(items[0].get("start_time") or 0) >= start_ms
+print("yes" if fresh else "no")
+' 2>/dev/null || echo "no"
+}
+
+# --------------------------------------------------------------------------- #
+# ensure_post_deploy_run — with --run-setup, guarantee post_deploy_setup ran
+#
+# The run_post_deploy job_run resource only fires when its configuration
+# changes (lifecycle trigger for "always" is still a TODO). When --run-setup is
+# passed and the deploy didn't start a run, run the job explicitly. Group B
+# tasks stay skipped (app_url is empty). Non-fatal.
+# --------------------------------------------------------------------------- #
+ensure_post_deploy_run() {
+  [[ "${RUN_SETUP}" == true ]] || return 0
+
+  resolve_post_deploy_job_id
+  if [[ -z "${POST_DEPLOY_JOB_ID}" ]]; then
+    warn "post_deploy_setup job ID not resolved — cannot force a setup run."
+    return 0
+  fi
+
+  if [[ "$(post_deploy_run_is_fresh)" == "yes" ]]; then
+    ok "post_deploy_setup ran as part of this deploy."
+    return 0
+  fi
+
+  log "Running post_deploy_setup (job_run did not fire — no config change)"
+  if (cd_bundle "${SCRIPT_DIR}/${INFRA_BUNDLE}" && \
+      databricks bundle run post_deploy_setup --target "${TARGET}" --params run_setup=true); then
+    ok "post_deploy_setup run completed."
+  else
+    warn "post_deploy_setup run finished with failures — see the run page above."
+  fi
+  return 0
+}
+
+report_secret_scope_keys() {
+  log "Secret scope key report (setup_secrets task)"
+
+  resolve_post_deploy_job_id
   if [[ -z "${POST_DEPLOY_JOB_ID}" ]]; then
     warn "post_deploy_setup job ID not resolved — skipping key report."
     return 0
@@ -586,7 +645,8 @@ if not items:
     sys.exit(0)
 run = items[0]
 if int(run.get("start_time") or 0) < start_ms:
-    print("WARN|No post_deploy_setup run from this deploy (run_setup may be false).")
+    print("WARN|No post_deploy_setup run from this deploy (the job_run only fires on config changes).")
+    print("WARN|  Re-run with --run-setup to force the setup run and key report.")
     sys.exit(0)
 
 detail = cli("jobs", "get-run", str(run["run_id"])) or {}
@@ -670,6 +730,11 @@ if [[ "${DEPLOY_INFRA}" == true ]]; then
   # Step 1c: Deploy the infra bundle
   DEPLOY_START_MS=$(python3 -c 'import time; print(int(time.time() * 1000))')
   deploy_bundle "${INFRA_BUNDLE}" "${INFRA_EXTRA_ARGS[@]+${INFRA_EXTRA_ARGS[@]}}"
+
+  # Step 1c': With --run-setup, make sure post_deploy_setup actually ran
+  if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
+    ensure_post_deploy_run
+  fi
 
   # Step 1d: Check the M2M SPN credential contract (non-fatal).
   # Prints the ADMIN ACTION block if the client_secret hasn't been provisioned.
