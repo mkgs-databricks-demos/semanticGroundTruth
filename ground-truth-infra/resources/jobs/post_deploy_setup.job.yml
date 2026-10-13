@@ -90,15 +90,18 @@ resources:
           environment_key: serverless
 
         - task_key: setup_secrets
-          description: "Populate workspace_url and other infra-derived keys in the secret scope"
+          description: "Write workspace_url to the secret scope and report missing keys (JSON exit value, read by deploy.sh)"
+          # Runs after ensure_m2m_service_principal so the M2M client_id is already written
           depends_on:
-            - task_key: check_run_setup
-              outcome: "true"
+            - task_key: ensure_m2m_service_principal
           notebook_task:
             notebook_path: ../../src/notebooks/setup_secrets.py
             base_parameters:
               secret_scope: "${resources.secret_scopes.ground_truth_secret_scope.name}"
               workspace_url: "${workspace.host}"
+              m2m_client_id_dbs_key: "{{job.parameters.m2m_client_id_dbs_key}}"
+              m2m_client_secret_dbs_key: "{{job.parameters.m2m_client_secret_dbs_key}}"
+              admin_keys: "slack_webhook_url,teams_webhook_url"
           environment_key: serverless
 
         - task_key: setup_genie_automation

@@ -16,6 +16,8 @@
 #     client_id is auto-provisioned by the ensure_m2m_service_principal task;
 #     client_secret is admin-provisioned. Prints an ADMIN ACTION block when the
 #     secret is missing (see ground-truth-infra/docs/runbooks/m2m-service-principal.md).
+#   - report_secret_scope_keys: reads the setup_secrets task's JSON exit value from
+#     this deploy's post_deploy_setup run and lists written / missing scope keys.
 #
 # NOTE on MCP connection & service (hi-genie-orchestrator pattern):
 #   HTTP connections ALWAYS require valid credentials at creation time:
@@ -95,6 +97,10 @@ M2M_CLIENT_ID_KEY=""
 M2M_CLIENT_SECRET_KEY=""
 M2M_SPN_PREFIX=""
 M2M_OAUTH_SCOPES=""
+POST_DEPLOY_JOB_ID=""
+
+# Set just before the infra deploy; used to pick this deploy's job run
+DEPLOY_START_MS=""
 
 # --------------------------------------------------------------------------- #
 # Defaults
@@ -330,6 +336,9 @@ m2m_secret_key = get_var('m2m_client_secret_dbs_key')
 m2m_prefix     = get_var('m2m_spn_prefix', 'semantic-ground-truth-m2m')
 m2m_scopes     = get_var('m2m_oauth_scopes', 'apps ai-gateway')
 
+# --- post_deploy_setup job ID (empty before the first deploy) ---
+post_deploy_job_id = resources.get('jobs', {}).get('post_deploy_setup', {}).get('id', '')
+
 # --- workspace host ---
 workspace_host = ''
 workspace_block = data.get('workspace', {})
@@ -351,6 +360,7 @@ print(f'LAKEBASE_PROJECT_ID=\"{safe(project_id)}\"')
 print(f'M2M_CLIENT_ID_KEY=\"{safe(m2m_id_key)}\"')
 print(f'M2M_CLIENT_SECRET_KEY=\"{safe(m2m_secret_key)}\"')
 print(f'M2M_SPN_PREFIX=\"{safe(m2m_prefix)}\"')
+print(f'POST_DEPLOY_JOB_ID=\"{safe(post_deploy_job_id)}\"')
 # Scopes are space-separated and may contain ':' (e.g. catalog.tables:read)
 scopes_clean = re.sub(r'[^a-zA-Z0-9_.: -]', '', str(m2m_scopes)).strip()
 print(f'M2M_OAUTH_SCOPES=\"{scopes_clean}\"')
@@ -521,6 +531,114 @@ EOF
   return 0
 }
 
+# --------------------------------------------------------------------------- #
+# report_secret_scope_keys — surface the setup_secrets key report (non-fatal)
+#
+# setup_secrets (post_deploy_setup job) writes workspace_url and exits with a
+# JSON report: {scope, written, present, missing[{key, provisioned_by, action}],
+# unexpected}. This reads that report from the job run started by THIS deploy
+# (start_time >= DEPLOY_START_MS) via `databricks jobs get-run-output`.
+# Only key names are reported — secret values are never read.
+# --------------------------------------------------------------------------- #
+report_secret_scope_keys() {
+  log "Secret scope key report (setup_secrets task)"
+
+  # Job ID is empty in the pre-deploy summary on the very first deploy
+  if [[ -z "${POST_DEPLOY_JOB_ID}" ]]; then
+    POST_DEPLOY_JOB_ID=$(cd "${SCRIPT_DIR}/${INFRA_BUNDLE}" && databricks bundle summary --target "${TARGET}" --output json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    d = {}
+print(d.get("resources", {}).get("jobs", {}).get("post_deploy_setup", {}).get("id", ""))
+' 2>/dev/null) || POST_DEPLOY_JOB_ID=""
+    POST_DEPLOY_JOB_ID=$(safe "${POST_DEPLOY_JOB_ID}")
+  fi
+  if [[ -z "${POST_DEPLOY_JOB_ID}" ]]; then
+    warn "post_deploy_setup job ID not resolved — skipping key report."
+    return 0
+  fi
+
+  # Values passed via env vars (not interpolated into Python source).
+  # Output lines: LEVEL|message  (LEVEL = OK | WARN | INFO)
+  local report_lines
+  report_lines=$(PD_JOB_ID="${POST_DEPLOY_JOB_ID}" PD_START_MS="${DEPLOY_START_MS:-0}" python3 -c '
+import json, os, subprocess, sys
+
+def cli(*args):
+    r = subprocess.run(["databricks", *args, "--output", "json"], capture_output=True, text=True)
+    if r.returncode != 0:
+        return None
+    try:
+        return json.loads(r.stdout)
+    except Exception:
+        return None
+
+job_id = os.environ["PD_JOB_ID"]
+# 60 s margin for clock skew between this shell and the control plane
+start_ms = int(os.environ.get("PD_START_MS") or 0) - 60000
+
+runs = cli("jobs", "list-runs", "--job-id", job_id, "--limit", "1")
+items = runs if isinstance(runs, list) else (runs or {}).get("runs", [])
+if not items:
+    print("WARN|No post_deploy_setup runs found.")
+    sys.exit(0)
+run = items[0]
+if int(run.get("start_time") or 0) < start_ms:
+    print("WARN|No post_deploy_setup run from this deploy (run_setup may be false).")
+    sys.exit(0)
+
+detail = cli("jobs", "get-run", str(run["run_id"])) or {}
+task = next((t for t in detail.get("tasks", []) if t.get("task_key") == "setup_secrets"), None)
+if task is None:
+    print("WARN|setup_secrets task not found in run " + str(run["run_id"]) + ".")
+    sys.exit(0)
+state = task.get("state") or {}
+result_state = state.get("result_state") or state.get("life_cycle_state") or "UNKNOWN"
+if result_state != "SUCCESS":
+    print("WARN|setup_secrets did not succeed (state: " + result_state + "); no key report.")
+    print("WARN|  Common cause: ensure_m2m_service_principal failed, so setup_secrets was skipped.")
+    sys.exit(0)
+
+out = cli("jobs", "get-run-output", str(task["run_id"])) or {}
+result = (out.get("notebook_output") or {}).get("result")
+try:
+    report = json.loads(result)
+except Exception:
+    print("WARN|setup_secrets returned no parsable report.")
+    sys.exit(0)
+
+scope = report.get("scope", "?")
+written = report.get("written", [])
+present = report.get("present", [])
+missing = report.get("missing", [])
+print("OK|Scope " + scope + ": wrote " + (", ".join(written) or "nothing"))
+print("OK|Present: " + (", ".join(present) or "none"))
+if missing:
+    print("WARN|" + str(len(missing)) + " expected key(s) missing:")
+    for m in missing:
+        print("WARN|  " + m.get("key", "?") + " (" + m.get("provisioned_by", "?") + "): " + m.get("action", ""))
+else:
+    print("OK|All expected keys present.")
+for k in report.get("unexpected", []):
+    print("INFO|Unmanaged key in scope: " + k)
+' 2>/dev/null) || {
+    warn "Could not read the setup_secrets report — skipping."
+    return 0
+  }
+
+  local level msg
+  while IFS='|' read -r level msg; do
+    case "${level}" in
+      OK)   ok "${msg}" ;;
+      WARN) warn "${msg}" ;;
+      *)    if [[ -n "${msg}" ]]; then echo "     ${msg}"; fi ;;
+    esac
+  done <<< "${report_lines}"
+  return 0
+}
+
 # =========================================================================== #
 # Main
 # =========================================================================== #
@@ -550,12 +668,16 @@ if [[ "${DEPLOY_INFRA}" == true ]]; then
   fi
 
   # Step 1c: Deploy the infra bundle
+  DEPLOY_START_MS=$(python3 -c 'import time; print(int(time.time() * 1000))')
   deploy_bundle "${INFRA_BUNDLE}" "${INFRA_EXTRA_ARGS[@]+${INFRA_EXTRA_ARGS[@]}}"
 
   # Step 1d: Check the M2M SPN credential contract (non-fatal).
   # Prints the ADMIN ACTION block if the client_secret hasn't been provisioned.
   if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
     check_m2m_credentials
+
+    # Step 1e: Surface the setup_secrets key report from this deploy's job run
+    report_secret_scope_keys
   fi
 fi
 

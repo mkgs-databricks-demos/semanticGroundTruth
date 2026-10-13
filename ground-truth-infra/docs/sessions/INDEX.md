@@ -2,6 +2,7 @@
 
 | Date | Summary | Branch |
 |------|---------|--------|
+| 2026-10-13 | [M2M SPN secret keys, ai-gateway scope, Genie One MCP smoke test](2026-10-13_m2m-spn-scopes-and-genie-one-smoke-test.md) | `mg-genie-m2m-spn` |
 | 2026-10-09 | [Group A implementation + feedback pipeline genie_task rework](2026-10-09_group-a-implementation-and-pipeline-rework.md) | `mg-genie-bundle-scaffolds` |
 | 2026-10-09 | [Genie Code task research + DAB resource discovery + plan updates](2026-10-09_genie-task-research-and-plan-updates.md) | `mg-genie-bundle-scaffolds` |
 | 2026-10-08 | [docs/ restructure — final](2026-10-08_docs-restructure-final.md) | `mg-genie-bundle-scaffolds` |
