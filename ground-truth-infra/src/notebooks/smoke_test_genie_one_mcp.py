@@ -230,8 +230,13 @@ def _classify_poll(poll_result):
     if json_status == "IN_PROGRESS" or json_status == "EXECUTING_QUERY":
         return "IN_PROGRESS", text, data
 
-    # Non-JSON, non-empty text = Genie finished and returned rendered markdown
+    # Non-JSON, non-empty text = Genie finished and returned rendered markdown.
+    # Exception: Genie sometimes returns a "still running" message as plain text
+    # on the first poll before it has actual results. Treat that as in-progress.
     if text and "_raw_text" in data:
+        lower = text.lower()
+        if "still running" in lower or "no progress steps yet" in lower:
+            return "IN_PROGRESS", text, data
         return "COMPLETED", text, data
 
     # Empty or unrecognised
