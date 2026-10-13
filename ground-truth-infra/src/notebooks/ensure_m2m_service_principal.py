@@ -30,6 +30,7 @@ dbutils.widgets.text("m2m_spn_prefix", "semantic-ground-truth-m2m", "SPN display
 dbutils.widgets.text("m2m_client_id_dbs_key", "", "Secret key for M2M client_id")
 dbutils.widgets.text("m2m_client_secret_dbs_key", "", "Secret key for M2M client_secret")
 dbutils.widgets.text("workspace_url", "", "Workspace URL")
+dbutils.widgets.text("m2m_oauth_scopes", "apps", "OAuth API scopes (space-separated)")
 
 bundle_target = dbutils.widgets.get("bundle_target")
 secret_scope_name = dbutils.widgets.get("secret_scope_name")
@@ -37,6 +38,7 @@ m2m_spn_prefix = dbutils.widgets.get("m2m_spn_prefix")
 m2m_client_id_dbs_key = dbutils.widgets.get("m2m_client_id_dbs_key")
 m2m_client_secret_dbs_key = dbutils.widgets.get("m2m_client_secret_dbs_key")
 workspace_url = dbutils.widgets.get("workspace_url")
+m2m_oauth_scopes = dbutils.widgets.get("m2m_oauth_scopes")
 
 print(f"bundle_target={bundle_target}")
 print(f"secret_scope_name={secret_scope_name}")
@@ -44,6 +46,7 @@ print(f"m2m_spn_prefix={m2m_spn_prefix}")
 print(f"m2m_client_id_dbs_key={m2m_client_id_dbs_key}")
 print(f"m2m_client_secret_dbs_key={m2m_client_secret_dbs_key}")
 print(f"workspace_url={workspace_url}")
+print(f"m2m_oauth_scopes={m2m_oauth_scopes}")
 
 # COMMAND ----------
 
@@ -138,6 +141,7 @@ if m2m_secret_present:
             workspace_url=workspace_url,
             client_id=spn_application_id,
             client_secret=client_secret_value,
+            oauth_scopes=m2m_oauth_scopes,
         )
         m2m_token_verified = ok
         m2m_verification_status = f"http_{status_code}"
@@ -167,7 +171,7 @@ else:
 # ---------------------------------------------------------------------------
 
 print("Secret scope READ: NOT granted to M2M SPN (by design)")
-print("  → M2M SPN only needs: CAN_USE on the Bundle 2 app")
+print("  → M2M SPN needs: CAN_USE on the Bundle 2 app + OBO grants (see plan)")
 print("  → Connection SQL DDL resolves secret() refs with the job runner's identity")
 
 # COMMAND ----------
@@ -177,12 +181,14 @@ dbutils.jobs.taskValues.set(key="m2m_spn_application_id", value=spn_application_
 dbutils.jobs.taskValues.set(key="m2m_spn_object_id", value=str(spn.id))
 dbutils.jobs.taskValues.set(key="m2m_secret_present", value=str(m2m_secret_present).lower())
 dbutils.jobs.taskValues.set(key="m2m_token_verified", value=str(m2m_token_verified).lower())
+dbutils.jobs.taskValues.set(key="m2m_oauth_scopes", value=m2m_oauth_scopes)
 
 print(f"Task values set:")
 print(f"  m2m_spn_application_id = {spn_application_id}")
 print(f"  m2m_spn_object_id      = {spn.id}")
 print(f"  m2m_secret_present     = {str(m2m_secret_present).lower()}")
 print(f"  m2m_token_verified     = {str(m2m_token_verified).lower()}")
+print(f"  m2m_oauth_scopes       = {m2m_oauth_scopes}")
 
 # COMMAND ----------
 
@@ -198,6 +204,7 @@ summary = {
         "client_id_key": m2m_client_id_dbs_key,
         "client_secret_key": m2m_client_secret_dbs_key,
         "client_secret_present": m2m_secret_present,
+        "oauth_scopes": m2m_oauth_scopes,
         "m2m_verification": m2m_verification_status,
         "verification_details": verification_details,
     },

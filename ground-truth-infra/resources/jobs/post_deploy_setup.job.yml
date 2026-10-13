@@ -27,6 +27,8 @@ resources:
           default: "${var.m2m_client_id_dbs_key}"
         - name: m2m_client_secret_dbs_key
           default: "${var.m2m_client_secret_dbs_key}"
+        - name: m2m_oauth_scopes
+          default: "${var.m2m_oauth_scopes}"
 
       environments:
         - environment_key: serverless
@@ -58,6 +60,7 @@ resources:
               m2m_client_id_dbs_key: "{{job.parameters.m2m_client_id_dbs_key}}"
               m2m_client_secret_dbs_key: "{{job.parameters.m2m_client_secret_dbs_key}}"
               workspace_url: "${workspace.host}"
+              m2m_oauth_scopes: "{{job.parameters.m2m_oauth_scopes}}"
           environment_key: serverless
 
         - task_key: setup_secrets
@@ -137,6 +140,7 @@ resources:
               m2m_client_id_dbs_key: "{{job.parameters.m2m_client_id_dbs_key}}"
               m2m_client_secret_dbs_key: "{{job.parameters.m2m_client_secret_dbs_key}}"
               workspace_url: "${workspace.host}"
+              m2m_oauth_scopes: "{{job.parameters.m2m_oauth_scopes}}"
           environment_key: serverless
 
         - task_key: setup_cdf_config

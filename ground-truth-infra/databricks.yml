@@ -38,6 +38,13 @@ variables:
     description: "Secret scope key holding the M2M SPN application_id (auto-provisioned)"
   m2m_client_secret_dbs_key:
     description: "Secret scope key holding the M2M SPN OAuth secret (admin-provisioned)"
+  # OAuth scopes requested by the M2M SPN token and required on the scoped secret.
+  # Start with 'apps' (call Bundle 2 app only). Expand when Bundle 2 declares
+  # user_api_scopes for OBO — the secret must be regenerated with the wider set.
+  # Space-separated list matching Databricks API scope names.
+  m2m_oauth_scopes:
+    description: "OAuth API scopes for the M2M SPN token request and scoped secret (space-separated)"
+    default: apps
 
 targets:
   # The 'dev' target, for development purposes. This target is the default.

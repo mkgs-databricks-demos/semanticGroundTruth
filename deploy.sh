@@ -94,6 +94,7 @@ MCP_CONNECTION_NAME=""
 M2M_CLIENT_ID_KEY=""
 M2M_CLIENT_SECRET_KEY=""
 M2M_SPN_PREFIX=""
+M2M_OAUTH_SCOPES=""
 
 # --------------------------------------------------------------------------- #
 # Defaults
@@ -327,6 +328,7 @@ for proj_name, proj in pg_projects.items():
 m2m_id_key     = get_var('m2m_client_id_dbs_key')
 m2m_secret_key = get_var('m2m_client_secret_dbs_key')
 m2m_prefix     = get_var('m2m_spn_prefix', 'semantic-ground-truth-m2m')
+m2m_scopes     = get_var('m2m_oauth_scopes', 'apps')
 
 # --- workspace host ---
 workspace_host = ''
@@ -349,6 +351,7 @@ print(f'LAKEBASE_PROJECT_ID=\"{safe(project_id)}\"')
 print(f'M2M_CLIENT_ID_KEY=\"{safe(m2m_id_key)}\"')
 print(f'M2M_CLIENT_SECRET_KEY=\"{safe(m2m_secret_key)}\"')
 print(f'M2M_SPN_PREFIX=\"{safe(m2m_prefix)}\"')
+print(f'M2M_OAUTH_SCOPES=\"{safe(m2m_scopes)}\"')
 " 2>/dev/null)" || fail "Could not parse bundle summary JSON."
 
   if [[ -n "${RESOLVE_ERROR:-}" ]]; then
@@ -364,6 +367,7 @@ print(f'M2M_SPN_PREFIX=\"{safe(m2m_prefix)}\"')
   ok "  mcp_connection=${MCP_CONNECTION_NAME}"
   ok "  m2m_spn_prefix=${M2M_SPN_PREFIX}"
   ok "  m2m_keys=${M2M_CLIENT_ID_KEY}, ${M2M_CLIENT_SECRET_KEY}"
+  ok "  m2m_oauth_scopes=${M2M_OAUTH_SCOPES}"
 }
 
 # --------------------------------------------------------------------------- #
@@ -379,7 +383,7 @@ print(f'M2M_SPN_PREFIX=\"{safe(m2m_prefix)}\"')
 #     base_path '/mcp',
 #     client_id secret('<scope>', '<key>'),
 #     client_secret secret('<scope>', '<key>'),
-#     oauth_scope 'all-apis',
+#     oauth_scope '<m2m_oauth_scopes>',  # from var.m2m_oauth_scopes; scoped secret must include these
 #     token_endpoint 'https://<workspace>/oidc/v1/token'
 #   )
 #
@@ -493,6 +497,8 @@ if items:
   │ 1. Generate the OAuth secret (workspace admin):
   │      Settings > Identity and access > Service principals > Manage
   │      > ${spn_display_name} > Secrets > Generate secret (<= 730 days)
+  │      Scope: select "Other APIs" and check: ${M2M_OAUTH_SCOPES}
+  │      (must match var.m2m_oauth_scopes; scopes can't be changed later)
   │    CLI alternative:
   │      databricks service-principal-secrets-proxy create ${spn_object_id}
   │
@@ -501,6 +507,10 @@ if items:
   │
   │ 3. Verify the token exchange:
   │      ./deploy.sh --target ${TARGET} --infra --run-setup
+  │
+  │ NOTE: Bundle 2 uses OBO (user authorization). When the app declares
+  │ user_api_scopes, regenerate the secret with the wider scope set and
+  │ update var.m2m_oauth_scopes to match. See the runbook for details.
   │
   │ Runbook: ${INFRA_BUNDLE}/docs/runbooks/m2m-service-principal.md
   └──────────────────────────────────────────────────────────────────
@@ -557,6 +567,10 @@ if [[ "${DEPLOY_APP}" == true ]]; then
   # 2b. Grant CAN_USE on the app to the M2M SPN (resolve application_id by
   #     display name "${M2M_SPN_PREFIX}-${TARGET}" and pass as --var, or via
   #     a post-process job — see m2m_service_principal_plan.md §7.1)
+  # 2c. OBO grants: M2M SPN needs USE CATALOG, USE SCHEMA, SELECT on tables,
+  #     and CAN_USE on the SQL warehouse. When the app declares user_api_scopes,
+  #     regenerate the secret with scope >= {apps + user_api_scopes} and update
+  #     var.m2m_oauth_scopes to match.
   # 3. Run post_deploy_setup job (creates connection via SQL DDL + registers MCP)
   # 4. Re-deploy infra to register MCP service DAB resource
   warn "Bundle 2 (${APP_BUNDLE}) not yet implemented — skipping."

@@ -84,6 +84,9 @@ variables:
     description: "Secret scope key holding the M2M SPN application_id (auto-provisioned)"
   m2m_client_secret_dbs_key:
     description: "Secret scope key holding the M2M SPN OAuth secret (admin-provisioned)"
+  m2m_oauth_scopes:
+    description: "OAuth API scopes for the M2M SPN token request and scoped secret (space-separated)"
+    default: apps
 
 targets:
   dev:
@@ -107,7 +110,7 @@ These hold key **names**, not secret values, so they do not violate the no-plain
 | New file | Source | Notes |
 |----------|--------|-------|
 | `src/lib/__init__.py` | lakeLoom `src/lib/__init__.py` | empty |
-| `src/lib/service_principal.py` | lakeLoom `src/lib/service_principal.py` | `get_or_create_service_principal()` (with race-condition re-check), `verify_client_credentials()` (POST `/oidc/v1/token`, `grant_type=client_credentials`, `scope=all-apis`) |
+| `src/lib/service_principal.py` | lakeLoom `src/lib/service_principal.py` | `get_or_create_service_principal()` (with race-condition re-check), `verify_client_credentials()` (POST `/oidc/v1/token`, `grant_type=client_credentials`, `scope` param — defaults to `all-apis` for lakeLoom compat, this bundle passes `var.m2m_oauth_scopes`) |
 | `src/lib/secret_scope.py` | lakeLoom `src/lib/secret_scope.py` | `put_secret()`, `list_secret_keys()`, `try_get_secret_value()`; `ensure_scope_read_acl()` kept but not used for this SPN |
 
 Import pattern in notebooks: same `sys.path` insert of `../lib` relative to the notebook path as lakeLoom's `ensure-service-principal` cell 4. `dbutils.library.restartPython()` (not `%restart_python`) so local `src/` imports keep working on serverless.
@@ -193,7 +196,7 @@ CREATE CONNECTION IF NOT EXISTS `semantic-ground-truth-mcp` TYPE HTTP OPTIONS (
   base_path '/mcp',
   client_id secret('<scope>', '<m2m_client_id_key>'),
   client_secret secret('<scope>', '<m2m_client_secret_key>'),
-  oauth_scope 'all-apis',
+  oauth_scope '<m2m_oauth_scopes>',  -- from var.m2m_oauth_scopes; scoped secret must include these
   token_endpoint '<workspace_url>/oidc/v1/token'
 )
 ```
@@ -295,7 +298,18 @@ The `deploy.sh` Phase 2 TODO block already lists steps 2–3; this plan supplies
 | Workspace admin (human) | Generate/rotate OAuth secret | — |
 | `data-engineers` | `EXECUTE` on `ground_truth_mcp` (already declared) | — |
 
-**Open question (UC grants):** if the app executes data access **on behalf of the caller** (OBO) rather than as the app SPN, API tests through the M2M SPN will need `USE CATALOG`/`USE SCHEMA`/`SELECT` and `CAN_USE` on the warehouse. Defer until the Bundle 2 auth model (hybrid OBO/SP) is finalized; add as an optional `grant_m2m_uc_access` task if needed.
+**DECIDED (2026-10-11):** Bundle 2 will use OBO (user authorization). The M2M SPN is the effective "user" for all MCP traffic through the Unity Gateway connection. Therefore the M2M SPN needs:
+
+- `CAN_USE` on the Bundle 2 app (Section 7)
+- `CAN_USE` on the SQL warehouse
+- `USE CATALOG` / `USE SCHEMA` on the target catalog and schema
+- `SELECT` on tables the MCP tools read (and write grants if any tool writes, e.g. feedback staging)
+
+These grants will be added as a `grant_m2m_uc_access` task or declarative `permissions:` block when Bundle 2 is scaffolded.
+
+**Scoped OAuth secrets:** The secret's scopes must be `apps` plus the app's `user_api_scopes`. `var.m2m_oauth_scopes` (default: `apps`) controls both the token request and the admin instructions. When Bundle 2 declares `user_api_scopes`, update the variable and regenerate the secret with the wider scope set. Scopes can't be changed on an existing secret — generate a new one, overwrite the scope key, delete the old.
+
+**Per-user identity caveat:** MCP traffic through the gateway runs as the M2M SPN, not the end user. Interactive app users still get true OBO. If gateway calls ever need per-user identity, the connection would need per-user OAuth (U2M) instead of M2M.
 
 ---
 
@@ -303,7 +317,7 @@ The `deploy.sh` Phase 2 TODO block already lists steps 2–3; this plan supplies
 
 1. **Manual secret vs. automated secret generation.** The SDK exposes workspace-level SPN secret creation (`w.service_principal_secrets_proxy.create(...)`, CLI `service-principal-secrets-proxy`). The job could generate the secret and write it straight into the scope, so no human ever sees it. This plan defaults to the **manual admin step** as requested; automated generation is a candidate follow-up (flag: `m2m_auto_generate_secret=false`). Trade-off: automation makes rotation trivial but means the job runner must hold admin on every run, and each run with no secret present would mint a new one (must guard on key presence).
 2. **Shared identity in Genie One.** With an M2M connection, every Genie One user hits the app's MCP server **as the M2M SPN**, not as themselves. User attribution inside the app (who approved a card) would then require a passthrough header or a per-user (U2M / OBO) connection. Confirm this is acceptable for the MCP bootstrap, or plan a U2M connection for production.
-3. **Scoped OAuth secret.** Databricks supports scoped secrets. The connection DDL uses `oauth_scope 'all-apis'`; test whether calling a Databricks App works with a narrower scope before locking this in.
+3. **Scoped OAuth secret.** ~~Databricks supports scoped secrets. The connection DDL uses `oauth_scope 'all-apis'`; test whether calling a Databricks App works with a narrower scope before locking this in.~~ **RESOLVED (2026-10-11):** Added `var.m2m_oauth_scopes` (default: `apps`). The token request, connection DDL, and admin instructions all use this variable. The scoped secret must include at least these scopes. When Bundle 2 adds OBO `user_api_scopes`, expand the variable and regenerate the secret. See §8 and the runbook.
 4. **SPN lifecycle is outside bundle state.** There is no DAB resource type for service principals; `bundle destroy` won't remove it. Add `src/admin_actions/delete_m2m_service_principal.py` (manual) for teardown.
 5. **Admin preflight.** Dev runs as Matt (assumed workspace admin). Prod `run_as` is also Matt today; if prod moves to an SPN `run_as`, that SPN needs workspace admin or this task must move to an admin-only job.
 

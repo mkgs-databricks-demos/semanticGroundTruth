@@ -50,7 +50,10 @@ def get_or_create_service_principal(
 
 
 def verify_client_credentials(
-    workspace_url: str, client_id: str, client_secret: str
+    workspace_url: str,
+    client_id: str,
+    client_secret: str,
+    oauth_scopes: str = "all-apis",
 ) -> Tuple[bool, int, str]:
     """Verify M2M token flow via OAuth client_credentials grant.
 
@@ -62,6 +65,10 @@ def verify_client_credentials(
         workspace_url: Full workspace URL (e.g. https://host.cloud.databricks.com).
         client_id: The SPN application_id (OAuth client identifier).
         client_secret: The OAuth client secret.
+        oauth_scopes: Space-separated OAuth API scopes to request.
+            Defaults to ``all-apis`` for backward compatibility.
+            When using a scoped secret, pass the same scopes the secret
+            was generated with (e.g. ``apps``).
 
     Returns:
         Tuple of (success: bool, http_status_code: int, response_preview: str).
@@ -69,7 +76,7 @@ def verify_client_credentials(
     response = requests.post(
         f"{workspace_url}/oidc/v1/token",
         auth=(client_id, client_secret),
-        data={"grant_type": "client_credentials", "scope": "all-apis"},
+        data={"grant_type": "client_credentials", "scope": oauth_scopes},
         timeout=30,
     )
     preview = response.text[:500].replace("\n", " ")

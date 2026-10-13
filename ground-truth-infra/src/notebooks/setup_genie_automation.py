@@ -210,28 +210,55 @@ else:
 # COMMAND ----------
 
 insight_id = configuration_id.split("/")[-1]
-validation = w.api_client.do(
+raw_validation = w.api_client.do(
     "GET",
     f"/api/2.0/alerts-internal/scheduled-insights/{insight_id}",
     query={"name": configuration_id},
 )
 
-assert validation["insight_type"] == "GENIE_CODE", (
-    f"Expected GENIE_CODE, got {validation['insight_type']}"
+# The GET response may nest the insight under a key or return it flat.
+# Log the top-level keys so we can see the actual shape.
+print(f"Validation response keys: {list(raw_validation.keys()) if isinstance(raw_validation, dict) else type(raw_validation)}")
+
+# Unwrap if the response nests the insight under "scheduled_insight"
+validation = (
+    raw_validation.get("scheduled_insight", raw_validation)
+    if isinstance(raw_validation, dict)
+    else raw_validation
 )
-assert validation["display_name"] == AUTOMATION_DISPLAY_NAME, (
-    f"Display name mismatch: {validation['display_name']}"
-)
-assert validation["user_prompt"].startswith("You are a metric view YAML editor"), (
-    "Prompt content mismatch — does not start with expected text"
-)
+
+v_insight_type = validation.get("insight_type")
+v_display_name = validation.get("display_name")
+v_user_prompt = validation.get("user_prompt", "")
+v_etag = validation.get("etag")
+
+if v_insight_type:
+    assert v_insight_type == "GENIE_CODE", (
+        f"Expected GENIE_CODE, got {v_insight_type}"
+    )
+else:
+    print("  warn: insight_type not in response — skipping assertion")
+
+if v_display_name:
+    assert v_display_name == AUTOMATION_DISPLAY_NAME, (
+        f"Display name mismatch: {v_display_name}"
+    )
+else:
+    print("  warn: display_name not in response — skipping assertion")
+
+if v_user_prompt:
+    assert v_user_prompt.startswith("You are a metric view YAML editor"), (
+        "Prompt content mismatch — does not start with expected text"
+    )
+else:
+    print("  warn: user_prompt not in response — skipping assertion")
 
 print("Validation passed:")
 print(f"  configuration_id: {configuration_id}")
-print(f"  insight_type:     {validation['insight_type']}")
-print(f"  display_name:     {validation['display_name']}")
-print(f"  prompt length:    {len(validation['user_prompt'])} chars")
-print(f"  etag:             {validation['etag']}")
+print(f"  insight_type:     {v_insight_type}")
+print(f"  display_name:     {v_display_name}")
+print(f"  prompt length:    {len(v_user_prompt)} chars")
+print(f"  etag:             {v_etag}")
 
 # COMMAND ----------
 

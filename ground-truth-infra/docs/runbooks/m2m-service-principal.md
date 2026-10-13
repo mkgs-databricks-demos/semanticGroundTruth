@@ -33,13 +33,18 @@ databricks service-principals list --filter 'displayName eq "semantic-ground-tru
 
 **Each SPN can have at most 5 active secrets. Each secret is valid for up to 730 days.**
 
+**Scoped secrets:** The secret's API scopes must match `var.m2m_oauth_scopes` in `databricks.yml` (currently `apps`). Scopes are set at generation time and **cannot be changed afterward** — to use different scopes, generate a new secret. The token request and connection DDL both use the same variable, so they stay in sync.
+
 ### Option A: Workspace UI
 
 1. Settings > Identity and access > Service principals > Manage
 2. Select the SPN (`semantic-ground-truth-m2m-<target>`)
 3. Secrets tab > **Generate secret**
 4. Set lifetime (up to 730 days)
-5. Under Scopes, select `all APIs` (or restrict to `sql`, `serving` if narrower scope works)
+5. Under Scope, select **Other APIs** and check the scopes matching `var.m2m_oauth_scopes`:
+   - Current default: **`apps`** (call the Bundle 2 app only)
+   - When Bundle 2 adds OBO `user_api_scopes`: add those too (e.g. `sql`, `catalog.tables:read`)
+   - **Never select `authentication`** (it can mint tokens with any scope)
 6. Click **Generate**
 7. **Copy the secret immediately** (it is shown only once)
 8. Note the client ID (same as the SPN's application_id)
@@ -54,6 +59,8 @@ databricks service-principal-secrets-proxy create <spn_workspace_object_id>
 ```
 
 The CLI returns both the secret value and the credential ID.
+
+> **Note:** The CLI `service-principal-secrets-proxy create` does not currently support scope selection. Use the UI for scoped secrets.
 
 ---
 
@@ -102,6 +109,31 @@ If it logs `M2M SPN OAuth verification failed with status 401`, the secret is in
 4. **Retire the old secret** in the workspace UI (SPN > Secrets > remove old credential).
 
 **Rotation cadence:** before the secret's expiry date. Track expiry in the team calendar.
+
+## Expanding Scopes (OBO / Bundle 2)
+
+When Bundle 2 declares `user_api_scopes` for OBO, the M2M secret needs a wider scope set. Scopes can't be changed on an existing secret.
+
+1. **Update `var.m2m_oauth_scopes`** in `databricks.yml` to include the new scopes (e.g. `apps sql catalog.tables:read`).
+2. **Generate a new secret** (Step 1) with the expanded scopes. Use **Clone** on the Secrets tab to copy the existing secret's lifetime as a starting point, then add the new scopes.
+3. **Overwrite the same scope key** (Step 2) with the new secret value.
+4. **Verify** (Step 3). The token request uses `var.m2m_oauth_scopes`, which now matches the secret.
+5. **Delete the old secret** on the SPN's Secrets tab.
+6. **Check the connection:** If `setup_gateway_connection` has already created the Unity Gateway HTTP connection, verify it picks up the new secret value. If not (it may cache the token), run `ALTER CONNECTION` or drop and recreate.
+
+### OBO grants
+
+The M2M SPN also needs Unity Catalog and warehouse grants for OBO:
+
+```sql
+GRANT USE CATALOG ON CATALOG <catalog> TO `<spn_application_id>`;
+GRANT USE SCHEMA ON SCHEMA <catalog>.<schema> TO `<spn_application_id>`;
+GRANT SELECT ON SCHEMA <catalog>.<schema> TO `<spn_application_id>`;
+-- If any MCP tool writes (e.g. feedback staging):
+GRANT MODIFY ON TABLE <catalog>.<schema>.<table> TO `<spn_application_id>`;
+```
+
+Plus `CAN_USE` on the SQL warehouse (via Permissions tab or `w.warehouses.set_permissions()`).
 
 ---
 
