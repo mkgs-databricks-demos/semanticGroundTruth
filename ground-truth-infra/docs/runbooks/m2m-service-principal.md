@@ -33,7 +33,7 @@ databricks service-principals list --filter 'displayName eq "semantic-ground-tru
 
 **Each SPN can have at most 5 active secrets. Each secret is valid for up to 730 days.**
 
-**Scoped secrets:** The secret's API scopes must match `var.m2m_oauth_scopes` in `databricks.yml` (currently `apps`). Scopes are set at generation time and **cannot be changed afterward** — to use different scopes, generate a new secret. The token request and connection DDL both use the same variable, so they stay in sync.
+**Scoped secrets:** The secret's API scopes must match `var.m2m_oauth_scopes` in `databricks.yml` (currently `apps ai-gateway`). Scopes are set at generation time and **cannot be changed afterward** — to use different scopes, generate a new secret. The token request and connection DDL both use the same variable, so they stay in sync.
 
 ### Option A: Workspace UI
 
@@ -42,7 +42,7 @@ databricks service-principals list --filter 'displayName eq "semantic-ground-tru
 3. Secrets tab > **Generate secret**
 4. Set lifetime (up to 730 days)
 5. Under Scope, select **Other APIs** and check the scopes matching `var.m2m_oauth_scopes`:
-   - Current default: **`apps`** (call the Bundle 2 app only)
+   - Current default: **`apps`** + **`ai-gateway`** (`apps` = connection calls the Bundle 2 app; `ai-gateway` = SPN calls Unity Gateway MCP services such as Genie One `system.ai.genie_one_mcp` and `ground_truth_mcp`)
    - When Bundle 2 adds OBO `user_api_scopes`: add those too (e.g. `sql`, `catalog.tables:read`)
    - **Never select `authentication`** (it can mint tokens with any scope)
 6. Click **Generate**

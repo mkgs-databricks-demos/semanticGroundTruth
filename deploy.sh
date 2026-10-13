@@ -328,7 +328,7 @@ for proj_name, proj in pg_projects.items():
 m2m_id_key     = get_var('m2m_client_id_dbs_key')
 m2m_secret_key = get_var('m2m_client_secret_dbs_key')
 m2m_prefix     = get_var('m2m_spn_prefix', 'semantic-ground-truth-m2m')
-m2m_scopes     = get_var('m2m_oauth_scopes', 'apps')
+m2m_scopes     = get_var('m2m_oauth_scopes', 'apps ai-gateway')
 
 # --- workspace host ---
 workspace_host = ''
@@ -351,7 +351,9 @@ print(f'LAKEBASE_PROJECT_ID=\"{safe(project_id)}\"')
 print(f'M2M_CLIENT_ID_KEY=\"{safe(m2m_id_key)}\"')
 print(f'M2M_CLIENT_SECRET_KEY=\"{safe(m2m_secret_key)}\"')
 print(f'M2M_SPN_PREFIX=\"{safe(m2m_prefix)}\"')
-print(f'M2M_OAUTH_SCOPES=\"{safe(m2m_scopes)}\"')
+# Scopes are space-separated and may contain ':' (e.g. catalog.tables:read)
+scopes_clean = re.sub(r'[^a-zA-Z0-9_.: -]', '', str(m2m_scopes)).strip()
+print(f'M2M_OAUTH_SCOPES=\"{scopes_clean}\"')
 " 2>/dev/null)" || fail "Could not parse bundle summary JSON."
 
   if [[ -n "${RESOLVE_ERROR:-}" ]]; then

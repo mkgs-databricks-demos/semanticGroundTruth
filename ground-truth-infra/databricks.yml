@@ -39,12 +39,13 @@ variables:
   m2m_client_secret_dbs_key:
     description: "Secret scope key holding the M2M SPN OAuth secret (admin-provisioned)"
   # OAuth scopes requested by the M2M SPN token and required on the scoped secret.
-  # Start with 'apps' (call Bundle 2 app only). Expand when Bundle 2 declares
-  # user_api_scopes for OBO — the secret must be regenerated with the wider set.
-  # Space-separated list matching Databricks API scope names.
+  # apps       — call the Bundle 2 app (connection → app /mcp)
+  # ai-gateway — call Unity Gateway MCP services (Genie One system.ai.genie_one_mcp, ground_truth_mcp)
+  # Expand when Bundle 2 declares user_api_scopes for OBO — the secret must be
+  # regenerated with the wider set. Space-separated list of Databricks API scope names.
   m2m_oauth_scopes:
     description: "OAuth API scopes for the M2M SPN token request and scoped secret (space-separated)"
-    default: apps
+    default: "apps ai-gateway"
 
 targets:
   # The 'dev' target, for development purposes. This target is the default.

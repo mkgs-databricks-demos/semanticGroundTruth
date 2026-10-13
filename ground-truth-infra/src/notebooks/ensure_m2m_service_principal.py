@@ -30,7 +30,7 @@ dbutils.widgets.text("m2m_spn_prefix", "semantic-ground-truth-m2m", "SPN display
 dbutils.widgets.text("m2m_client_id_dbs_key", "", "Secret key for M2M client_id")
 dbutils.widgets.text("m2m_client_secret_dbs_key", "", "Secret key for M2M client_secret")
 dbutils.widgets.text("workspace_url", "", "Workspace URL")
-dbutils.widgets.text("m2m_oauth_scopes", "apps", "OAuth API scopes (space-separated)")
+dbutils.widgets.text("m2m_oauth_scopes", "apps ai-gateway", "OAuth API scopes (space-separated)")
 
 bundle_target = dbutils.widgets.get("bundle_target")
 secret_scope_name = dbutils.widgets.get("secret_scope_name")

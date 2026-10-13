@@ -86,7 +86,7 @@ variables:
     description: "Secret scope key holding the M2M SPN OAuth secret (admin-provisioned)"
   m2m_oauth_scopes:
     description: "OAuth API scopes for the M2M SPN token request and scoped secret (space-separated)"
-    default: apps
+    default: "apps ai-gateway"
 
 targets:
   dev:
@@ -307,7 +307,7 @@ The `deploy.sh` Phase 2 TODO block already lists steps 2–3; this plan supplies
 
 These grants will be added as a `grant_m2m_uc_access` task or declarative `permissions:` block when Bundle 2 is scaffolded.
 
-**Scoped OAuth secrets:** The secret's scopes must be `apps` plus the app's `user_api_scopes`. `var.m2m_oauth_scopes` (default: `apps`) controls both the token request and the admin instructions. When Bundle 2 declares `user_api_scopes`, update the variable and regenerate the secret with the wider scope set. Scopes can't be changed on an existing secret — generate a new one, overwrite the scope key, delete the old.
+**Scoped OAuth secrets:** The secret's scopes must be `apps` plus the app's `user_api_scopes`. `var.m2m_oauth_scopes` (default: `apps ai-gateway`, expanded 2026-10-13 so the SPN can call Unity Gateway MCP services such as Genie One `system.ai.genie_one_mcp`) controls both the token request and the admin instructions. When Bundle 2 declares `user_api_scopes`, update the variable and regenerate the secret with the wider scope set. Scopes can't be changed on an existing secret — generate a new one, overwrite the scope key, delete the old.
 
 **Per-user identity caveat:** MCP traffic through the gateway runs as the M2M SPN, not the end user. Interactive app users still get true OBO. If gateway calls ever need per-user identity, the connection would need per-user OAuth (U2M) instead of M2M.
 
