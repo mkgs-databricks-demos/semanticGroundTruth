@@ -19,6 +19,7 @@ resources:
       only:
         - check_run_setup
         - +ensure_m2m_service_principal
+        - +smoke_test_genie_one_mcp
         - +setup_secrets
         - +setup_genie_automation
         - +setup_job_params

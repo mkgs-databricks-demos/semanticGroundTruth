@@ -4,7 +4,7 @@
 # Design source: docs/plans/post_deploy_automation_plan.md
 #
 # Gate: check_run_setup condition_task — skips all tasks when run_setup=false
-# Group A (unblocked): secrets, M2M SPN, Genie Code automation, feedback_pipeline job params
+# Group A (unblocked): secrets, M2M SPN (+ Genie One MCP smoke test), Genie Code automation, feedback_pipeline job params
 # Group B (post-Bundle 2): Unity Gateway connection (needs M2M secret + app_url), Lakebase CDF, app_role SP
 #
 # Secret scope is declarative; key values populated by setup_secrets task.
@@ -61,6 +61,32 @@ resources:
               m2m_client_secret_dbs_key: "{{job.parameters.m2m_client_secret_dbs_key}}"
               workspace_url: "${workspace.host}"
               m2m_oauth_scopes: "{{job.parameters.m2m_oauth_scopes}}"
+          environment_key: serverless
+
+        # Gate: only smoke-test the gateway once the M2M token exchange is verified
+        - task_key: check_m2m_token_verified
+          description: "Skip MCP smoke tests until the M2M SPN secret is provisioned and verified"
+          depends_on:
+            - task_key: ensure_m2m_service_principal
+          condition_task:
+            left: "{{tasks.ensure_m2m_service_principal.values.m2m_token_verified}}"
+            op: EQUAL_TO
+            right: "true"
+
+        - task_key: smoke_test_genie_one_mcp
+          description: "M2M SPN → Unity Gateway → Genie One MCP (system.ai.genie_one_mcp): initialize + tools/list"
+          depends_on:
+            - task_key: check_m2m_token_verified
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../../src/notebooks/smoke_test_genie_one_mcp.py
+            base_parameters:
+              secret_scope_name: "${resources.secret_scopes.ground_truth_secret_scope.name}"
+              m2m_client_id_dbs_key: "{{job.parameters.m2m_client_id_dbs_key}}"
+              m2m_client_secret_dbs_key: "{{job.parameters.m2m_client_secret_dbs_key}}"
+              workspace_url: "${workspace.host}"
+              mcp_service_name: "system.ai.genie_one_mcp"
+              oauth_scope: "ai-gateway"
           environment_key: serverless
 
         - task_key: setup_secrets
