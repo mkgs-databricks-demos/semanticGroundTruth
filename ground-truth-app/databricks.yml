@@ -1,28 +1,105 @@
-# Declarative Automation Bundle configuration, more info here: https://docs.databricks.com/en/dev-tools/bundles/settings.html
 bundle:
-  name: "ground-truth-app"
-  engine: direct  # Required for UC secrets, job_run, mcp_service resources (see docs/research/04)
+  name: ground-truth-app
+  engine: direct  # Required for mcp_service resources
 
-include:
-  - resources/*.yml
-  - resources/*/*.yml
+variables:
+  agents_serving_endpoint_name:
+    description: Default LLM serving endpoint name
+  agents_mlflow_experiment_experimentId:
+    description: MLflow experiment id traces are logged to
+  agents_skills_path:
+    description: Volume path for agent skills (e.g. /Volumes/catalog/schema/skills)
+  sql_warehouse_id:
+    description: SQL Warehouse ID
+  job_id:
+    description: Numeric Databricks job ID. Find it in the Jobs UI or via `databricks jobs list`.
+  postgres_branch:
+    description: Full Lakebase Postgres branch resource name. Obtain by running `databricks postgres list-branches {project-name}`, select the desired item from the output array and use its .name value. Requires the project resource name.
+  postgres_database:
+    description: Full Lakebase Postgres database resource name. Obtain by running `databricks postgres list-databases {branch-name}`, select the desired item from the output array and use its .name value. Requires the branch resource name.
+  catalog:
+    description: "Target Unity Catalog catalog name (must match Bundle 1)"
+  schema_name:
+    description: "Fully qualified UC schema name (resolved from Bundle 1, e.g. dev_matthew_giglia_semantic_ground_truth)"
+
+resources:
+  apps:
+    app:
+      name: "ground-truth-app"
+      description: "A Databricks App powered by AppKit"
+      source_code_path: ./
+
+      # Start the app automatically on deploy.
+      lifecycle:
+        started: true
+      # Uncomment to enable on behalf of user API scopes. Available scopes: sql, genie, files, model-serving
+      # user_api_scopes:
+      #   - sql
+
+      # The resources which this app has access to.
+      resources:
+        - name: agents-serving-endpoint
+          serving_endpoint:
+            name: ${var.agents_serving_endpoint_name}
+            permission: CAN_QUERY
+        - name: agents-mlflow-experiment
+          experiment:
+            experiment_id: ${var.agents_mlflow_experiment_experimentId}
+            permission: CAN_EDIT
+        - name: agents-skills
+          uc_securable:
+            securable_full_name: ${var.agents_skills_path}
+            securable_type: VOLUME
+            permission: READ_VOLUME
+        - name: sql-warehouse
+          sql_warehouse:
+            id: ${var.sql_warehouse_id}
+            permission: CAN_USE
+        - name: job
+          job:
+            id: ${var.job_id}
+            permission: CAN_MANAGE_RUN
+        - name: postgres
+          postgres:
+            branch: ${var.postgres_branch}
+            database: ${var.postgres_database}
+            permission: CAN_CONNECT_AND_CREATE
+
+  # MCP Service — moved from Bundle 1 (infra) to Bundle 2 (app).
+  # The MCP service points at the app's /mcp endpoint and must deploy with the app.
+  # Dependency: source_connection (HTTP connection) must exist first.
+  # See ground-truth-infra/docs/runbooks/unity-gateway-setup.md for connection creation.
+  mcp_services:
+    ground_truth_mcp:
+      parent: schemas/${var.catalog}.${var.schema_name}
+      mcp_service_id: semantic-ground-truth-mcp
+      comment: "Semantic Ground Truth app MCP service — exposes review, campaign, and metric view tools via Unity Gateway"
+      config:
+        source_connection:
+          # UC connections are metastore-level (flat names, no catalog.schema prefix)
+          name: connections/semantic-ground-truth-mcp
+        include_tool_selectors:
+          - "review_*"
+          - "campaign_*"
+          - "metric_view_*"
+      grants:
+        - principal: data-engineers
+          privileges:
+            - EXECUTE
 
 targets:
-  # The 'dev' target, for development purposes. This target is the default.
-  dev:
-    mode: development
+  default:
     default: true
     workspace:
-      host: https://fevm-hls-fde.cloud.databricks.com
+      host: http://127.0.0.1:7073
 
-  # The 'prod' target, used for production deployment.
-  prod:
-    mode: production
-    workspace:
-      host: https://fevm-hls-fde.cloud.databricks.com
-      # We always use /Users/matthew.giglia@databricks.com for all resources to make sure we only have a single copy.
-      root_path: /Users/matthew.giglia@databricks.com/.bundle/${bundle.name}/${bundle.target}
-    run_as:
-      # This runs as matthew.giglia@databricks.com in production. We could also use a service principal here,
-      # see https://docs.databricks.com/dev-tools/bundles/permissions.html.
-      user_name: matthew.giglia@databricks.com
+    variables:
+      agents_serving_endpoint_name: databricks-claude-opus-4-8
+      agents_mlflow_experiment_experimentId: 4038008988926083
+      agents_skills_path: /Volumes/hls_fde_dev/dev_matthew_giglia_bcda/landing
+      sql_warehouse_id: 0ea84986a23a47c3
+      job_id: 1103481179431341
+      postgres_branch: projects/dev-matthew-giglia-ground-truth/branches/development
+      postgres_database: projects/dev-matthew-giglia-ground-truth/branches/development/databases/ground-truth-app
+      catalog: hls_fde_dev
+      schema_name: dev_matthew_giglia_semantic_ground_truth

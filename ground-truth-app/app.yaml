@@ -1,0 +1,14 @@
+command: ['pnpm', 'run', 'start']
+env:
+  - name: DATABRICKS_SERVING_ENDPOINT_NAME
+    valueFrom: agents-serving-endpoint
+  - name: MLFLOW_EXPERIMENT_ID
+    valueFrom: agents-mlflow-experiment
+  - name: DATABRICKS_VOLUME_AGENT_SKILLS
+    valueFrom: agents-skills
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql-warehouse
+  - name: DATABRICKS_JOB_ID
+    valueFrom: job
+  - name: LAKEBASE_ENDPOINT
+    valueFrom: postgres
