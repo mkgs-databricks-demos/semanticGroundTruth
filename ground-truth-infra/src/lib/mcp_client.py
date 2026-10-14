@@ -16,11 +16,15 @@ handled. Verified against system.ai.genie_one_mcp on 2026-10-13
 """
 
 import json
+import time as _time
 from typing import Any, Dict, List, Optional
 
 import requests
 
 DEFAULT_PROTOCOL_VERSION = "2025-06-18"
+DEFAULT_TIMEOUT = 120  # seconds; Unity Gateway can be slow on cold start
+_TRANSIENT_RETRY_ATTEMPTS = 3
+_TRANSIENT_RETRY_SLEEP = 5  # seconds between retries
 
 
 class McpError(RuntimeError):
@@ -115,7 +119,7 @@ class McpHttpClient:
         url: str,
         access_token: str,
         protocol_version: str = DEFAULT_PROTOCOL_VERSION,
-        timeout: int = 60,
+        timeout: int = DEFAULT_TIMEOUT,
     ):
         self.url = url
         self.protocol_version = protocol_version
@@ -130,17 +134,35 @@ class McpHttpClient:
         }
 
     def _post(self, payload: Dict[str, Any]) -> requests.Response:
+        """POST a JSON-RPC payload; retries on transient connection/timeout errors."""
         headers = dict(self._headers)
         if self.session_id:
             headers["Mcp-Session-Id"] = self.session_id
             headers["MCP-Protocol-Version"] = self.protocol_version
-        resp = requests.post(self.url, headers=headers, json=payload, timeout=self.timeout)
-        if not resp.ok:
-            raise McpError(
-                f"{payload.get('method')} failed (HTTP {resp.status_code}): {resp.text[:300]}",
-                resp.status_code,
-            )
-        return resp
+        method = payload.get("method", "?")
+        last_exc: Optional[Exception] = None
+        for attempt in range(1, _TRANSIENT_RETRY_ATTEMPTS + 1):
+            try:
+                resp = requests.post(
+                    self.url, headers=headers, json=payload, timeout=self.timeout
+                )
+                if not resp.ok:
+                    raise McpError(
+                        f"{method} failed (HTTP {resp.status_code}): {resp.text[:300]}",
+                        resp.status_code,
+                    )
+                return resp
+            except McpError:
+                raise  # HTTP-level errors are not retried
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+                last_exc = exc
+                if attempt < _TRANSIENT_RETRY_ATTEMPTS:
+                    _time.sleep(_TRANSIENT_RETRY_SLEEP)
+                continue
+        raise McpError(
+            f"{method} timed out after {_TRANSIENT_RETRY_ATTEMPTS} attempt(s) "
+            f"(timeout={self.timeout}s each): {last_exc}"
+        )
 
     def _request(self, method: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         request_id = self._next_id

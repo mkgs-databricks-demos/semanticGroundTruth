@@ -117,6 +117,8 @@ try:
     init_result = mcp.initialize()
 except McpError as e:
     hint = {
+        None: f"transient connection/timeout error — will retry automatically (up to {_TRANSIENT_RETRY_ATTEMPTS} attempts); "
+              f"if it keeps failing check workspace network/proxy or increase DEFAULT_TIMEOUT in mcp_client.py",
         401: "token rejected by Unity Gateway; confirm the token has the ai-gateway scope",
         403: f"SPN lacks access to {mcp_service_name} (EXECUTE grant or MCP policy)",
         404: f"MCP service {mcp_service_name} not found",
