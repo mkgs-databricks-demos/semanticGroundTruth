@@ -271,7 +271,9 @@ resolve_infra_vars() {
   log "Resolving infrastructure variables (target: ${TARGET})"
 
   local summary_json
-  summary_json=$(cd "${bundle_dir}" && databricks bundle summary --target "${TARGET}" --output json 2>/dev/null) || {
+  # Note: the CLI may print a one-time install banner to stdout before the JSON.
+  # Use sed to strip any lines before the first '{' so the JSON parser succeeds.
+  summary_json=$(cd "${bundle_dir}" && databricks bundle summary --target "${TARGET}" --output json 2>/dev/null | sed -n '/^{/,$p') || {
     fail "Could not read bundle summary for ${INFRA_BUNDLE}.\n" \
          "  Deploy the infra bundle first:\n" \
          "    cd ${bundle_dir} && databricks bundle deploy --target ${TARGET}"
@@ -546,7 +548,7 @@ EOF
 # --------------------------------------------------------------------------- #
 resolve_post_deploy_job_id() {
   if [[ -z "${POST_DEPLOY_JOB_ID}" ]]; then
-    POST_DEPLOY_JOB_ID=$(cd "${SCRIPT_DIR}/${INFRA_BUNDLE}" && databricks bundle summary --target "${TARGET}" --output json 2>/dev/null | python3 -c '
+    POST_DEPLOY_JOB_ID=$(cd "${SCRIPT_DIR}/${INFRA_BUNDLE}" && databricks bundle summary --target "${TARGET}" --output json 2>/dev/null | sed -n '/^{/,$p' | python3 -c '
 import json, sys
 try:
     d = json.load(sys.stdin)
