@@ -1,0 +1,79 @@
+# Metric View Fixture: mv_user_leaderboard
+# Design source: L200-C9, L300-05
+# Source CDF table: lb_user_activity_history
+# Measures: Total Reviews, Edits Accepted, Streak Days, Badges
+
+name: mv_user_leaderboard
+
+sql: |
+  CREATE VIEW IF NOT EXISTS ${catalog}.${schema}.mv_user_leaderboard
+  WITH METRICS
+  LANGUAGE YAML
+  AS $$
+    version: 1.1
+    source: >
+      SELECT
+        user_id,
+        display_name,
+        team,
+        total_reviews,
+        edits_accepted,
+        streak_days,
+        badge_count,
+        last_active_at,
+        DATE_TRUNC('MONTH', last_active_at) AS active_month
+      FROM ${catalog}.${schema}.lb_user_activity_history
+      WHERE _change_type != 'DELETE'
+    comment: User leaderboard metrics showing reviewer engagement and contributions.
+    dimensions:
+      - name: user_id
+        expr: user_id
+        display_name: User ID
+      - name: display_name
+        expr: display_name
+        display_name: Reviewer Name
+        synonyms:
+          - name
+          - user
+          - reviewer
+      - name: team
+        expr: team
+        display_name: Team
+        synonyms:
+          - group
+          - department
+      - name: active_month
+        expr: active_month
+        display_name: Active Month
+        format:
+          type: date
+          date_format: locale_long_month
+    measures:
+      - name: Total Reviews
+        expr: SUM(total_reviews)
+        display_name: Total Reviews
+        synonyms:
+          - reviews
+          - review count
+          - contributions
+      - name: Edits Accepted
+        expr: SUM(edits_accepted)
+        display_name: Edits Accepted
+        comment: Number of YAML edit proposals accepted
+        synonyms:
+          - accepted edits
+          - edit contributions
+      - name: Streak Days
+        expr: MAX(streak_days)
+        display_name: Max Streak Days
+        comment: Longest consecutive days active
+        synonyms:
+          - streak
+          - consecutive days
+      - name: Badges
+        expr: SUM(badge_count)
+        display_name: Total Badges
+        synonyms:
+          - badge count
+          - achievements
+  $$

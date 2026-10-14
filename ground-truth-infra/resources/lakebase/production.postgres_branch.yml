@@ -1,0 +1,17 @@
+# resources/lakebase/production.postgres_branch.yml
+# Production branch — auto-created by the project; adopted via replace_existing.
+# Design source: L300-02
+#
+# is_protected: true prevents accidental deletion.
+# replace_existing: true lets the bundle adopt the auto-created branch without recreating it.
+
+resources:
+  postgres_branches:
+    production:
+      branch_id: production
+      parent: "${resources.postgres_projects.ground_truth_project.id}"
+      no_expiry: true
+      is_protected: true
+      replace_existing: true
+      lifecycle:
+        prevent_destroy: true

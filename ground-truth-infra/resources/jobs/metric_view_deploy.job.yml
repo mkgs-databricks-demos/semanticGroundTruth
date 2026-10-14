@@ -1,0 +1,41 @@
+# resources/jobs/metric_view_deploy.job.yml
+# On-demand: list fixture YAMLs → for_each task deploys each metric view
+# Design source: L300-08
+
+resources:
+  jobs:
+    metric_view_deploy:
+      name: "Semantic Ground Truth — Deploy Metric Views"
+      description: "Deploys metric view fixtures from fixtures/metric_views/. Run on-demand after fixture changes."
+
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "1"
+
+      tasks:
+        - task_key: list_fixtures
+          description: "List fixtures/metric_views/*.yaml and emit array via taskValues for for_each_task"
+          notebook_task:
+            notebook_path: ../../src/notebooks/list_fixtures.py
+            base_parameters:
+              fixtures_path: ""
+          environment_key: serverless
+
+        - task_key: deploy_metric_views
+          description: "For each fixture YAML: read, resolve env refs, execute CREATE VIEW SQL"
+          depends_on:
+            - task_key: list_fixtures
+          for_each_task:
+            inputs: "{{tasks.list_fixtures.values.fixture_files}}"
+            concurrency: 1
+            task:
+              task_key: deploy_single_view
+              notebook_task:
+                notebook_path: ../../src/notebooks/deploy_metric_view.py
+                base_parameters:
+                  fixture_file: "{{input}}"
+                  catalog: "${var.catalog}"
+                  schema: "${resources.schemas.ground_truth_schema.name}"
+                  warehouse_id: "${resources.sql_warehouses.infra_warehouse.id}"
+              environment_key: serverless

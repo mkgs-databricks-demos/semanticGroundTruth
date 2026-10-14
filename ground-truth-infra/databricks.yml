@@ -1,0 +1,88 @@
+# Declarative Automation Bundle configuration — ground-truth-infra
+# Deploy order: this bundle (Bundle 1) deploys FIRST. Bundles 2 and 3 deploy after.
+# Design sources: L100 §Deployment Architecture, L200-C1, L200-C6, L200-C9, L300-01 through L300-08
+bundle:
+  name: "ground-truth-infra"
+  engine: direct  # Required for secret_scope, job_run, mcp_service resources (see docs/research/04)
+
+include:
+  - resources/*.yml
+  - resources/*/*.yml
+
+variables:
+  catalog:
+    description: "Target Unity Catalog catalog name"
+    default: hls_fde_dev
+  schema:
+    description: "Target Unity Catalog schema name"
+    default: semantic_ground_truth
+  notification_slack_webhook:
+    description: "Slack incoming webhook URL for job alert notifications"
+    default: ""
+  notification_teams_webhook:
+    description: "Microsoft Teams incoming webhook URL for job alert notifications"
+    default: ""
+  # Post-deploy setup control — skip on routine dev deploys, run on prod/first deploy
+  run_setup:
+    description: "Whether post_deploy_setup job_run should execute tasks (false = skip via condition gate)"
+    default: "true"
+  # Workspace secret scope (lakeLoom pattern — app env var injection via valueFrom)
+  secret_scope_name:
+    description: "Workspace secret scope name for Ground Truth app runtime secrets"
+    default: semantic_ground_truth_credentials
+  # M2M service principal (OAuth M2M identity for API testing + MCP connection)
+  m2m_spn_prefix:
+    description: "Display-name prefix for the bundle-owned OAuth M2M service principal"
+    default: semantic-ground-truth-m2m
+  m2m_client_id_dbs_key:
+    description: "Secret scope key holding the M2M SPN application_id (auto-provisioned)"
+  m2m_client_secret_dbs_key:
+    description: "Secret scope key holding the M2M SPN OAuth secret (admin-provisioned)"
+  # OAuth scopes requested by the M2M SPN token and required on the scoped secret.
+  # apps       — call the Bundle 2 app (connection → app /mcp)
+  # ai-gateway — call Unity Gateway MCP services (Genie One system.ai.genie_one_mcp, ground_truth_mcp)
+  # Expand when Bundle 2 declares user_api_scopes for OBO — the secret must be
+  # regenerated with the wider set. Space-separated list of Databricks API scope names.
+  m2m_oauth_scopes:
+    description: "OAuth API scopes for the M2M SPN token request and scoped secret (space-separated)"
+    default: "apps ai-gateway"
+
+targets:
+  # The 'dev' target, for development purposes. This target is the default.
+  dev:
+    mode: development
+    default: true
+    # Source-linked deployment disabled: .py notebooks in Git folders are stored
+    # as FILE objects; the Jobs API can't resolve extensionless notebook paths.
+    # With this off, `bundle deploy` uploads notebooks as NOTEBOOK objects.
+    presets:
+      source_linked_deployment: false
+    workspace:
+      host: https://fevm-hls-fde.cloud.databricks.com
+      root_path: /Users/matthew.giglia@databricks.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: hls_fde_dev
+      # DAB dev mode prepends dev_<user>_ to schema names.
+      # Using 'semantic_ground_truth' here → actual UC schema: dev_matthew_giglia_semantic_ground_truth
+      schema: semantic_ground_truth
+      run_setup: "true"  # Run post-deploy setup on dev deploys; override with --var run_setup=false to skip
+      # M2M SPN secret keys — target-qualified (m2m_client_*_${bundle.target}) to avoid
+      # dev/prod collisions in the shared workspace scope; matches the SPN naming.
+      m2m_client_id_dbs_key: m2m_client_id_dev
+      m2m_client_secret_dbs_key: m2m_client_secret_dev
+
+  # The 'prod' target, used for production deployment.
+  prod:
+    mode: production
+    workspace:
+      host: https://fevm-hls-fde.cloud.databricks.com
+      root_path: /Users/matthew.giglia@databricks.com/.bundle/${bundle.name}/${bundle.target}
+    run_as:
+      # This runs as matthew.giglia@databricks.com in production. We could also use a service principal here,
+      # see https://docs.databricks.com/dev-tools/bundles/permissions.html.
+      user_name: matthew.giglia@databricks.com
+    variables:
+      catalog: prod_ground_truth
+      schema: semantic_ground_truth
+      m2m_client_id_dbs_key: m2m_client_id_prod
+      m2m_client_secret_dbs_key: m2m_client_secret_prod

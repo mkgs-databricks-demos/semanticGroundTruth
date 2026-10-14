@@ -1,0 +1,62 @@
+# resources/jobs/feedback_pipeline.job.yml
+# Daily 11 PM: collect unprocessed votes → Genie Code generates YAML edits → Git feature branch
+# Design source: L300-04, L300-05, docs/plans/feedback_pipeline_rework_plan.md
+
+resources:
+  jobs:
+    feedback_pipeline:
+      name: "Semantic Ground Truth — Feedback Pipeline"
+      description: "Collects reviewer votes, generates proposed YAML edits via Genie Code, and creates a Git feature branch."
+
+      schedule:
+        quartz_cron_expression: "0 0 23 * * ?"  # Daily 11 PM UTC
+        timezone_id: UTC
+
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "1"
+
+      tasks:
+        - task_key: collect_feedback
+          description: "Query unprocessed votes, group by asset, write feedback staging table"
+          notebook_task:
+            notebook_path: ../../src/notebooks/collect_feedback.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${resources.schemas.ground_truth_schema.name}"
+              cutoff_hours: "24"
+          environment_key: serverless
+
+        # Task 2: PLACEHOLDER notebook_task — replaced at runtime by a genie_task.
+        #
+        # Why not genie_task in YAML? The bundle validator strips unknown fields
+        # (genie_task is Beta), so the Jobs API receives a task with no type and
+        # rejects it. Workaround: declare a notebook_task placeholder here, and
+        # setup_job_params (post_deploy_setup job) patches it to a genie_task via
+        # the Jobs API after every deploy.
+        #
+        # The notebook is deprecated and exits harmlessly if it runs before the
+        # patch (no genie_space_id configured → early exit).
+        #
+        # See: docs/plans/feedback_pipeline_rework_plan.md
+        - task_key: create_feature_branch
+          description: "Genie Code reads feedback staging, generates YAML edits, creates Git feature branch"
+          depends_on:
+            - task_key: collect_feedback
+          notebook_task:
+            notebook_path: ../../src/notebooks/create_feature_branch.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${resources.schemas.ground_truth_schema.name}"
+          environment_key: serverless
+          timeout_seconds: 1800
+          health:
+            rules:
+              - metric: RUN_DURATION_SECONDS
+                op: GREATER_THAN
+                value: 600
+
+      email_notifications:
+        on_failure:
+          - matthew.giglia@databricks.com

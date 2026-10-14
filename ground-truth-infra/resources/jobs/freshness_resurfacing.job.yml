@@ -1,0 +1,33 @@
+# resources/jobs/freshness_resurfacing.job.yml
+# Daily 6 AM: identify stale certified assets, add to freshness campaigns
+# Design source: L300-04
+
+resources:
+  jobs:
+    freshness_resurfacing:
+      name: "Semantic Ground Truth — Freshness Resurfacing"
+      description: "Finds stale certified assets and adds them to freshness campaigns for re-review."
+
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"  # Daily 6 AM UTC
+        timezone_id: UTC
+
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "1"
+
+      tasks:
+        - task_key: freshness_check
+          description: "Identify stale assets and add to freshness campaign staging"
+          notebook_task:
+            notebook_path: ../../src/notebooks/freshness_check.py
+            base_parameters:
+              catalog: "${var.catalog}"
+              schema: "${resources.schemas.ground_truth_schema.name}"
+              staleness_days: "90"
+          environment_key: serverless
+
+      email_notifications:
+        on_failure:
+          - matthew.giglia@databricks.com

@@ -1,0 +1,17 @@
+# resources/lakebase/app_db.postgres_database.yml
+# Application database — owned by app_role on the production branch.
+# Design source: L300-02
+#
+# role uses .id directly: postgres_roles.app_role.id = full path
+# projects/{project_id}/branches/{branch_id}/roles/{role_id}
+# Never prepend a path prefix — .id already contains the complete resource path.
+
+resources:
+  postgres_databases:
+    app_db:
+      database_id: ground-truth-app
+      parent: "${resources.postgres_branches.production.name}"
+      postgres_database: ground_truth_app
+      role: "${resources.postgres_roles.app_role.id}"
+      lifecycle:
+        prevent_destroy: true

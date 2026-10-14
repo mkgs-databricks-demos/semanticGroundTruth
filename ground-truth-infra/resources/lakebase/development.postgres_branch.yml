@@ -1,0 +1,13 @@
+# resources/lakebase/development.postgres_branch.yml
+# Development branch — copy-on-write snapshot of production.
+# Used for testing schema changes, queries, and data changes without affecting production.
+# Design source: L300-02
+
+resources:
+  postgres_branches:
+    development:
+      branch_id: development
+      parent: "${resources.postgres_projects.ground_truth_project.id}"
+      no_expiry: true
+      lifecycle:
+        prevent_destroy: false

@@ -1,0 +1,88 @@
+# Metric View Fixture: mv_review_activity
+# Design source: L200-C9, L300-05
+# Source CDF table: lb_votes_history
+# Measures: Total Votes, Unique Reviewers, Approval Rate
+
+name: mv_review_activity
+
+sql: |
+  CREATE VIEW IF NOT EXISTS ${catalog}.${schema}.mv_review_activity
+  WITH METRICS
+  LANGUAGE YAML
+  AS $$
+    version: 1.1
+    source: >
+      SELECT
+        vote_id,
+        asset_id,
+        vote_type,
+        reviewer_id,
+        comment,
+        created_at,
+        DATE_TRUNC('DAY', created_at) AS vote_date,
+        DATE_TRUNC('WEEK', created_at) AS vote_week,
+        DATE_TRUNC('MONTH', created_at) AS vote_month
+      FROM ${catalog}.${schema}.lb_votes_history
+      WHERE _change_type != 'DELETE'
+    comment: Review activity metrics over the semantic ground truth vote history.
+    dimensions:
+      - name: asset_id
+        expr: asset_id
+        display_name: Asset ID
+        comment: Unique identifier of the reviewed asset
+      - name: vote_type
+        expr: vote_type
+        display_name: Vote Type
+        comment: APPROVE, REJECT, or EDIT
+        synonyms:
+          - vote
+          - decision
+          - review outcome
+      - name: reviewer_id
+        expr: reviewer_id
+        display_name: Reviewer
+      - name: vote_date
+        expr: vote_date
+        display_name: Vote Date
+        format:
+          type: date
+          date_format: year_month_day
+      - name: vote_month
+        expr: vote_month
+        display_name: Vote Month
+        format:
+          type: date
+          date_format: locale_long_month
+    measures:
+      - name: Total Votes
+        expr: COUNT(vote_id)
+        display_name: Total Votes
+        synonyms:
+          - votes
+          - reviews
+          - total reviews
+      - name: Unique Reviewers
+        expr: COUNT(DISTINCT reviewer_id)
+        display_name: Unique Reviewers
+        synonyms:
+          - reviewers
+          - review participants
+      - name: Approval Rate
+        expr: SUM(CASE WHEN vote_type = 'APPROVE' THEN 1 ELSE 0 END) / COUNT(vote_id)
+        display_name: Approval Rate
+        comment: Fraction of votes that were approvals (0.0 to 1.0)
+        format:
+          type: percentage
+          decimal_places:
+            type: exact
+            places: 1
+        synonyms:
+          - approve rate
+          - pass rate
+      - name: Reject Count
+        expr: SUM(CASE WHEN vote_type = 'REJECT' THEN 1 ELSE 0 END)
+        display_name: Rejections
+      - name: Edit Count
+        expr: SUM(CASE WHEN vote_type = 'EDIT' THEN 1 ELSE 0 END)
+        display_name: Edit Proposals
+  $$
