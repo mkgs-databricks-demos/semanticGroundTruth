@@ -98,6 +98,12 @@ M2M_CLIENT_SECRET_KEY=""
 M2M_SPN_PREFIX=""
 M2M_OAUTH_SCOPES=""
 POST_DEPLOY_JOB_ID=""
+# App bundle support (§2a of app_bundle_support_plan.md)
+MLFLOW_EXPERIMENT_ID=""
+MLFLOW_EXPERIMENT_NAME=""
+FRESHNESS_JOB_ID=""
+LAKEBASE_BRANCH=""
+LAKEBASE_DATABASE=""
 
 # Set just before the infra deploy; used to pick this deploy's job run
 DEPLOY_START_MS=""
@@ -341,6 +347,18 @@ m2m_scopes     = get_var('m2m_oauth_scopes', 'apps ai-gateway')
 # --- post_deploy_setup job ID (empty before the first deploy) ---
 post_deploy_job_id = resources.get('jobs', {}).get('post_deploy_setup', {}).get('id', '')
 
+# --- app bundle support (§2a of app_bundle_support_plan.md) ---
+# Experiment: .id present in CLI >= 1.21; older CLIs omit it.
+# Export name as well so bash can fall back to MLflow API lookup.
+exp_block = resources.get('experiments', {}).get('app_agents_experiment', {})
+mlflow_experiment_id = exp_block.get('id', '')
+mlflow_experiment_name = exp_block.get('name', '')
+freshness_job_id = resources.get('jobs', {}).get('freshness_resurfacing', {}).get('id', '')
+# Lakebase: .name doesn't exist in the summary; .id is the full resource path
+# (e.g. projects/<project>/branches/development)
+lakebase_branch = resources.get('postgres_branches', {}).get('development', {}).get('id', '')
+lakebase_database = resources.get('postgres_databases', {}).get('app_db', {}).get('id', '')
+
 # --- workspace host ---
 workspace_host = ''
 workspace_block = data.get('workspace', {})
@@ -353,6 +371,11 @@ def safe(v):
 def safe_url(v):
     return re.sub(r'[^a-zA-Z0-9_.\\-:/]', '', str(v))
 
+def safe_name(v):
+    # Preserve spaces and brackets for human-readable names (experiment paths).
+    # Safe inside eval double-quotes; strips shell-active chars (dollar, backslash, etc).
+    return re.sub(r'[^a-zA-Z0-9_.\\-:/ \\[\\]]', '', str(v))
+
 print(f'CATALOG=\"{safe(catalog)}\"')
 print(f'SCHEMA=\"{safe(schema)}\"')
 print(f'SCOPE_NAME=\"{safe(scope)}\"')
@@ -363,6 +386,14 @@ print(f'M2M_CLIENT_ID_KEY=\"{safe(m2m_id_key)}\"')
 print(f'M2M_CLIENT_SECRET_KEY=\"{safe(m2m_secret_key)}\"')
 print(f'M2M_SPN_PREFIX=\"{safe(m2m_prefix)}\"')
 print(f'POST_DEPLOY_JOB_ID=\"{safe(post_deploy_job_id)}\"')
+# App bundle support (§2a of app_bundle_support_plan.md)
+print(f'MLFLOW_EXPERIMENT_NAME=\"{safe_name(mlflow_experiment_name)}\"')
+print(f'MLFLOW_EXPERIMENT_ID=\"{safe(mlflow_experiment_id)}\"')
+print(f'FRESHNESS_JOB_ID=\"{safe(freshness_job_id)}\"')
+# Lakebase resource .name values are full paths containing '/' — safe() strips
+# slashes; safe_url() preserves ':/' which covers path separators.
+print(f'LAKEBASE_BRANCH=\"{safe_url(lakebase_branch)}\"')
+print(f'LAKEBASE_DATABASE=\"{safe_url(lakebase_database)}\"')
 # Scopes are space-separated and may contain ':' (e.g. catalog.tables:read)
 scopes_clean = re.sub(r'[^a-zA-Z0-9_.: -]', '', str(m2m_scopes)).strip()
 print(f'M2M_OAUTH_SCOPES=\"{scopes_clean}\"')
@@ -370,6 +401,26 @@ print(f'M2M_OAUTH_SCOPES=\"{scopes_clean}\"')
 
   if [[ -n "${RESOLVE_ERROR:-}" ]]; then
     fail "resolve_infra_vars failed: ${RESOLVE_ERROR}"
+  fi
+
+  # Experiment ID fallback: CLI < 1.21 omits .id from bundle summary.
+  # Use the experiment name (always present) to resolve via MLflow API.
+  if [[ -z "${MLFLOW_EXPERIMENT_ID}" && -n "${MLFLOW_EXPERIMENT_NAME}" ]]; then
+    MLFLOW_EXPERIMENT_ID=$(
+      EXP_NAME="${MLFLOW_EXPERIMENT_NAME}" python3 -c '
+import json, os, subprocess, sys
+r = subprocess.run(
+    ["databricks", "experiments", "get-by-name",
+     os.environ["EXP_NAME"], "--output", "json"],
+    capture_output=True, text=True)
+try:
+    d = json.loads(r.stdout) if r.returncode == 0 else {}
+except Exception:
+    d = {}
+exp = d.get("experiment", d)
+print(exp.get("experiment_id", ""))
+' 2>/dev/null) || MLFLOW_EXPERIMENT_ID=""
+    MLFLOW_EXPERIMENT_ID=$(safe "${MLFLOW_EXPERIMENT_ID}")
   fi
 
   # UC connections are metastore-level (flat names, no dots allowed)
@@ -382,6 +433,10 @@ print(f'M2M_OAUTH_SCOPES=\"{scopes_clean}\"')
   ok "  m2m_spn_prefix=${M2M_SPN_PREFIX}"
   ok "  m2m_keys=${M2M_CLIENT_ID_KEY}, ${M2M_CLIENT_SECRET_KEY}"
   ok "  m2m_oauth_scopes=${M2M_OAUTH_SCOPES}"
+  ok "  mlflow_experiment=${MLFLOW_EXPERIMENT_ID}"
+  ok "  freshness_job=${FRESHNESS_JOB_ID}"
+  ok "  lakebase_branch=${LAKEBASE_BRANCH}"
+  ok "  lakebase_database=${LAKEBASE_DATABASE}"
 }
 
 # --------------------------------------------------------------------------- #

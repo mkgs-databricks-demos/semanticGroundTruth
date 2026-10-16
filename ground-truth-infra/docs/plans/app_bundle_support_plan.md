@@ -30,8 +30,8 @@ Three categories of work remain in the infra bundle to fully support the app:
 resources:
   experiments:
     app_agents_experiment:
-      name: /Users/matthew.giglia@databricks.com/ground-truth-app-agents
-      # Experiment name is the workspace path; no catalog/schema needed.
+      name: /Workspace/.experiments/ground-truth-app-agents
+      # Workspace-level shared experiment (not user-scoped).
       # The ID is resolved via ${resources.experiments.app_agents_experiment.id}
 ```
 
@@ -39,7 +39,7 @@ resources:
 
 **App bundle:** Replace placeholder `4038008988926083` with value passed from deploy.sh.
 
-**Decision needed:** Confirm experiment path. Convention from other projects: `/Users/<email>/<app-name>-agents`.
+**Decision:** Experiment path = `/Workspace/.experiments/ground-truth-app-agents` (workspace-level shared, not user-scoped).
 
 ### 1b. UC Volume for Agent Skills
 
@@ -105,18 +105,56 @@ Add to the Python parser block:
 
 | Variable | Source in bundle summary | Used by |
 |----------|------------------------|---------|
-| `MLFLOW_EXPERIMENT_ID` | `resources.experiments.app_agents_experiment.id` | App agents tracing |
+| `MLFLOW_EXPERIMENT_ID` | `resources.experiments.app_agents_experiment.id` (CLI ≥ 1.21) or fallback via `databricks experiments get-by-name` | App agents tracing |
+| `MLFLOW_EXPERIMENT_NAME` | `resources.experiments.app_agents_experiment.name` (always present) | Fallback lookup key |
 | `FRESHNESS_JOB_ID` | `resources.jobs.freshness_resurfacing.id` | App jobs plugin |
-| `LAKEBASE_BRANCH` | `resources.postgres_branches.development.name` | App Lakebase connection |
-| `LAKEBASE_DATABASE` | `resources.postgres_databases.app_db.name` | App Lakebase connection |
+| `LAKEBASE_BRANCH` | `resources.postgres_branches.development.id` (full resource path) | App Lakebase connection |
+| `LAKEBASE_DATABASE` | `resources.postgres_databases.app_db.id` (full resource path) | App Lakebase connection |
+
+Extraction (Python parser block):
+```python
+# Experiment: .id present in CLI >= 1.21; older CLIs omit it.
+exp_block = resources.get('experiments', {}).get('app_agents_experiment', {})
+mlflow_experiment_id = exp_block.get('id', '')
+mlflow_experiment_name = exp_block.get('name', '')
+freshness_job_id = resources.get('jobs', {}).get('freshness_resurfacing', {}).get('id', '')
+# Lakebase: .name doesn't exist in summary; .id is the full resource path
+lakebase_branch = resources.get('postgres_branches', {}).get('development', {}).get('id', '')
+lakebase_database = resources.get('postgres_databases', {}).get('app_db', {}).get('id', '')
+```
 
 Print lines:
 ```python
-print(f'MLFLOW_EXPERIMENT_ID="{safe(experiment_id)}"')
+print(f'MLFLOW_EXPERIMENT_NAME="{safe_name(mlflow_experiment_name)}"')
+print(f'MLFLOW_EXPERIMENT_ID="{safe(mlflow_experiment_id)}"')
 print(f'FRESHNESS_JOB_ID="{safe(freshness_job_id)}"')
-print(f'LAKEBASE_BRANCH="{safe(lakebase_branch)}"')
-print(f'LAKEBASE_DATABASE="{safe(lakebase_database)}"')
+print(f'LAKEBASE_BRANCH="{safe_url(lakebase_branch)}"')
+print(f'LAKEBASE_DATABASE="{safe_url(lakebase_database)}"')
 ```
+
+Bash fallback (after the `eval` block):
+```bash
+# Experiment ID fallback: CLI < 1.21 omits .id from bundle summary.
+if [[ -z "${MLFLOW_EXPERIMENT_ID}" && -n "${MLFLOW_EXPERIMENT_NAME}" ]]; then
+  MLFLOW_EXPERIMENT_ID=$(
+    EXP_NAME="${MLFLOW_EXPERIMENT_NAME}" python3 -c '
+import json, os, subprocess
+r = subprocess.run(
+    ["databricks", "experiments", "get-by-name",
+     os.environ["EXP_NAME"], "--output", "json"],
+    capture_output=True, text=True)
+d = json.loads(r.stdout) if r.returncode == 0 else {}
+print(d.get("experiment", d).get("experiment_id", ""))
+' 2>/dev/null) || MLFLOW_EXPERIMENT_ID=""
+  MLFLOW_EXPERIMENT_ID=$(safe "${MLFLOW_EXPERIMENT_ID}")
+fi
+```
+
+> **Sanitizer notes:**
+> - `safe()` allows only `[a-zA-Z0-9_.-]` — strips `/` and spaces.
+> - `safe_url()` preserves `:/` — use for Lakebase resource paths.
+> - `safe_name()` preserves `:/`, spaces, and `[]` — use for experiment names
+>   (needed because dev mode adds `[dev user_name]` prefix).
 
 #### 2b. Implement Phase 2 deploy
 
@@ -256,4 +294,4 @@ These are app-side changes that depend on infra decisions above:
 | 1 | Agent skills volume | **(C) Defer** — comment out optional resource | None; local skills work |
 | 2 | Job for app plugin | **(A) `freshness_resurfacing`** — pass via deploy.sh | N/A |
 | 3 | Serving endpoint var | **(A) Hardcode in app target** | N/A |
-| 4 | MLflow experiment path | `/Users/matthew.giglia@databricks.com/ground-truth-app-agents` | N/A |
+| 4 | MLflow experiment path | `/Workspace/.experiments/ground-truth-app-agents` | N/A |
