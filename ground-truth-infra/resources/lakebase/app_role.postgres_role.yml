@@ -1,9 +1,13 @@
 # resources/lakebase/app_role.postgres_role.yml
-# App service principal role — owns the app database.
+# Database owner role for ground_truth_app.
 # Design source: L300-02
 #
-# identity_type omitted: plain Postgres role, not tied to a Databricks identity.
-# Update to SERVICE_PRINCIPAL with the app SP app_id after Bundle 2 deploys.
+# identity_type intentionally omitted: plain Postgres role (not tied to a
+# Databricks identity). AppKit CAN_CONNECT_AND_CREATE auto-provisions a
+# separate Lakebase role (dbrx-apps-<uuid>) for the app SPN with OAuth auth.
+# The app SPN creates its own schemas (app, appkit) on startup and never
+# assumes this role. Keep this role as the database owner for declarative
+# tracking; grant membership to non-AppKit consumers if needed later.
 
 resources:
   postgres_roles:

@@ -914,11 +914,12 @@ for app in apps.values():
     # confirmed healthy and the M2M SPN has the right scopes.
     log "Post-deploy checklist (first deploy only — skip on subsequent):"
     echo "  1. Verify app health:     databricks apps get ${APP_DISPLAY_NAME}"
-    echo "  2. Note the auto-provisioned SPN app ID for app_role update"
-    echo "  3. Run post_deploy_setup: ./deploy.sh --target ${TARGET} --infra --run-setup"
+    echo "  2. Run post_deploy_setup: ./deploy.sh --target ${TARGET} --infra --run-setup"
     echo "     (creates MCP connection with app URL + M2M SPN creds)"
-    echo "  4. Re-deploy app:         ./deploy.sh --target ${TARGET} --app"
+    echo "  3. Re-deploy app:         ./deploy.sh --target ${TARGET} --app"
     echo "     (registers MCP service resource — lives in app bundle, not infra)"
+    echo "  Note: app_role update is NOT needed — AppKit CAN_CONNECT_AND_CREATE"
+    echo "  auto-provisions a Lakebase role for the app SPN."
   fi
 fi
 

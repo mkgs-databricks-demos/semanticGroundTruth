@@ -214,7 +214,7 @@ Queryable via SQL alongside future Lakebase Lakehouse Sync tables (`lb_*_history
 After a successful first deploy of `dev-semantic-ground-truth`:
 
 1. ✅ Verify app health: `databricks apps get dev-semantic-ground-truth`
-2. ⬜ Note auto-provisioned SPN app ID → update `app_role` identity in Lakebase infra resource
+2. ~~Note auto-provisioned SPN app ID → update `app_role`~~ **NOT NEEDED** — AppKit `CAN_CONNECT_AND_CREATE` auto-provisions a Lakebase role for the app SPN (`dbrx-apps-55882972-...`). The app creates its own schemas (`app`, `appkit`) on startup. The M2M SPN (`16f8923c-...`) only handles MCP HTTP connection token exchange — no Lakebase access needed. `app_role` stays as a plain PG role (database owner, zero objects owned).
 3. ⬜ Run post-deploy setup: `./deploy.sh --target dev --infra --run-setup` (creates MCP HTTP connection with app URL + M2M SPN creds)
 4. ⬜ Redeploy **app** bundle: `./deploy.sh --target dev --app` (registers MCP service — connection now exists)
 5. ⬜ Verify MCP service in Unity Gateway

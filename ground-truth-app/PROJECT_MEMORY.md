@@ -195,7 +195,7 @@ Declared in `databricks.yml` via `telemetry_export_destinations` (CLI ≥ 0.294.
 After a successful first deploy of `dev-semantic-ground-truth`:
 
 1. ✅ Verify app health: `databricks apps get dev-semantic-ground-truth`
-2. ⬜ Note auto-provisioned SPN app ID → update `app_role` identity in Lakebase infra resource
+2. ✅ ~~`app_role` update~~ **NOT NEEDED** — AppKit `CAN_CONNECT_AND_CREATE` auto-provisions Lakebase role for app SPN. M2M SPN only for MCP token exchange.
 3. ⬜ Run post-deploy setup: `./deploy.sh --target dev --infra --run-setup` (creates MCP HTTP connection)
 4. ⬜ Redeploy **app** bundle: `./deploy.sh --target dev --app` (registers MCP service — connection now exists)
 5. ⬜ Verify MCP service in Unity Gateway
@@ -222,7 +222,7 @@ After a successful first deploy of `dev-semantic-ground-truth`:
 
 | # | Item | Blocked on |
 |---|------|------------|
-| 2p | Note SPN app ID, update `app_role` | First deploy done — ready |
+| ~~2p~~ | ~~Note SPN app ID, update `app_role`~~ | ✅ NOT NEEDED — AppKit auto-provisions |
 | 3p | Run `post_deploy_setup` (MCP connection) | Nothing |
 | 4p | Redeploy app (MCP service registration) | Step 3p |
 | 7 | Lakebase migrations (TypeScript, run on startup) | App code authoring |
