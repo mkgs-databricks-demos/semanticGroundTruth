@@ -504,6 +504,7 @@ run_create_mcp_connection() {
 
   if (cd_bundle "${SCRIPT_DIR}/${APP_BUNDLE}" && \
       databricks bundle run create_mcp_connection --target "${TARGET}" \
+        "${APP_EXTRA_ARGS[@]}" \
         --params "connection_name=${connection_name}" \
         --params "app_url=${app_url}" \
         --params "base_path=${MCP_BASE_PATH}" \
