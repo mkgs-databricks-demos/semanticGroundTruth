@@ -74,7 +74,7 @@ From L300-01 spec. **Infra bundle has these configured.** App and Agent bundles 
 - **Confidence scoring:** Wilson score interval (configurable industry standard prior, decay curve)
 - **MCP:** Streamable HTTP via `@modelcontextprotocol/server` v2; registered as Unity Gateway connection
 - **Deployment:** Three-bundle DAB pattern (this repo)
-- **Observability:** OpenTelemetry → MLflow 3 experiment
+- **Observability:** OpenTelemetry → Unity Catalog tables (via `telemetry_export_destinations` in DAB) + MLflow 3 experiment for agent traces
 - **Notifications:** Databricks notification destinations (Slack webhook, Teams, generic webhook)
 - **Secrets:** UC Secrets (`catalog.schema.secret`)
 - **Compliance:** HIPAA (AWS us-east-1); 28/35 features GA+HIPAA, 7 Beta with documented fallbacks
@@ -166,6 +166,24 @@ All open questions from the L300 specs were resolved during Bundle 1 implementat
 | 2026-10-14 | App scaffold + infra support plan | AppKit scaffold via `databricks apps init` (Node.js, React 19, Vite, Tailwind 4, pnpm). MCP service moved from infra to app bundle. `app_bundle_support_plan.md` written. MLflow experiment resource created (`app_agents_experiment`, ID `1698842789305538`). Branch: `mg-genie-app-scaffold`. |
 | 2026-10-16 | resolve_infra_vars extended | 5 new outputs: MLFLOW_EXPERIMENT_ID (with CLI <1.21 fallback), MLFLOW_EXPERIMENT_NAME, FRESHNESS_JOB_ID, LAKEBASE_BRANCH, LAKEBASE_DATABASE. New `safe_name()` sanitizer. Full deploy verified green. Committed to `mg-genie-app-scaffold`. |
 | 2026-10-19 | deploy.sh Phase 2 implemented | Replaced TODO block with full app deploy: `--var` passthrough (7 infra-resolved vars), app URL resolution from bundle summary, MCP connection check, first-deploy checklist. Header updated (MCP service → MLflow experiment). Stale remote branches pruned. Branch: `mg-genie-app-scaffold`. |
+| 2026-10-19 | App bundle Phase A + OTel | Dev/prod targets, OBO scopes (sql/genie/files/model-serving), agents-skills commented out, deprecated infra MCP file deleted. OpenTelemetry enabled: `telemetry_export_destinations` in databricks.yml + `OTEL_TRACES_SAMPLER=always_on` in app.yaml. Branch: `mg-genie-app-scaffold` (8 commits ahead of main). |
+
+---
+
+## OpenTelemetry Tables (App Bundle)
+
+Declared in `ground-truth-app/databricks.yml` via `telemetry_export_destinations` (CLI ≥ 0.294.0). Platform auto-creates tables on first deploy. `OTEL_TRACES_SAMPLER=always_on` in `app.yaml` ensures all spans are recorded.
+
+| Signal | Table | Prefix |
+|--------|-------|--------|
+| Logs | `ground_truth_app_otel_logs` | `ground_truth_app_` |
+| Metrics | `ground_truth_app_otel_metrics` | `ground_truth_app_` |
+| Spans | `ground_truth_app_otel_spans` | `ground_truth_app_` |
+
+**Dev location:** `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.ground_truth_app_otel_*`
+**Prod location:** `prod_ground_truth.semantic_ground_truth.ground_truth_app_otel_*`
+
+Queryable via SQL alongside future Lakebase Lakehouse Sync tables (`lb_*_history`) once those are configured post-deploy.
 
 ---
 
