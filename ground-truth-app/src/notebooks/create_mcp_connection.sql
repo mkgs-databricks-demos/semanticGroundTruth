@@ -1,11 +1,11 @@
--- Databricks notebook source
 -- create_mcp_connection.sql
 -- Creates or updates the UC HTTP connection for the MCP service.
 --
 -- Run by: deploy.sh Phase 2 via `databricks bundle run create_mcp_connection`
+-- Executed as sql_task.file against the SQL warehouse.
 -- Design source: app_bundle_support_plan.md §2c
 --
--- Parameters (passed via --params from deploy.sh):
+-- Parameters (passed via --params from deploy.sh, bound as :param):
 --   connection_name:   UC connection name (flat, metastore-level)
 --   app_url:           App URL from bundle summary
 --   base_path:         MCP endpoint path (default /mcp)
@@ -15,9 +15,7 @@
 --   oauth_scopes:      OAuth scopes for token exchange
 --   token_endpoint:    OAuth token endpoint URL
 
--- COMMAND ----------
-
--- Declare session variables from widget parameters
+-- Declare session variables from job parameters
 DECLARE OR REPLACE VARIABLE v_connection_name STRING;
 DECLARE OR REPLACE VARIABLE v_app_url STRING;
 DECLARE OR REPLACE VARIABLE v_base_path STRING;
@@ -36,8 +34,6 @@ SET VAR v_client_secret_key = :client_secret_key;
 SET VAR v_oauth_scopes      = :oauth_scopes;
 SET VAR v_token_endpoint    = :token_endpoint;
 
--- COMMAND ----------
-
 -- Create connection if it doesn't exist (first deploy).
 -- DDL identifiers and OPTIONS literals don't bind :param — use EXECUTE IMMEDIATE.
 EXECUTE IMMEDIATE CONCAT(
@@ -51,8 +47,6 @@ EXECUTE IMMEDIATE CONCAT(
   ')'
 );
 
--- COMMAND ----------
-
 -- Ensure options are current (handles app URL changes and credential rotations).
 -- ALTER is idempotent — safe to run even if CREATE just succeeded above.
 EXECUTE IMMEDIATE CONCAT(
@@ -65,8 +59,6 @@ EXECUTE IMMEDIATE CONCAT(
     'token_endpoint ''', v_token_endpoint,   '''',
   ')'
 );
-
--- COMMAND ----------
 
 -- Verify: surface connection details for the job run output
 EXECUTE IMMEDIATE CONCAT('DESCRIBE CONNECTION `', v_connection_name, '`');

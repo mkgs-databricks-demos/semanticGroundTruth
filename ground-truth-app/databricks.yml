@@ -106,8 +106,9 @@ resources:
           default: ""
       tasks:
         - task_key: create_connection
-          notebook_task:
-            notebook_path: src/notebooks/create_mcp_connection.sql
+          sql_task:
+            file:
+              path: src/notebooks/create_mcp_connection.sql
             warehouse_id: ${var.sql_warehouse_id}
 
   # MCP Service — moved from Bundle 1 (infra) to Bundle 2 (app).
