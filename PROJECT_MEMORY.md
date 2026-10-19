@@ -28,7 +28,7 @@ Three-bundle monorepo. Deploy order: infra → app → agent (agent can parallel
 
 | Target | Mode | Status |
 |--------|------|--------|
-| `dev` | development (default) | **Infra deployed** ✅; App + Agent scaffolded |
+| `dev` | development (default) | **Infra deployed** ✅; **App scaffolded** (AppKit Node.js + React); Agent scaffolded |
 | `prod` | production | Scaffolded (all bundles) |
 | `staging` | — | Not yet added (L300-01 proposed it; add when needed) |
 
@@ -161,6 +161,11 @@ All open questions from the L300 specs were resolved during Bundle 1 implementat
 | 2026-10-08 | **Bundle 1 fully deployed to dev** | All 8 phases complete. UC schema, SQL warehouse, Lakebase, 4 jobs, metric view fixtures, Unity Gateway runbook, Genie Code skill prompt — all live. Post-deploy cleanup: naming, permissions, YAML split, docs/ restructure. Branch: `mg-genie-bundle-scaffolds`. |
 | 2026-10-08 | Post-deploy refactor | Resource YAML split (one file per resource), folder restructure (`docs/plans/`, `docs/runbooks/`, `docs/sessions/`), display name corrections, warehouse permissions. |
 | 2026-10-09 | Ready for Bundle 2 | All post-deploy manual steps documented. Remaining: UC secrets, Lakebase Lakehouse Sync, Unity Gateway connection, Genie Code skill registration, app_role SP update, job params. |
+| 2026-10-11 | M2M SPN implemented | Bundle-owned OAuth M2M service principal (`semantic-ground-truth-m2m-dev`). New notebooks: `ensure_m2m_service_principal`, `setup_secrets`. Solution-root `deploy.sh` operational — resolves infra vars, deploys, checks M2M credentials. Branch: `mg-genie-m2m-spn`. |
+| 2026-10-13 | M2M verified + deploy.sh mature | Token exchange verified (HTTP 200). `setup_secrets` writes `workspace_url`, reports key status via JSON exit. `report_secret_scope_keys()` added to deploy.sh (Step 1e). Genie One MCP smoke test passed (`smoke_test_genie_one_mcp.py`). M2M secret regenerated with `apps ai-gateway` scopes. Branch merged to main. |
+| 2026-10-14 | App scaffold + infra support plan | AppKit scaffold via `databricks apps init` (Node.js, React 19, Vite, Tailwind 4, pnpm). MCP service moved from infra to app bundle. `app_bundle_support_plan.md` written. MLflow experiment resource created (`app_agents_experiment`, ID `1698842789305538`). Branch: `mg-genie-app-scaffold`. |
+| 2026-10-16 | resolve_infra_vars extended | 5 new outputs: MLFLOW_EXPERIMENT_ID (with CLI <1.21 fallback), MLFLOW_EXPERIMENT_NAME, FRESHNESS_JOB_ID, LAKEBASE_BRANCH, LAKEBASE_DATABASE. New `safe_name()` sanitizer. Full deploy verified green. Committed to `mg-genie-app-scaffold`. |
+| 2026-10-19 | deploy.sh Phase 2 implemented | Replaced TODO block with full app deploy: `--var` passthrough (7 infra-resolved vars), app URL resolution from bundle summary, MCP connection check, first-deploy checklist. Header updated (MCP service → MLflow experiment). Stale remote branches pruned. Branch: `mg-genie-app-scaffold`. |
 
 ---
 
@@ -171,6 +176,38 @@ All open questions from the L300 specs were resolved during Bundle 1 implementat
 3. **Schema dev prefix:** DABs dev mode prepends `dev_<user>_` to schema names. Set the variable to the unprefixed name (e.g. `ground_truth` → deploys as `dev_matthew_giglia_ground_truth`).
 4. **Jobs environments block:** `environment_key: X` on tasks requires `environments: [{environment_key: X, spec: {client: "1"}}]` at the job level.
 5. **Lakebase branch parent:** Use `.id` directly (already `projects/{id}`); no manual prefix needed.
+6. **`engine: direct`** required for `secret_scope`, `job_run`, `mcp_service` resource types.
+7. **Bundle summary field names:** Lakebase branches/databases have `.id` (full resource path) but NO `.name`. Experiments have `.name` but `.id` only in CLI ≥ 1.21.
+8. **`safe()` strips `/`:** Use `safe_url()` for Lakebase resource paths, `safe_name()` for experiment names (preserves spaces and `[]` from dev-mode prefix).
+9. **Backticks in embedded Python comments break bash:** Python code inside `eval "$(python3 -c "...")"` is bash double-quoted — backticks trigger command substitution.
+10. **CLI positional args:** `databricks experiments get-by-name EXPERIMENT_NAME` (positional), NOT `--experiment-name`.
+
+---
+
+## deploy.sh Cross-Bundle Contract
+
+Solution-root `deploy.sh` orchestrates all three bundles. `resolve_infra_vars()` extracts 16 variables from `databricks bundle summary --target <target> --output json`:
+
+| Variable | Source | Sanitizer |
+|----------|--------|-----------|
+| `CATALOG` | `resources.schemas.*.catalog_name` | `safe()` |
+| `SCHEMA` | `resources.schemas.*.name` | `safe()` |
+| `SCOPE_NAME` | `variables.secret_scope_name` | `safe()` |
+| `WORKSPACE_HOST` | `workspace.host` | `safe_url()` |
+| `SQL_WAREHOUSE_ID` | `resources.sql_warehouses.*.id` | `safe()` |
+| `LAKEBASE_PROJECT_ID` | `resources.postgres_projects.*.project_id` | `safe()` |
+| `M2M_CLIENT_ID_KEY` | `variables.m2m_client_id_dbs_key` | `safe()` |
+| `M2M_CLIENT_SECRET_KEY` | `variables.m2m_client_secret_dbs_key` | `safe()` |
+| `M2M_SPN_PREFIX` | `variables.m2m_spn_prefix` | `safe()` |
+| `M2M_OAUTH_SCOPES` | `variables.m2m_oauth_scopes` | custom |
+| `POST_DEPLOY_JOB_ID` | `resources.jobs.post_deploy_setup.id` | `safe()` |
+| `MLFLOW_EXPERIMENT_ID` | `resources.experiments.app_agents_experiment.id` + fallback | `safe()` |
+| `MLFLOW_EXPERIMENT_NAME` | `resources.experiments.app_agents_experiment.name` | `safe_name()` |
+| `FRESHNESS_JOB_ID` | `resources.jobs.freshness_resurfacing.id` | `safe()` |
+| `LAKEBASE_BRANCH` | `resources.postgres_branches.development.id` | `safe_url()` |
+| `LAKEBASE_DATABASE` | `resources.postgres_databases.app_db.id` | `safe_url()` |
+
+Phase 2 (app deploy) passes these as `--var` to `deploy_bundle`. Phase 2 also resolves the app URL from the app bundle summary and checks/reports MCP HTTP connection status.
 
 ## Deviations from L300 Specs
 

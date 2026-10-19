@@ -2,7 +2,7 @@
 # deploy.sh — Shared deployment script for the Semantic Ground Truth solution.
 #
 # Deploys Declarative Automation Bundles in dependency order:
-#   1. ground-truth-infra    (UC schema, warehouse, Lakebase, secret scope, MCP service, jobs)
+#   1. ground-truth-infra    (UC schema, warehouse, Lakebase, secret scope, jobs, MLflow experiment)
 #   2. ground-truth-app      (AppKit app: Node.js + React, migrations, MCP server)  [Bundle 2]
 #   3. ground-truth-agent    (Genie Agent: operational agent, tool definitions)      [Bundle 3]
 #
@@ -104,6 +104,7 @@ MLFLOW_EXPERIMENT_NAME=""
 FRESHNESS_JOB_ID=""
 LAKEBASE_BRANCH=""
 LAKEBASE_DATABASE=""
+APP_URL=""
 
 # Set just before the infra deploy; used to pick this deploy's job run
 DEPLOY_START_MS=""
@@ -807,19 +808,88 @@ fi
 # Phase 2: App bundle (Bundle 2)
 # --------------------------------------------------------------------------- #
 if [[ "${DEPLOY_APP}" == true ]]; then
-  # TODO: After Bundle 2 is scaffolded:
-  # 1. deploy_bundle "${APP_BUNDLE}"
-  # 2. Resolve app URL from app bundle summary
-  # 2b. Grant CAN_USE on the app to the M2M SPN (resolve application_id by
-  #     display name "${M2M_SPN_PREFIX}-${TARGET}" and pass as --var, or via
-  #     a post-process job — see m2m_service_principal_plan.md §7.1)
-  # 2c. OBO grants: M2M SPN needs USE CATALOG, USE SCHEMA, SELECT on tables,
-  #     and CAN_USE on the SQL warehouse. When the app declares user_api_scopes,
-  #     regenerate the secret with scope >= {apps + user_api_scopes} and update
-  #     var.m2m_oauth_scopes to match.
-  # 3. Run post_deploy_setup job (creates connection via SQL DDL + registers MCP)
-  # 4. Re-deploy infra to register MCP service DAB resource
-  warn "Bundle 2 (${APP_BUNDLE}) not yet implemented — skipping."
+
+  # Step 2a: Ensure infra vars are resolved (--app only runs skip Phase 1)
+  if [[ -z "${CATALOG}" ]]; then
+    log "Resolving infra vars for app deploy (--app only)"
+    resolve_infra_vars
+  fi
+
+  # Step 2b: Build the --var list for the app bundle.
+  # Variables that deploy.sh resolves from infra are passed explicitly.
+  # Variables that are static per-target (agents_serving_endpoint_name) stay
+  # in the app's databricks.yml target block — not passed here.
+  APP_EXTRA_ARGS=(
+    "--var" "catalog=${CATALOG}"
+    "--var" "schema_name=${SCHEMA}"
+    "--var" "sql_warehouse_id=${SQL_WAREHOUSE_ID}"
+    "--var" "agents_mlflow_experiment_experimentId=${MLFLOW_EXPERIMENT_ID}"
+    "--var" "job_id=${FRESHNESS_JOB_ID}"
+    "--var" "postgres_branch=${LAKEBASE_BRANCH}"
+    "--var" "postgres_database=${LAKEBASE_DATABASE}"
+  )
+
+  log "Deploying app bundle with infra-resolved variables"
+  ok "  catalog=${CATALOG}"
+  ok "  schema_name=${SCHEMA}"
+  ok "  sql_warehouse_id=${SQL_WAREHOUSE_ID}"
+  ok "  mlflow_experiment=${MLFLOW_EXPERIMENT_ID}"
+  ok "  job_id=${FRESHNESS_JOB_ID}"
+  ok "  postgres_branch=${LAKEBASE_BRANCH}"
+  ok "  postgres_database=${LAKEBASE_DATABASE}"
+
+  # Step 2c: Deploy
+  deploy_bundle "${APP_BUNDLE}" "${APP_EXTRA_ARGS[@]}"
+
+  # Step 2d: Resolve the deployed app URL from the app bundle summary.
+  # The app URL is needed to create/update the MCP HTTP connection.
+  if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
+    log "Resolving app URL from app bundle summary"
+    APP_URL=""
+    APP_URL=$(
+      cd_bundle "${SCRIPT_DIR}/${APP_BUNDLE}" && \
+      databricks bundle summary --target "${TARGET}" --output json 2>/dev/null | \
+      sed -n '/^{/,$p' | \
+      python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+apps = data.get("resources", {}).get("apps", {})
+for app in apps.values():
+    url = app.get("url", "")
+    if url:
+        print(url)
+        break
+' 2>/dev/null) || APP_URL=""
+
+    # Step 2e: Check/report MCP HTTP connection status.
+    # The connection is created by setup_gateway_connection (post_deploy_setup)
+    # via SQL DDL with the M2M SPN credentials and the app URL.
+    # On first deploy the connection won't exist yet — that's expected.
+    if [[ -n "${APP_URL}" ]]; then
+      ok "App URL: ${APP_URL}"
+      ensure_http_connection || true
+    else
+      warn "Could not resolve app URL from bundle summary."
+      warn "The app may not have started yet. Check with:"
+      warn "  databricks apps get ground-truth-app"
+      warn "MCP connection not updated — run this after the app is healthy:"
+      warn "  ./deploy.sh --target ${TARGET} --infra --run-setup"
+    fi
+
+    # Step 2f: Remind about post-deploy steps for first deploy.
+    # The MCP HTTP connection + infra re-deploy happen after the app is
+    # confirmed healthy and the M2M SPN has the right scopes.
+    log "Post-deploy checklist (first deploy only — skip on subsequent):"
+    echo "  1. Verify app health:     databricks apps get ground-truth-app"
+    echo "  2. Note the auto-provisioned SPN app ID for app_role update"
+    echo "  3. Run post_deploy_setup: ./deploy.sh --target ${TARGET} --infra --run-setup"
+    echo "     (creates MCP connection with app URL + M2M SPN creds)"
+    echo "  4. Re-deploy infra:       ./deploy.sh --target ${TARGET} --infra"
+    echo "     (registers MCP service resource now that connection exists)"
+  fi
 fi
 
 # --------------------------------------------------------------------------- #
