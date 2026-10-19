@@ -938,7 +938,7 @@ for app in apps.values():
       ok "App URL: ${APP_URL}"
 
       # Check if connection already exists (for auto-redeploy decision)
-      local connection_existed=false
+      connection_existed=false
       if databricks api get /api/2.1/unity-catalog/connections/"${MCP_CONNECTION_NAME}" >/dev/null 2>&1; then
         connection_existed=true
       fi
