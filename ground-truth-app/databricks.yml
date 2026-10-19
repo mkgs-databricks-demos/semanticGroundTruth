@@ -87,6 +87,23 @@ resources:
   jobs:
     create_mcp_connection:
       name: ${var.app_display_name}-create-mcp-connection
+      parameters:
+        - name: connection_name
+          default: ""
+        - name: app_url
+          default: ""
+        - name: base_path
+          default: /mcp
+        - name: scope_name
+          default: ""
+        - name: client_id_key
+          default: ""
+        - name: client_secret_key
+          default: ""
+        - name: oauth_scopes
+          default: apps ai-gateway
+        - name: token_endpoint
+          default: ""
       tasks:
         - task_key: create_connection
           notebook_task:
