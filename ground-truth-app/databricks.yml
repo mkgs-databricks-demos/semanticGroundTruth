@@ -81,6 +81,18 @@ resources:
             database: ${var.postgres_database}
             permission: CAN_CONNECT_AND_CREATE
 
+  # Job: create/update MCP HTTP connection.
+  # Run by deploy.sh Phase 2 after the app deploys and the URL is known.
+  # SQL DDL uses secret() refs to M2M SPN credentials in the infra scope.
+  jobs:
+    create_mcp_connection:
+      name: ${var.app_display_name}-create-mcp-connection
+      tasks:
+        - task_key: create_connection
+          notebook_task:
+            notebook_path: src/notebooks/create_mcp_connection.sql
+            warehouse_id: ${var.sql_warehouse_id}
+
   # MCP Service — moved from Bundle 1 (infra) to Bundle 2 (app).
   # The MCP service points at the app's /mcp endpoint and must deploy with the app.
   # Dependency: source_connection (HTTP connection) must exist first.

@@ -19,19 +19,19 @@
 #   - report_secret_scope_keys: reads the setup_secrets task's JSON exit value from
 #     this deploy's post_deploy_setup run and lists written / missing scope keys.
 #
-# NOTE on MCP connection & service (hi-genie-orchestrator pattern):
-#   HTTP connections ALWAYS require valid credentials at creation time:
-#     - REST API → DCR (workspace may not support it)
-#     - SQL DDL without creds → falls back to DCR
-#     - SQL DDL with creds → validates token exchange immediately
-#   Therefore: connection + MCP service are POST-deploy steps, created after
-#   Bundle 2 deploys the app. The connection uses the bundle-owned M2M SPN
-#   credentials (created by the ensure_m2m_service_principal task), NOT the
-#   app's auto-provisioned SPN. See docs/plans/m2m_service_principal_plan.md.
-#   The setup_gateway_connection notebook (post_deploy_setup job) handles both
-#   connection creation (via SQL DDL with secret() refs) and MCP service
-#   registration. The MCP service DAB resource is kept for declarative tracking
-#   but will fail until the connection exists — this is expected and documented.
+# NOTE on MCP connection & service:
+#   HTTP connections require valid M2M SPN credentials at creation time.
+#   The connection is created automatically in Phase 2 (app deploy) via SQL DDL
+#   with secret() references to the M2M SPN keys (hi-genie-orchestrator pattern):
+#     1. --infra --run-setup: creates M2M SPN + stores credentials (one-time)
+#     2. --app: deploys app → resolves URL → creates connection → auto-redeploys
+#              to register MCP service (all automatic in a single command)
+#   The M2M SPN credentials (not the app's auto-provisioned SPN) are used.
+#   See docs/plans/m2m_service_principal_plan.md.
+#   The MCP service DAB resource lives in the app bundle (ground-truth-app).
+#   On first deploy, the initial deploy_bundle will fail for the MCP service
+#   (connection doesn't exist yet) — this is expected. After create_mcp_connection
+#   succeeds, deploy.sh auto-redeploys to register the MCP service.
 #
 # Usage:
 #   ./deploy.sh --target dev                             # deploy all bundles
@@ -146,17 +146,14 @@ Deployment order:
 First deployment:
   ./deploy.sh --target dev --infra --run-setup
   # Creates the M2M SPN and stores its client_id in the secret scope.
-  # MCP service will fail (no connection yet — expected pre-Bundle 2).
   # Then: workspace admin generates the M2M OAuth secret and stores it
   #   (ground-truth-infra/docs/runbooks/m2m-service-principal.md),
   #   and provisions webhook secrets (see docs/runbooks/)
   ./deploy.sh --target dev --infra --run-setup
   # Verifies the M2M token exchange.
   ./deploy.sh --target dev --app
-  # Then: run post_deploy_setup with app_url to create MCP connection,
-  # and re-deploy app to register the MCP service (lives in app bundle):
-  ./deploy.sh --target dev --infra --run-setup
-  ./deploy.sh --target dev --app
+  # Deploys app → creates MCP connection → auto-redeploys to register
+  # MCP service. All handled in a single command.
 
 Subsequent deploys (infra unchanged):
   ./deploy.sh --target dev --app
@@ -449,35 +446,77 @@ print(exp.get("experiment_id", ""))
 }
 
 # --------------------------------------------------------------------------- #
-# ensure_http_connection — check if the HTTP connection exists for MCP service
+# check_mcp_connection — check if the MCP HTTP connection exists (status only)
 #
-# Connection creation requires valid M2M SPN credentials (admin-provisioned
-# client_secret) and the app URL (only available after Bundle 2 deploys the
-# app). The setup_gateway_connection notebook creates the connection via SQL
-# DDL with secret() references to the M2M SPN keys (hi-genie pattern):
-#
-#   CREATE CONNECTION IF NOT EXISTS `name` TYPE HTTP OPTIONS (
-#     host 'https://<app-url>',
-#     base_path '/mcp',
-#     client_id secret('<scope>', '<key>'),
-#     client_secret secret('<scope>', '<key>'),
-#     oauth_scope '<m2m_oauth_scopes>',  # from var.m2m_oauth_scopes; scoped secret must include these
-#     token_endpoint 'https://<workspace>/oidc/v1/token'
-#   )
-#
-# This function only checks existence — creation is delegated to the notebook.
+# Used by Phase 1 to report connection status. Connection creation is handled
+# in Phase 2 by running the create_mcp_connection job (SQL notebook).
 # --------------------------------------------------------------------------- #
-ensure_http_connection() {
+check_mcp_connection() {
   local connection_name="${MCP_CONNECTION_NAME}"
 
-  log "Checking HTTP connection: ${connection_name}"
+  log "Checking MCP connection: ${connection_name}"
 
   if databricks api get /api/2.1/unity-catalog/connections/"${connection_name}" >/dev/null 2>&1; then
     ok "Connection exists: ${connection_name}"
     return 0
   else
     warn "Connection '${connection_name}' does not exist yet."
-    warn "It will be created by setup_gateway_connection after Bundle 2 deploys."
+    warn "It will be created automatically on the next --app deploy."
+    return 1
+  fi
+}
+
+# --------------------------------------------------------------------------- #
+# run_create_mcp_connection — run the SQL notebook job to create/update the
+# MCP HTTP connection (Phase 2)
+#
+# The create_mcp_connection job (app bundle) runs a SQL notebook that:
+#   1. CREATE CONNECTION IF NOT EXISTS — first deploy
+#   2. ALTER CONNECTION SET OPTIONS  — idempotent update (URL changes, rotations)
+#   3. DESCRIBE CONNECTION           — verification
+#
+# SQL DDL uses secret() references to the M2M SPN keys. Requires:
+#   - SQL_WAREHOUSE_ID (resolved from infra)
+#   - M2M SPN credentials provisioned in the secret scope
+#   - APP_URL (resolved from app bundle summary after deploy)
+# --------------------------------------------------------------------------- #
+run_create_mcp_connection() {
+  local app_url="$1"
+
+  if [[ -z "${app_url}" ]]; then
+    warn "App URL not available — cannot create MCP connection."
+    return 1
+  fi
+
+  if [[ -z "${M2M_CLIENT_ID_KEY}" || -z "${M2M_CLIENT_SECRET_KEY}" ]]; then
+    warn "M2M SPN key names not resolved — cannot create connection."
+    warn "Deploy infra with --run-setup first to create the M2M SPN."
+    return 1
+  fi
+
+  local connection_name="${MCP_CONNECTION_NAME}"
+  local token_endpoint="${WORKSPACE_HOST}/oidc/v1/token"
+
+  log "Creating/updating MCP connection: ${connection_name}"
+  ok "  app_url=${app_url}"
+  ok "  scope=${SCOPE_NAME}"
+  ok "  token_endpoint=${token_endpoint}"
+
+  if (cd_bundle "${SCRIPT_DIR}/${APP_BUNDLE}" && \
+      databricks bundle run create_mcp_connection --target "${TARGET}" \
+        --params "connection_name=${connection_name}" \
+        --params "app_url=${app_url}" \
+        --params "base_path=${MCP_BASE_PATH}" \
+        --params "scope_name=${SCOPE_NAME}" \
+        --params "client_id_key=${M2M_CLIENT_ID_KEY}" \
+        --params "client_secret_key=${M2M_CLIENT_SECRET_KEY}" \
+        --params "oauth_scopes=${M2M_OAUTH_SCOPES}" \
+        --params "token_endpoint=${token_endpoint}"); then
+    ok "MCP connection ready: ${connection_name}"
+    return 0
+  else
+    warn "create_mcp_connection job failed — check the run output above."
+    warn "Common causes: M2M client_secret not provisioned, warehouse offline."
     return 1
   fi
 }
@@ -784,13 +823,11 @@ if [[ "${DEPLOY_INFRA}" == true ]]; then
   # Step 1a: Resolve variables from bundle summary (works pre-deploy too)
   resolve_infra_vars
 
-  # Step 1b: Check MCP connection status
-  # Connection requires valid SPN credentials (only available after Bundle 2).
-  # Pre-Bundle 2: MCP service resource will fail (expected, non-blocking).
-  # Post-Bundle 2: setup_gateway_connection creates connection via SQL DDL,
-  # then re-deploy infra succeeds for MCP service.
+  # Step 1b: Check MCP connection status (informational only).
+  # Connection is created by Phase 2 (app deploy) via the
+  # create_mcp_connection job. This is just a status check.
   if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
-    ensure_http_connection || true
+    check_mcp_connection || true
   fi
 
   # Step 1c: Deploy the infra bundle
@@ -894,30 +931,39 @@ for app in apps.values():
         break
 ' 2>/dev/null) || APP_URL=""
 
-    # Step 2e: Check/report MCP HTTP connection status.
-    # The connection is created by setup_gateway_connection (post_deploy_setup)
-    # via SQL DDL with the M2M SPN credentials and the app URL.
-    # On first deploy the connection won't exist yet — that's expected.
+    # Step 2e: Create/update the MCP HTTP connection.
+    # Runs the create_mcp_connection SQL notebook job against the warehouse.
+    # On first deploy: creates the connection. On subsequent: updates if URL changed.
     if [[ -n "${APP_URL}" ]]; then
       ok "App URL: ${APP_URL}"
-      ensure_http_connection || true
+
+      # Check if connection already exists (for auto-redeploy decision)
+      local connection_existed=false
+      if databricks api get /api/2.1/unity-catalog/connections/"${MCP_CONNECTION_NAME}" >/dev/null 2>&1; then
+        connection_existed=true
+      fi
+
+      if run_create_mcp_connection "${APP_URL}"; then
+        # Step 2f: Auto-redeploy if connection was just created.
+        # The MCP service resource needs the connection to exist.
+        if [[ "${connection_existed}" == false ]]; then
+          log "MCP connection created — redeploying app to register MCP service"
+          deploy_bundle "${APP_BUNDLE}" "${APP_EXTRA_ARGS[@]}"
+        fi
+      else
+        warn "MCP connection not created — MCP service will remain unregistered."
+        warn "Check M2M SPN credentials and retry: ./deploy.sh --target ${TARGET} --app"
+      fi
     else
       warn "Could not resolve app URL from bundle summary."
       warn "The app may not have started yet. Check with:"
       warn "  databricks apps get ${APP_DISPLAY_NAME}"
-      warn "MCP connection not updated — run this after the app is healthy:"
-      warn "  ./deploy.sh --target ${TARGET} --infra --run-setup"
     fi
 
-    # Step 2f: Remind about post-deploy steps for first deploy.
-    # The MCP HTTP connection + infra re-deploy happen after the app is
-    # confirmed healthy and the M2M SPN has the right scopes.
-    log "Post-deploy checklist (first deploy only — skip on subsequent):"
-    echo "  1. Verify app health:     databricks apps get ${APP_DISPLAY_NAME}"
-    echo "  2. Run post_deploy_setup: ./deploy.sh --target ${TARGET} --infra --run-setup"
-    echo "     (creates MCP connection with app URL + M2M SPN creds)"
-    echo "  3. Re-deploy app:         ./deploy.sh --target ${TARGET} --app"
-    echo "     (registers MCP service resource — lives in app bundle, not infra)"
+    # Step 2g: Summary.
+    log "App deploy complete: ${APP_DISPLAY_NAME}"
+    echo "  App URL:        ${APP_URL:-UNKNOWN}"
+    echo "  MCP connection: ${MCP_CONNECTION_NAME}"
     echo "  Note: app_role update is NOT needed — AppKit CAN_CONNECT_AND_CREATE"
     echo "  auto-provisions a Lakebase role for the app SPN."
   fi
