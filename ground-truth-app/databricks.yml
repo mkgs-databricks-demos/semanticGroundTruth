@@ -7,8 +7,6 @@ variables:
     description: Default LLM serving endpoint name
   agents_mlflow_experiment_experimentId:
     description: MLflow experiment id traces are logged to
-  agents_skills_path:
-    description: Volume path for agent skills (e.g. /Volumes/catalog/schema/skills)
   sql_warehouse_id:
     description: SQL Warehouse ID
   job_id:
@@ -32,9 +30,13 @@ resources:
       # Start the app automatically on deploy.
       lifecycle:
         started: true
-      # Uncomment to enable on behalf of user API scopes. Available scopes: sql, genie, files, model-serving
-      # user_api_scopes:
-      #   - sql
+      # On behalf of user (OBO) API scopes — the app acts as the logged-in user for these APIs.
+      # Available scopes: sql, genie, files, model-serving
+      user_api_scopes:
+        - sql
+        - genie
+        - files
+        - model-serving
 
       # The resources which this app has access to.
       resources:
@@ -46,11 +48,13 @@ resources:
           experiment:
             experiment_id: ${var.agents_mlflow_experiment_experimentId}
             permission: CAN_EDIT
-        - name: agents-skills
-          uc_securable:
-            securable_full_name: ${var.agents_skills_path}
-            securable_type: VOLUME
-            permission: READ_VOLUME
+        # Optional: UC volume for remote agent skills. Uncomment when needed.
+        # Skills currently served from local server/agents/skills/ directory.
+        # - name: agents-skills
+        #   uc_securable:
+        #     securable_full_name: ${var.agents_skills_path}
+        #     securable_type: VOLUME
+        #     permission: READ_VOLUME
         - name: sql-warehouse
           sql_warehouse:
             id: ${var.sql_warehouse_id}
@@ -88,18 +92,48 @@ resources:
             - EXECUTE
 
 targets:
+  # Local development — pnpm run dev against the AppKit local proxy.
+  # All variables have concrete values for local testing.
   default:
-    default: true
     workspace:
       host: http://127.0.0.1:7073
 
     variables:
       agents_serving_endpoint_name: databricks-claude-opus-4-8
       agents_mlflow_experiment_experimentId: 4038008988926083
-      agents_skills_path: /Volumes/hls_fde_dev/dev_matthew_giglia_bcda/landing
       sql_warehouse_id: 0ea84986a23a47c3
       job_id: 1103481179431341
       postgres_branch: projects/dev-matthew-giglia-ground-truth/branches/development
       postgres_database: projects/dev-matthew-giglia-ground-truth/branches/development/databases/ground-truth-app
       catalog: hls_fde_dev
       schema_name: dev_matthew_giglia_semantic_ground_truth
+
+  # Dev target — deployed by: ./deploy.sh --target dev --app
+  # Most variables are overridden at deploy time by deploy.sh --var passthrough.
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://fevm-hls-fde.cloud.databricks.com
+      root_path: /Users/matthew.giglia@databricks.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      # Static per-target — NOT passed by deploy.sh
+      agents_serving_endpoint_name: databricks-claude-opus-4-8
+      # Resolved at deploy time by deploy.sh --var (placeholder values below):
+      catalog: hls_fde_dev
+      schema_name: dev_matthew_giglia_semantic_ground_truth
+      # sql_warehouse_id, job_id, postgres_branch, postgres_database,
+      # agents_mlflow_experiment_experimentId: resolved by deploy.sh
+
+  # Prod target — deployed by: ./deploy.sh --target prod --app
+  prod:
+    mode: production
+    workspace:
+      host: https://fevm-hls-fde.cloud.databricks.com
+      root_path: /Users/matthew.giglia@databricks.com/.bundle/${bundle.name}/${bundle.target}
+    run_as:
+      user_name: matthew.giglia@databricks.com
+    variables:
+      agents_serving_endpoint_name: databricks-claude-opus-4-8
+      catalog: prod_ground_truth
+      schema_name: semantic_ground_truth
