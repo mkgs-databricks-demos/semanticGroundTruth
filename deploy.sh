@@ -860,11 +860,27 @@ if [[ "${DEPLOY_APP}" == true ]]; then
     resolve_infra_vars
   fi
 
+  # Step 2b: Build the --var list for the app bundle.
+  # Variables that deploy.sh resolves from infra are passed explicitly.
+  # Variables that are static per-target (agents_serving_endpoint_name) stay
+  # in the app's databricks.yml target block — not passed here.
+  # Built BEFORE display-name resolution so bundle summary has required vars.
+  APP_EXTRA_ARGS=(
+    "--var" "catalog=${CATALOG}"
+    "--var" "schema_name=${SCHEMA}"
+    "--var" "sql_warehouse_id=${SQL_WAREHOUSE_ID}"
+    "--var" "agents_mlflow_experiment_experimentId=${MLFLOW_EXPERIMENT_ID}"
+    "--var" "job_id=${FRESHNESS_JOB_ID}"
+    "--var" "postgres_branch=${LAKEBASE_BRANCH}"
+    "--var" "postgres_database=${LAKEBASE_DATABASE}"
+  )
+
   # Step 2a': Resolve the app display name from the app bundle's target variables.
   # The app name is target-specific (e.g. dev-semantic-ground-truth, semantic-ground-truth).
+  # Requires APP_EXTRA_ARGS — bundle summary fails without resolved vars.
   APP_DISPLAY_NAME=$(
     cd_bundle "${SCRIPT_DIR}/${APP_BUNDLE}" && \
-    databricks bundle summary --target "${TARGET}" --output json 2>/dev/null | \
+    databricks bundle summary --target "${TARGET}" "${APP_EXTRA_ARGS[@]}" --output json 2>/dev/null | \
     sed -n '/^{/,$p' | \
     python3 -c '
 import json, sys
@@ -881,20 +897,6 @@ print(data.get("variables", {}).get("app_display_name", {}).get("value", ""))
     APP_DISPLAY_NAME="semantic-ground-truth"  # fallback
   fi
   ok "App display name: ${APP_DISPLAY_NAME}"
-
-  # Step 2b: Build the --var list for the app bundle.
-  # Variables that deploy.sh resolves from infra are passed explicitly.
-  # Variables that are static per-target (agents_serving_endpoint_name) stay
-  # in the app's databricks.yml target block — not passed here.
-  APP_EXTRA_ARGS=(
-    "--var" "catalog=${CATALOG}"
-    "--var" "schema_name=${SCHEMA}"
-    "--var" "sql_warehouse_id=${SQL_WAREHOUSE_ID}"
-    "--var" "agents_mlflow_experiment_experimentId=${MLFLOW_EXPERIMENT_ID}"
-    "--var" "job_id=${FRESHNESS_JOB_ID}"
-    "--var" "postgres_branch=${LAKEBASE_BRANCH}"
-    "--var" "postgres_database=${LAKEBASE_DATABASE}"
-  )
 
   log "Deploying app bundle with infra-resolved variables"
   ok "  catalog=${CATALOG}"
