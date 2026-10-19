@@ -176,12 +176,12 @@ Declared in `ground-truth-app/databricks.yml` via `telemetry_export_destinations
 
 | Signal | Table | Prefix |
 |--------|-------|--------|
-| Logs | `ground_truth_app_otel_logs` | `ground_truth_app_` |
-| Metrics | `ground_truth_app_otel_metrics` | `ground_truth_app_` |
-| Spans | `ground_truth_app_otel_spans` | `ground_truth_app_` |
+| Logs | `semantic_ground_truth_otel_logs` | `semantic_ground_truth_` |
+| Metrics | `semantic_ground_truth_otel_metrics` | `semantic_ground_truth_` |
+| Spans | `semantic_ground_truth_otel_spans` | `semantic_ground_truth_` |
 
-**Dev location:** `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.ground_truth_app_otel_*`
-**Prod location:** `prod_ground_truth.semantic_ground_truth.ground_truth_app_otel_*`
+**Dev location:** `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_*`
+**Prod location:** `prod_ground_truth.semantic_ground_truth.semantic_ground_truth_otel_*`
 
 Queryable via SQL alongside future Lakebase Lakehouse Sync tables (`lb_*_history`) once those are configured post-deploy.
 
@@ -222,7 +222,7 @@ Solution-root `deploy.sh` orchestrates all three bundles. `resolve_infra_vars()`
 | `MLFLOW_EXPERIMENT_ID` | `resources.experiments.app_agents_experiment.id` + fallback | `safe()` |
 | `MLFLOW_EXPERIMENT_NAME` | `resources.experiments.app_agents_experiment.name` | `safe_name()` |
 | `FRESHNESS_JOB_ID` | `resources.jobs.freshness_resurfacing.id` | `safe()` |
-| `LAKEBASE_BRANCH` | `resources.postgres_branches.development.id` | `safe_url()` |
+| `LAKEBASE_BRANCH` | `resources.postgres_branches.production.id` | `safe_url()` |
 | `LAKEBASE_DATABASE` | `resources.postgres_databases.app_db.id` | `safe_url()` |
 
 Phase 2 (app deploy) passes these as `--var` to `deploy_bundle`. Phase 2 also resolves the app URL from the app bundle summary and checks/reports MCP HTTP connection status.

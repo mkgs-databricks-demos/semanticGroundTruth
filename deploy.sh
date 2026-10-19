@@ -105,6 +105,7 @@ FRESHNESS_JOB_ID=""
 LAKEBASE_BRANCH=""
 LAKEBASE_DATABASE=""
 APP_URL=""
+APP_DISPLAY_NAME=""
 
 # Set just before the infra deploy; used to pick this deploy's job run
 DEPLOY_START_MS=""
@@ -821,6 +822,28 @@ if [[ "${DEPLOY_APP}" == true ]]; then
     resolve_infra_vars
   fi
 
+  # Step 2a': Resolve the app display name from the app bundle's target variables.
+  # The app name is target-specific (e.g. dev-semantic-ground-truth, semantic-ground-truth).
+  APP_DISPLAY_NAME=$(
+    cd_bundle "${SCRIPT_DIR}/${APP_BUNDLE}" && \
+    databricks bundle summary --target "${TARGET}" --output json 2>/dev/null | \
+    sed -n '/^{/,$p' | \
+    python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+print(data.get("variables", {}).get("app_display_name", {}).get("value", ""))
+' 2>/dev/null) || APP_DISPLAY_NAME=""
+  APP_DISPLAY_NAME=$(safe_url "${APP_DISPLAY_NAME}")
+
+  if [[ -z "${APP_DISPLAY_NAME}" ]]; then
+    warn "Could not resolve app_display_name from app bundle summary."
+    APP_DISPLAY_NAME="semantic-ground-truth"  # fallback
+  fi
+  ok "App display name: ${APP_DISPLAY_NAME}"
+
   # Step 2b: Build the --var list for the app bundle.
   # Variables that deploy.sh resolves from infra are passed explicitly.
   # Variables that are static per-target (agents_serving_endpoint_name) stay
@@ -880,7 +903,7 @@ for app in apps.values():
     else
       warn "Could not resolve app URL from bundle summary."
       warn "The app may not have started yet. Check with:"
-      warn "  databricks apps get ground-truth-app"
+      warn "  databricks apps get ${APP_DISPLAY_NAME}"
       warn "MCP connection not updated — run this after the app is healthy:"
       warn "  ./deploy.sh --target ${TARGET} --infra --run-setup"
     fi
@@ -889,7 +912,7 @@ for app in apps.values():
     # The MCP HTTP connection + infra re-deploy happen after the app is
     # confirmed healthy and the M2M SPN has the right scopes.
     log "Post-deploy checklist (first deploy only — skip on subsequent):"
-    echo "  1. Verify app health:     databricks apps get ground-truth-app"
+    echo "  1. Verify app health:     databricks apps get ${APP_DISPLAY_NAME}"
     echo "  2. Note the auto-provisioned SPN app ID for app_role update"
     echo "  3. Run post_deploy_setup: ./deploy.sh --target ${TARGET} --infra --run-setup"
     echo "     (creates MCP connection with app URL + M2M SPN creds)"

@@ -3,6 +3,8 @@ bundle:
   engine: direct  # Required for mcp_service resources
 
 variables:
+  app_display_name:
+    description: "Databricks App name (target-specific for dev/prod coexistence in same workspace)"
   agents_serving_endpoint_name:
     description: Default LLM serving endpoint name
   agents_mlflow_experiment_experimentId:
@@ -23,7 +25,7 @@ variables:
 resources:
   apps:
     app:
-      name: "ground-truth-app"
+      name: "${var.app_display_name}"
       description: "A Databricks App powered by AppKit"
       source_code_path: ./
 
@@ -44,9 +46,9 @@ resources:
       # Requires CLI >= 0.294.0 (we have 1.21.0).
       telemetry_export_destinations:
         - unity_catalog:
-            logs_table: ${var.catalog}.${var.schema_name}.ground_truth_app_otel_logs
-            metrics_table: ${var.catalog}.${var.schema_name}.ground_truth_app_otel_metrics
-            traces_table: ${var.catalog}.${var.schema_name}.ground_truth_app_otel_spans
+            logs_table: ${var.catalog}.${var.schema_name}.semantic_ground_truth_otel_logs
+            metrics_table: ${var.catalog}.${var.schema_name}.semantic_ground_truth_otel_metrics
+            traces_table: ${var.catalog}.${var.schema_name}.semantic_ground_truth_otel_spans
 
       # The resources which this app has access to.
       resources:
@@ -109,6 +111,7 @@ targets:
       host: http://127.0.0.1:7073
 
     variables:
+      app_display_name: dev-semantic-ground-truth
       agents_serving_endpoint_name: databricks-claude-opus-4-8
       agents_mlflow_experiment_experimentId: 4038008988926083
       sql_warehouse_id: 0ea84986a23a47c3
@@ -128,6 +131,7 @@ targets:
       root_path: /Users/matthew.giglia@databricks.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       # Static per-target — NOT passed by deploy.sh
+      app_display_name: dev-semantic-ground-truth
       agents_serving_endpoint_name: databricks-claude-opus-4-8
       # Resolved at deploy time by deploy.sh --var (placeholder values below):
       catalog: hls_fde_dev
@@ -144,6 +148,7 @@ targets:
     run_as:
       user_name: matthew.giglia@databricks.com
     variables:
+      app_display_name: semantic-ground-truth
       agents_serving_endpoint_name: databricks-claude-opus-4-8
       catalog: prod_ground_truth
       schema_name: semantic_ground_truth
