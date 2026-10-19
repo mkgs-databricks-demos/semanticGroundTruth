@@ -874,7 +874,7 @@ except Exception:
     data = {}
 print(data.get("variables", {}).get("app_display_name", {}).get("value", ""))
 ' 2>/dev/null) || APP_DISPLAY_NAME=""
-  APP_DISPLAY_NAME=$(safe_url "${APP_DISPLAY_NAME}")
+  APP_DISPLAY_NAME=$(safe "${APP_DISPLAY_NAME}")
 
   if [[ -z "${APP_DISPLAY_NAME}" ]]; then
     warn "Could not resolve app_display_name from app bundle summary."
@@ -908,27 +908,20 @@ print(data.get("variables", {}).get("app_display_name", {}).get("value", ""))
   # Step 2c: Deploy
   deploy_bundle "${APP_BUNDLE}" "${APP_EXTRA_ARGS[@]}"
 
-  # Step 2d: Resolve the deployed app URL from the app bundle summary.
-  # The app URL is needed to create/update the MCP HTTP connection.
-  if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
-    log "Resolving app URL from app bundle summary"
+   # Step 2d: Resolve the deployed app URL from the Apps API.
+    # bundle summary doesn't include the live app URL — it's on the running app.
+    if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
+    log "Resolving app URL from Apps API"
     APP_URL=""
     APP_URL=$(
-      cd_bundle "${SCRIPT_DIR}/${APP_BUNDLE}" && \
-      databricks bundle summary --target "${TARGET}" --output json 2>/dev/null | \
-      sed -n '/^{/,$p' | \
+      databricks apps get "${APP_DISPLAY_NAME}" 2>/dev/null | \
       python3 -c '
 import json, sys
 try:
     data = json.load(sys.stdin)
 except Exception:
     data = {}
-apps = data.get("resources", {}).get("apps", {})
-for app in apps.values():
-    url = app.get("url", "")
-    if url:
-        print(url)
-        break
+print(data.get("url", ""))
 ' 2>/dev/null) || APP_URL=""
 
     # Step 2e: Create/update the MCP HTTP connection.
