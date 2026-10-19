@@ -239,7 +239,11 @@ deploy_bundle() {
   fi
 
   log "Validating ${bundle_name} (target: ${TARGET})"
-  (cd_bundle "${bundle_dir}" && databricks bundle validate --target "${TARGET}")
+  if [[ ${#extra_args[@]} -gt 0 ]]; then
+    (cd_bundle "${bundle_dir}" && databricks bundle validate --target "${TARGET}" "${extra_args[@]}")
+  else
+    (cd_bundle "${bundle_dir}" && databricks bundle validate --target "${TARGET}")
+  fi
   ok "Validation passed: ${bundle_name}"
 
   if [[ "${VALIDATE_ONLY}" == true ]]; then
@@ -356,8 +360,10 @@ mlflow_experiment_id = exp_block.get('id', '')
 mlflow_experiment_name = exp_block.get('name', '')
 freshness_job_id = resources.get('jobs', {}).get('freshness_resurfacing', {}).get('id', '')
 # Lakebase: .name doesn't exist in the summary; .id is the full resource path
-# (e.g. projects/<project>/branches/development)
-lakebase_branch = resources.get('postgres_branches', {}).get('development', {}).get('id', '')
+# (e.g. projects/<project>/branches/production)
+# IMPORTANT: branch must match the branch that owns the database.
+# app_db.parent = production branch, so we resolve production here.
+lakebase_branch = resources.get('postgres_branches', {}).get('production', {}).get('id', '')
 lakebase_database = resources.get('postgres_databases', {}).get('app_db', {}).get('id', '')
 
 # --- workspace host ---

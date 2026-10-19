@@ -113,8 +113,8 @@ targets:
       agents_mlflow_experiment_experimentId: 4038008988926083
       sql_warehouse_id: 0ea84986a23a47c3
       job_id: 1103481179431341
-      postgres_branch: projects/dev-matthew-giglia-ground-truth/branches/development
-      postgres_database: projects/dev-matthew-giglia-ground-truth/branches/development/databases/ground-truth-app
+      postgres_branch: projects/dev-matthew-giglia-ground-truth/branches/production
+      postgres_database: projects/dev-matthew-giglia-ground-truth/branches/production/databases/ground-truth-app
       catalog: hls_fde_dev
       schema_name: dev_matthew_giglia_semantic_ground_truth
 
