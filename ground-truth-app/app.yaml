@@ -1,14 +1,21 @@
 command: ['pnpm', 'run', 'start']
 env:
+  # ── App resource bindings (injected by platform from databricks.yml resources) ──
   - name: DATABRICKS_SERVING_ENDPOINT_NAME
     valueFrom: agents-serving-endpoint
   - name: MLFLOW_EXPERIMENT_ID
     valueFrom: agents-mlflow-experiment
-  - name: DATABRICKS_VOLUME_AGENT_SKILLS
-    valueFrom: agents-skills
   - name: DATABRICKS_WAREHOUSE_ID
     valueFrom: sql-warehouse
   - name: DATABRICKS_JOB_ID
     valueFrom: job
   - name: LAKEBASE_ENDPOINT
     valueFrom: postgres
+
+  # ── OpenTelemetry ──
+  # Record every trace unconditionally. Without this, the default parent-based
+  # sampler follows the platform proxy's sampling decision and drops most spans,
+  # leaving otel_spans near-empty. See:
+  # https://docs.databricks.com/aws/en/dev-tools/databricks-apps/observability/
+  - name: OTEL_TRACES_SAMPLER
+    value: always_on

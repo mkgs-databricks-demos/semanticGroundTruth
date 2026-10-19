@@ -38,6 +38,16 @@ resources:
         - files
         - model-serving
 
+      # OpenTelemetry — logs, metrics, and traces to Unity Catalog.
+      # Platform captures system logs + login events automatically.
+      # OTEL_TRACES_SAMPLER=always_on in app.yaml ensures all spans are recorded.
+      # Requires CLI >= 0.294.0 (we have 1.21.0).
+      telemetry_export_destinations:
+        - unity_catalog:
+            logs_table: ${var.catalog}.${var.schema_name}.ground_truth_app_otel_logs
+            metrics_table: ${var.catalog}.${var.schema_name}.ground_truth_app_otel_metrics
+            traces_table: ${var.catalog}.${var.schema_name}.ground_truth_app_otel_spans
+
       # The resources which this app has access to.
       resources:
         - name: agents-serving-endpoint
