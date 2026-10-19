@@ -104,23 +104,6 @@ resources:
             - EXECUTE
 
 targets:
-  # Local development — pnpm run dev against the AppKit local proxy.
-  # All variables have concrete values for local testing.
-  default:
-    workspace:
-      host: http://127.0.0.1:7073
-
-    variables:
-      app_display_name: dev-semantic-ground-truth
-      agents_serving_endpoint_name: databricks-claude-opus-4-8
-      agents_mlflow_experiment_experimentId: 4038008988926083
-      sql_warehouse_id: 0ea84986a23a47c3
-      job_id: 1103481179431341
-      postgres_branch: projects/dev-matthew-giglia-ground-truth/branches/production
-      postgres_database: projects/dev-matthew-giglia-ground-truth/branches/production/databases/ground-truth-app
-      catalog: hls_fde_dev
-      schema_name: dev_matthew_giglia_semantic_ground_truth
-
   # Dev target — deployed by: ./deploy.sh --target dev --app
   # Most variables are overridden at deploy time by deploy.sh --var passthrough.
   dev:
@@ -152,3 +135,20 @@ targets:
       agents_serving_endpoint_name: databricks-claude-opus-4-8
       catalog: prod_ground_truth
       schema_name: semantic_ground_truth
+
+  # Local development — pnpm run dev against the AppKit local proxy.
+  # All variables have concrete values for local testing.
+  # Usage: pnpm run dev (reads .env, proxies to localhost:7073)
+  local:
+    workspace:
+      host: http://127.0.0.1:7073
+    variables:
+      app_display_name: dev-semantic-ground-truth
+      agents_serving_endpoint_name: databricks-claude-opus-4-8
+      agents_mlflow_experiment_experimentId: 4038008988926083
+      sql_warehouse_id: 0ea84986a23a47c3
+      job_id: 1103481179431341
+      postgres_branch: projects/dev-matthew-giglia-ground-truth/branches/production
+      postgres_database: projects/dev-matthew-giglia-ground-truth/branches/production/databases/ground-truth-app
+      catalog: hls_fde_dev
+      schema_name: dev_matthew_giglia_semantic_ground_truth
