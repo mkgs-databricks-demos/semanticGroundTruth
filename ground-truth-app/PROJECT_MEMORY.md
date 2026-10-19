@@ -1,6 +1,6 @@
 # PROJECT_MEMORY — ground-truth-app
 
-> Last updated: 2026-10-14 — App bundle scaffolded via `databricks apps init --skip-install`. MCP service moved from infra.
+> Last updated: 2026-10-19 — Phase B first deploy successful. `dev-semantic-ground-truth` running.
 
 ## Bundle Identity
 
@@ -15,13 +15,13 @@
 
 ## Targets
 
-| Target | Mode | Status | Notes |
-|--------|------|--------|-------|
-| `default` | local dev | Scaffolded | `host: http://127.0.0.1:7073` — for `pnpm run dev` |
-| `dev` | development | **TODO** | Needs proper target matching infra pattern |
-| `prod` | production | **TODO** | Needs proper target matching infra pattern |
+| Target | Mode | Status | App Name | Notes |
+|--------|------|--------|----------|-------|
+| `dev` | development (default) | **Deployed** ✅ | `dev-semantic-ground-truth` | `default: true`. Variables passed from infra via `deploy.sh --var` |
+| `prod` | production | Configured | `semantic-ground-truth` | `run_as: matthew.giglia@databricks.com` |
+| `local` | localhost proxy | Configured | — | `host: http://127.0.0.1:7073` — for `pnpm run dev`. All vars hardcoded. |
 
-> **Action needed:** Replace `default` (localhost) target with proper `dev`/`prod` targets. Variables will be passed from infra via `deploy.sh --var` at deploy time.
+> **Note:** `default` target was renamed to `local` and moved to the bottom of the targets list. The `dev` target is the only true default.
 
 ---
 
@@ -31,8 +31,8 @@
 
 | Resource Type | Key | Description | Status |
 |---------------|-----|-------------|--------|
-| `apps` | `app` | `ground-truth-app` — AppKit app (Node.js + React) | Scaffolded |
-| `mcp_services` | `ground_truth_mcp` | MCP service in Unity Gateway — moved from infra | Scaffolded |
+| `apps` | `app` | `dev-semantic-ground-truth` — AppKit app (Node.js + React) | **Deployed** ✅ |
+| `mcp_services` | `ground_truth_mcp` | MCP service in Unity Gateway — moved from infra | Pending (connection needed first) |
 
 ### App Stack
 
@@ -62,17 +62,19 @@
 
 ### Variables
 
-| Variable | Description | Source |
-|----------|-------------|--------|
-| `agents_serving_endpoint_name` | LLM endpoint for agents | Hardcoded in target |
-| `agents_mlflow_experiment_experimentId` | MLflow experiment for agent tracing | **TODO:** From infra (currently placeholder) |
-| `agents_skills_path` | UC volume for agent skills | **TODO:** Defer or remove (optional) |
-| `sql_warehouse_id` | SQL Warehouse ID | From infra via deploy.sh |
-| `job_id` | Job ID for jobs plugin | From infra (`freshness_resurfacing`) |
-| `postgres_branch` | Lakebase branch resource name | From infra via deploy.sh |
-| `postgres_database` | Lakebase database resource name | From infra via deploy.sh |
-| `catalog` | UC catalog name | From infra via deploy.sh |
-| `schema_name` | Fully qualified UC schema name (includes dev prefix) | From infra via deploy.sh |
+| Variable | Description | Source | Dev Value |
+|----------|-------------|--------|-----------|
+| `app_display_name` | App platform name (target-specific) | Hardcoded in target | `dev-semantic-ground-truth` |
+| `agents_serving_endpoint_name` | LLM endpoint for agents | Hardcoded in target | `databricks-claude-opus-4-8` |
+| `agents_mlflow_experiment_experimentId` | MLflow experiment for agent tracing | From infra via deploy.sh | `1698842789305538` |
+| `sql_warehouse_id` | SQL Warehouse ID | From infra via deploy.sh | `0ea84986a23a47c3` |
+| `job_id` | Job ID for jobs plugin | From infra (`freshness_resurfacing`) | `1103481179431341` |
+| `postgres_branch` | Lakebase branch resource name | From infra via deploy.sh | `projects/dev-matthew-giglia-ground-truth/branches/production` |
+| `postgres_database` | Lakebase database resource name | From infra via deploy.sh | `projects/.../databases/ground-truth-app` |
+| `catalog` | UC catalog name | From infra via deploy.sh | `hls_fde_dev` |
+| `schema_name` | UC schema name (includes dev prefix) | From infra via deploy.sh | `dev_matthew_giglia_semantic_ground_truth` |
+
+> **Removed:** `agents_skills_path` — optional resource commented out. Revisit when UC-sourced skills needed.
 
 ### App Configuration
 
@@ -151,39 +153,105 @@ The `ground_truth_mcp` MCP service was moved from Bundle 1 (infra) to this bundl
 - `include_tool_selectors:` `review_*`, `campaign_*`, `metric_view_*`
 - `grants:` `data-engineers` → `EXECUTE`
 
-**Dependency chain:** deploy.sh creates HTTP connection → app deploys (starts `/mcp` server) → deploy.sh updates connection with real app URL → MCP service resource registers in Unity Gateway.
+**Dependency chain (first deploy):**
+1. App deploys → app starts, MCP service **fails** (expected — connection doesn't exist yet)
+2. `./deploy.sh --target dev --infra --run-setup` → `post_deploy_setup` job creates HTTP connection with app URL + M2M SPN creds
+3. `./deploy.sh --target dev --app` → redeploy app bundle → MCP service **succeeds** (connection now exists)
+4. Subsequent deploys: connection already exists, MCP service creates/updates cleanly
+
+> **Critical:** Step 3 is `--app`, NOT `--infra`. The MCP service resource lives in THIS bundle, not infra. The deprecated infra copy was deleted in commit `71b5d14`.
 
 ---
 
-## Borrowed Placeholder Resources (to replace)
+## Borrowed Placeholders — ALL RESOLVED
 
-These values were used during `databricks apps init` to satisfy required resource bindings. They point at foreign projects and must be replaced:
+All scaffold-time placeholders replaced with infra-owned values:
 
-| Variable | Current value | Correct source |
-|----------|---------------|----------------|
-| `agents_mlflow_experiment_experimentId` | `4038008988926083` | New infra experiment (TBD) |
-| `agents_skills_path` | `/Volumes/hls_fde_dev/dev_matthew_giglia_bcda/landing` | Defer: comment out optional resource |
-| `job_id` | `1103481179431341` | Infra's `freshness_resurfacing` (correct — pass via deploy.sh) |
+| Variable | Was | Now |
+|----------|-----|-----|
+| `agents_mlflow_experiment_experimentId` | `4038008988926083` (foreign) | `1698842789305538` (infra experiment `app_agents_experiment`) |
+| `agents_skills_path` | `/Volumes/hls_fde_dev/dev_matthew_giglia_bcda/landing` | **Removed** (optional resource commented out) |
+| `job_id` | `1103481179431341` | Same — infra's `freshness_resurfacing` (correct) |
 
-See `ground-truth-infra/docs/plans/app_bundle_support_plan.md` for the full plan.
+---
+
+## OpenTelemetry
+
+Declared in `databricks.yml` via `telemetry_export_destinations` (CLI ≥ 0.294.0). Platform auto-creates tables on first deploy. `OTEL_TRACES_SAMPLER=always_on` in `app.yaml` ensures all spans are recorded.
+
+| Signal | Table |
+|--------|-------|
+| Logs | `semantic_ground_truth_otel_logs` |
+| Metrics | `semantic_ground_truth_otel_metrics` |
+| Spans | `semantic_ground_truth_otel_spans` |
+
+**Dev:** `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_*`
+**Prod:** `prod_ground_truth.semantic_ground_truth.semantic_ground_truth_otel_*`
+
+---
+
+## Post-Deploy Checklist (First Deploy Only)
+
+After a successful first deploy of `dev-semantic-ground-truth`:
+
+1. ✅ Verify app health: `databricks apps get dev-semantic-ground-truth`
+2. ⬜ Note auto-provisioned SPN app ID → update `app_role` identity in Lakebase infra resource
+3. ⬜ Run post-deploy setup: `./deploy.sh --target dev --infra --run-setup` (creates MCP HTTP connection)
+4. ⬜ Redeploy **app** bundle: `./deploy.sh --target dev --app` (registers MCP service — connection now exists)
+5. ⬜ Verify MCP service in Unity Gateway
+
+> Step 4 is `--app`, NOT `--infra`. The MCP service resource lives in this bundle.
 
 ---
 
 ## Remaining Work
 
+### Completed (Phase A + B)
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | Add dev/prod/local targets | ✅ Done |
+| 2 | Enable `user_api_scopes` (sql, genie, files, model-serving) | ✅ Done |
+| 3 | Replace placeholder MLflow experiment | ✅ Done (`1698842789305538`) |
+| 4 | Comment out `agents-skills` optional resource | ✅ Done |
+| 5 | `pnpm install` | ✅ Platform handles on deploy |
+| 6 | First deploy via `./deploy.sh --target dev --app` | ✅ Done (2026-10-19) |
+| 10 | Delete infra deprecated MCP file | ✅ Done (commit `71b5d14`) |
+
+### Remaining (Post-Deploy + Phase C+)
+
 | # | Item | Blocked on |
 |---|------|------------|
-| 1 | Add dev/prod targets | Infra deploy.sh Phase 2 |
-| 2 | Enable `user_api_scopes` (sql, genie, files, model-serving) | Nothing |
-| 3 | Replace placeholder MLflow experiment | Infra resource |
-| 4 | Comment out `agents-skills` optional resource | Nothing |
-| 5 | `pnpm install` | Nothing |
-| 6 | First deploy via `./deploy.sh --target dev --app` | Items 1–4 + infra changes |
+| 2p | Note SPN app ID, update `app_role` | First deploy done — ready |
+| 3p | Run `post_deploy_setup` (MCP connection) | Nothing |
+| 4p | Redeploy app (MCP service registration) | Step 3p |
 | 7 | Lakebase migrations (TypeScript, run on startup) | App code authoring |
 | 8 | Replace sample todo routes with Review Engine | App code authoring |
 | 9 | Replace sample agents with Ground Truth agents | App code authoring |
-| 10 | Delete infra deprecated MCP file | Successful app deploy |
-| 11 | Update infra `app_role` to SERVICE_PRINCIPAL | App auto-provisioned SPN |
+| 11 | Update infra `app_role` to SERVICE_PRINCIPAL | Step 2p |
+
+---
+
+## Critical Deploy Findings
+
+1. **MCP service lives in app bundle, NOT infra.** The deprecated infra copy was deleted. Post-deploy MCP setup creates the connection, then app redeploy registers the service.
+2. **App in fatal ERROR state cannot be updated — must delete and recreate.** Platform returns "Cannot update app ... fatal error. Please delete the app and re-create it."
+3. **Bundle state tracks app by ID.** Renaming an app (e.g. `ground-truth-app` → `dev-semantic-ground-truth`) requires deleting the workspace state file (`~/.bundle/<bundle>/dev/state/resources.json`) AND the old app, then fresh deploy. Otherwise bundle tries CREATE and hits ALREADY_EXISTS.
+4. **CLI version mismatch warning is non-fatal.** `State was last deployed with CLI version 1.21.0 but current version is 1.20.0` — safe to ignore.
+5. **`app_db` parent = `production` branch.** Use `postgres_branches.production.id` for `LAKEBASE_BRANCH`, NOT `development`.
+6. **`deploy_bundle()` must pass `extra_args` to both validate AND deploy.** Fixed in deploy.sh.
+7. **OTel prefix: `semantic_ground_truth_`** (not `ground_truth_app_`). Matches app display name pattern.
+8. **`OTEL_TRACES_SAMPLER=always_on` required in `app.yaml`.** Without it, default parent-based sampler drops most spans.
+
+---
+
+## Status Log
+
+| Date | Status | Notes |
+|------|--------|-------|
+| 2026-10-14 | Scaffolded | AppKit init (Node.js + React). MCP service moved from infra. `app_bundle_support_plan.md` written. |
+| 2026-10-19 | Phase A complete | Dev/prod/local targets, OBO scopes, OTel, agents-skills commented out, deprecated infra MCP deleted. |
+| 2026-10-19 | **Phase B — first deploy** ✅ | `dev-semantic-ground-truth` running. All AppKit plugins operational (agents, analytics, jobs, lakebase, server). MCP service pending (expected). 12 commits ahead of main on `mg-genie-app-scaffold`. |
 
 ---
 
@@ -194,3 +262,4 @@ See `ground-truth-infra/docs/plans/app_bundle_support_plan.md` for the full plan
 - **Schema references:** Use `${var.catalog}.${var.schema_name}` (not `${resources.schemas...}` — schema resource is in infra).
 - **Cross-bundle variables:** Resolved by `deploy.sh` `resolve_infra_vars()` and passed via `--var` flags.
 - **Lakebase migrations:** TypeScript, in `server/migrations/`, run on app startup via AppKit Lakebase client. Tracked in `app._migrations` table.
+- **App naming:** `${var.app_display_name}` — target-specific for dev/prod coexistence in the same workspace.

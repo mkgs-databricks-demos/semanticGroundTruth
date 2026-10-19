@@ -166,7 +166,8 @@ All open questions from the L300 specs were resolved during Bundle 1 implementat
 | 2026-10-14 | App scaffold + infra support plan | AppKit scaffold via `databricks apps init` (Node.js, React 19, Vite, Tailwind 4, pnpm). MCP service moved from infra to app bundle. `app_bundle_support_plan.md` written. MLflow experiment resource created (`app_agents_experiment`, ID `1698842789305538`). Branch: `mg-genie-app-scaffold`. |
 | 2026-10-16 | resolve_infra_vars extended | 5 new outputs: MLFLOW_EXPERIMENT_ID (with CLI <1.21 fallback), MLFLOW_EXPERIMENT_NAME, FRESHNESS_JOB_ID, LAKEBASE_BRANCH, LAKEBASE_DATABASE. New `safe_name()` sanitizer. Full deploy verified green. Committed to `mg-genie-app-scaffold`. |
 | 2026-10-19 | deploy.sh Phase 2 implemented | Replaced TODO block with full app deploy: `--var` passthrough (7 infra-resolved vars), app URL resolution from bundle summary, MCP connection check, first-deploy checklist. Header updated (MCP service → MLflow experiment). Stale remote branches pruned. Branch: `mg-genie-app-scaffold`. |
-| 2026-10-19 | App bundle Phase A + OTel | Dev/prod targets, OBO scopes (sql/genie/files/model-serving), agents-skills commented out, deprecated infra MCP file deleted. OpenTelemetry enabled: `telemetry_export_destinations` in databricks.yml + `OTEL_TRACES_SAMPLER=always_on` in app.yaml. Branch: `mg-genie-app-scaffold` (8 commits ahead of main). |
+| 2026-10-19 | App bundle Phase A + OTel | Dev/prod targets, OBO scopes (sql/genie/files/model-serving), agents-skills commented out, deprecated infra MCP file deleted. OpenTelemetry enabled: `telemetry_export_destinations` in databricks.yml + `OTEL_TRACES_SAMPLER=always_on` in app.yaml. Branch: `mg-genie-app-scaffold`. |
+| 2026-10-19 | **App bundle Phase B — first deploy** ✅ | `dev-semantic-ground-truth` deployed and running. All AppKit plugins operational (agents, analytics, jobs, lakebase, server). Resource bindings active: serving endpoint, MLflow experiment, SQL warehouse, job, Lakebase Postgres. OTel tables created. MCP service pending (expected — connection created post-deploy). Targets reordered: dev (default) → prod → local. `default` renamed to `local`. Bundle state fix required after app rename (delete workspace state + app, fresh deploy). Branch: `mg-genie-app-scaffold` (12 commits ahead of main). |
 
 ---
 
@@ -198,6 +199,27 @@ Queryable via SQL alongside future Lakebase Lakehouse Sync tables (`lb_*_history
 7. **Bundle summary field names:** Lakebase branches/databases have `.id` (full resource path) but NO `.name`. Experiments have `.name` but `.id` only in CLI ≥ 1.21.
 8. **`safe()` strips `/`:** Use `safe_url()` for Lakebase resource paths, `safe_name()` for experiment names (preserves spaces and `[]` from dev-mode prefix).
 9. **Backticks in embedded Python comments break bash:** Python code inside `eval "$(python3 -c "...")"` is bash double-quoted — backticks trigger command substitution.
+10. **HTTP MCP connections require valid credentials at creation:** Connection must be created post-deploy when app URL is known. The `post_deploy_setup` job handles this via SQL DDL with M2M SPN creds.
+11. **UC connection names are metastore-level flat names:** No project/schema prefix.
+12. **App in fatal ERROR state cannot be updated — must delete and recreate.** Platform returns "Cannot update app ... fatal error."
+13. **Bundle state tracks app by ID:** Renaming an app (e.g. `ground-truth-app` → `dev-semantic-ground-truth`) requires deleting the workspace state file (`~/.bundle/<bundle>/dev/state/resources.json`) AND the old app, then fresh deploy. Otherwise bundle tries CREATE and hits ALREADY_EXISTS.
+14. **`default` target renamed to `local`:** App bundle targets: `dev` (default: true), `prod`, `local` (localhost proxy for `pnpm run dev`).
+15. **MCP service resource lives in app bundle, NOT infra.** Post-deploy step 4 is `--app`, not `--infra`. Deprecated infra copy deleted in commit `71b5d14`.
+16. **`deploy_bundle()` must pass `extra_args` to both validate AND deploy.** Fixed — was only passing to deploy.
+
+---
+
+## Post-Deploy Checklist (First Deploy Only)
+
+After a successful first deploy of `dev-semantic-ground-truth`:
+
+1. ✅ Verify app health: `databricks apps get dev-semantic-ground-truth`
+2. ⬜ Note auto-provisioned SPN app ID → update `app_role` identity in Lakebase infra resource
+3. ⬜ Run post-deploy setup: `./deploy.sh --target dev --infra --run-setup` (creates MCP HTTP connection with app URL + M2M SPN creds)
+4. ⬜ Redeploy **app** bundle: `./deploy.sh --target dev --app` (registers MCP service — connection now exists)
+5. ⬜ Verify MCP service in Unity Gateway
+
+> **Critical:** Step 4 is `--app`, NOT `--infra`. The MCP service resource lives in `ground-truth-app/databricks.yml`, not infra. The deprecated infra copy was deleted in commit `71b5d14`.
 10. **CLI positional args:** `databricks experiments get-by-name EXPERIMENT_NAME` (positional), NOT `--experiment-name`.
 
 ---

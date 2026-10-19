@@ -154,8 +154,9 @@ First deployment:
   # Verifies the M2M token exchange.
   ./deploy.sh --target dev --app
   # Then: run post_deploy_setup with app_url to create MCP connection,
-  # and re-deploy infra to register the MCP service:
-  ./deploy.sh --target dev --infra
+  # and re-deploy app to register the MCP service (lives in app bundle):
+  ./deploy.sh --target dev --infra --run-setup
+  ./deploy.sh --target dev --app
 
 Subsequent deploys (infra unchanged):
   ./deploy.sh --target dev --app
@@ -916,8 +917,8 @@ for app in apps.values():
     echo "  2. Note the auto-provisioned SPN app ID for app_role update"
     echo "  3. Run post_deploy_setup: ./deploy.sh --target ${TARGET} --infra --run-setup"
     echo "     (creates MCP connection with app URL + M2M SPN creds)"
-    echo "  4. Re-deploy infra:       ./deploy.sh --target ${TARGET} --infra"
-    echo "     (registers MCP service resource now that connection exists)"
+    echo "  4. Re-deploy app:         ./deploy.sh --target ${TARGET} --app"
+    echo "     (registers MCP service resource — lives in app bundle, not infra)"
   fi
 fi
 
