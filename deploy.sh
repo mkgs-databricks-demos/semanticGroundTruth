@@ -2,7 +2,7 @@
 # deploy.sh — Shared deployment script for the Semantic Ground Truth solution.
 #
 # Deploys Declarative Automation Bundles in dependency order:
-#   1. ground-truth-infra    (UC schema, warehouse, Lakebase, secret scope, MCP service, jobs)
+#   1. ground-truth-infra    (UC schema, warehouse, Lakebase, secret scope, jobs, MLflow experiment)
 #   2. ground-truth-app      (AppKit app: Node.js + React, migrations, MCP server)  [Bundle 2]
 #   3. ground-truth-agent    (Genie Agent: operational agent, tool definitions)      [Bundle 3]
 #
@@ -19,19 +19,19 @@
 #   - report_secret_scope_keys: reads the setup_secrets task's JSON exit value from
 #     this deploy's post_deploy_setup run and lists written / missing scope keys.
 #
-# NOTE on MCP connection & service (hi-genie-orchestrator pattern):
-#   HTTP connections ALWAYS require valid credentials at creation time:
-#     - REST API → DCR (workspace may not support it)
-#     - SQL DDL without creds → falls back to DCR
-#     - SQL DDL with creds → validates token exchange immediately
-#   Therefore: connection + MCP service are POST-deploy steps, created after
-#   Bundle 2 deploys the app. The connection uses the bundle-owned M2M SPN
-#   credentials (created by the ensure_m2m_service_principal task), NOT the
-#   app's auto-provisioned SPN. See docs/plans/m2m_service_principal_plan.md.
-#   The setup_gateway_connection notebook (post_deploy_setup job) handles both
-#   connection creation (via SQL DDL with secret() refs) and MCP service
-#   registration. The MCP service DAB resource is kept for declarative tracking
-#   but will fail until the connection exists — this is expected and documented.
+# NOTE on MCP connection & service:
+#   HTTP connections require valid M2M SPN credentials at creation time.
+#   The connection is created automatically in Phase 2 (app deploy) via SQL DDL
+#   with secret() references to the M2M SPN keys (hi-genie-orchestrator pattern):
+#     1. --infra --run-setup: creates M2M SPN + stores credentials (one-time)
+#     2. --app: deploys app → resolves URL → creates connection → auto-redeploys
+#              to register MCP service (all automatic in a single command)
+#   The M2M SPN credentials (not the app's auto-provisioned SPN) are used.
+#   See docs/plans/m2m_service_principal_plan.md.
+#   The MCP service DAB resource lives in the app bundle (ground-truth-app).
+#   On first deploy, the initial deploy_bundle will fail for the MCP service
+#   (connection doesn't exist yet) — this is expected. After create_mcp_connection
+#   succeeds, deploy.sh auto-redeploys to register the MCP service.
 #
 # Usage:
 #   ./deploy.sh --target dev                             # deploy all bundles
@@ -98,6 +98,14 @@ M2M_CLIENT_SECRET_KEY=""
 M2M_SPN_PREFIX=""
 M2M_OAUTH_SCOPES=""
 POST_DEPLOY_JOB_ID=""
+# App bundle support (§2a of app_bundle_support_plan.md)
+MLFLOW_EXPERIMENT_ID=""
+MLFLOW_EXPERIMENT_NAME=""
+FRESHNESS_JOB_ID=""
+LAKEBASE_BRANCH=""
+LAKEBASE_DATABASE=""
+APP_URL=""
+APP_DISPLAY_NAME=""
 
 # Set just before the infra deploy; used to pick this deploy's job run
 DEPLOY_START_MS=""
@@ -138,16 +146,14 @@ Deployment order:
 First deployment:
   ./deploy.sh --target dev --infra --run-setup
   # Creates the M2M SPN and stores its client_id in the secret scope.
-  # MCP service will fail (no connection yet — expected pre-Bundle 2).
   # Then: workspace admin generates the M2M OAuth secret and stores it
   #   (ground-truth-infra/docs/runbooks/m2m-service-principal.md),
   #   and provisions webhook secrets (see docs/runbooks/)
   ./deploy.sh --target dev --infra --run-setup
   # Verifies the M2M token exchange.
   ./deploy.sh --target dev --app
-  # Then: run post_deploy_setup with app_url to create MCP connection,
-  # and re-deploy infra to register the MCP service:
-  ./deploy.sh --target dev --infra
+  # Deploys app → creates MCP connection → auto-redeploys to register
+  # MCP service. All handled in a single command.
 
 Subsequent deploys (infra unchanged):
   ./deploy.sh --target dev --app
@@ -232,7 +238,11 @@ deploy_bundle() {
   fi
 
   log "Validating ${bundle_name} (target: ${TARGET})"
-  (cd_bundle "${bundle_dir}" && databricks bundle validate --target "${TARGET}")
+  if [[ ${#extra_args[@]} -gt 0 ]]; then
+    (cd_bundle "${bundle_dir}" && databricks bundle validate --target "${TARGET}" "${extra_args[@]}")
+  else
+    (cd_bundle "${bundle_dir}" && databricks bundle validate --target "${TARGET}")
+  fi
   ok "Validation passed: ${bundle_name}"
 
   if [[ "${VALIDATE_ONLY}" == true ]]; then
@@ -245,20 +255,53 @@ deploy_bundle() {
     ok "Destroyed: ${bundle_name}"
   else
     log "Deploying ${bundle_name} (target: ${TARGET})"
+    local deploy_log
+    deploy_log=$(mktemp)
     local deploy_rc=0
-    if [[ ${#extra_args[@]} -gt 0 ]]; then
-      (cd_bundle "${bundle_dir}" && databricks bundle deploy --target "${TARGET}" "${extra_args[@]}") || deploy_rc=$?
-    else
-      (cd_bundle "${bundle_dir}" && databricks bundle deploy --target "${TARGET}") || deploy_rc=$?
-    fi
+    local -a pipe_rc=()
+    # Stream output live via tee; capture to log for post-deploy filtering.
+    # Piping strips the CLI's colour, so "Error:" appears as plain text.
+    # PIPESTATUS is captured INSIDE the group: a trailing `|| true` would
+    # overwrite it with 0. The group's `|| true` only stops set -e aborting.
+    {
+      (cd_bundle "${bundle_dir}" && databricks bundle deploy --target "${TARGET}" ${extra_args[@]+"${extra_args[@]}"}) 2>&1 | tee "${deploy_log}"
+      pipe_rc=("${PIPESTATUS[@]}")
+    } || true
+    deploy_rc=${pipe_rc[0]:-1}
+    LAST_DEPLOY_RC=${deploy_rc}  # read by callers; function itself never fails
+
     if [[ ${deploy_rc} -eq 0 ]]; then
       ok "Deployed: ${bundle_name}"
     else
-      warn "Deploy completed with errors (exit ${deploy_rc}). Some resources may have failed."
-      warn "Check output above. Common expected failures:"
-      warn "  - MCP service: connection doesn't exist yet (pre-Bundle 2)"
-      warn "  - Job run: notebooks not committed to Git branch"
+      # Classify errors: MCP-service / grant failures on first deploy are
+      # expected (connection doesn't exist yet) and get a calm message.
+      # Any other error is surfaced as a warning.
+      # Expected = the MCP service failing ONLY because its connection is
+      # missing, plus its grants failing as a dependency of that.
+      local conn_missing_re='^Error: cannot create resources\.mcp_services\.ground_truth_mcp: Connection .* does not exist'
+      local grants_dep_re='^Error: cannot create resources\.mcp_services\.ground_truth_mcp\.grants: dependency failed'
+      local mcp_errors unexpected_errors
+      mcp_errors=$(grep -cE "${conn_missing_re}|${grants_dep_re}" "${deploy_log}" || true)
+      unexpected_errors=$(grep -E '^Error:' "${deploy_log}" | grep -cvE "${conn_missing_re}|${grants_dep_re}" || true)
+      if ! grep -qE "${conn_missing_re}" "${deploy_log}"; then
+        # Grants failing without the connection-missing cause is not expected.
+        unexpected_errors=$(( unexpected_errors + mcp_errors )); mcp_errors=0
+      fi
+      if [[ ${unexpected_errors} -le 0 && ${mcp_errors} -gt 0 ]]; then
+        log "Deploy note (${bundle_name})"
+        ok "MCP service deferred: connection not created yet (expected on first deploy)."
+        ok "deploy.sh will create the connection and auto-redeploy after this step."
+      else
+        warn "Deploy completed with errors (exit ${deploy_rc}). Some resources may have failed."
+        if [[ ${mcp_errors} -gt 0 ]]; then
+          ok "MCP service errors are expected on first deploy (connection not yet created)."
+        fi
+        if [[ ${unexpected_errors} -gt 0 ]]; then
+          warn "${unexpected_errors} unexpected error(s) — review the output above."
+        fi
+      fi
     fi
+    rm -f "${deploy_log}"
   fi
 }
 
@@ -341,6 +384,20 @@ m2m_scopes     = get_var('m2m_oauth_scopes', 'apps ai-gateway')
 # --- post_deploy_setup job ID (empty before the first deploy) ---
 post_deploy_job_id = resources.get('jobs', {}).get('post_deploy_setup', {}).get('id', '')
 
+# --- app bundle support (§2a of app_bundle_support_plan.md) ---
+# Experiment: .id present in CLI >= 1.21; older CLIs omit it.
+# Export name as well so bash can fall back to MLflow API lookup.
+exp_block = resources.get('experiments', {}).get('app_agents_experiment', {})
+mlflow_experiment_id = exp_block.get('id', '')
+mlflow_experiment_name = exp_block.get('name', '')
+freshness_job_id = resources.get('jobs', {}).get('freshness_resurfacing', {}).get('id', '')
+# Lakebase: .name doesn't exist in the summary; .id is the full resource path
+# (e.g. projects/<project>/branches/production)
+# IMPORTANT: branch must match the branch that owns the database.
+# app_db.parent = production branch, so we resolve production here.
+lakebase_branch = resources.get('postgres_branches', {}).get('production', {}).get('id', '')
+lakebase_database = resources.get('postgres_databases', {}).get('app_db', {}).get('id', '')
+
 # --- workspace host ---
 workspace_host = ''
 workspace_block = data.get('workspace', {})
@@ -353,6 +410,11 @@ def safe(v):
 def safe_url(v):
     return re.sub(r'[^a-zA-Z0-9_.\\-:/]', '', str(v))
 
+def safe_name(v):
+    # Preserve spaces and brackets for human-readable names (experiment paths).
+    # Safe inside eval double-quotes; strips shell-active chars (dollar, backslash, etc).
+    return re.sub(r'[^a-zA-Z0-9_.\\-:/ \\[\\]]', '', str(v))
+
 print(f'CATALOG=\"{safe(catalog)}\"')
 print(f'SCHEMA=\"{safe(schema)}\"')
 print(f'SCOPE_NAME=\"{safe(scope)}\"')
@@ -363,6 +425,14 @@ print(f'M2M_CLIENT_ID_KEY=\"{safe(m2m_id_key)}\"')
 print(f'M2M_CLIENT_SECRET_KEY=\"{safe(m2m_secret_key)}\"')
 print(f'M2M_SPN_PREFIX=\"{safe(m2m_prefix)}\"')
 print(f'POST_DEPLOY_JOB_ID=\"{safe(post_deploy_job_id)}\"')
+# App bundle support (§2a of app_bundle_support_plan.md)
+print(f'MLFLOW_EXPERIMENT_NAME=\"{safe_name(mlflow_experiment_name)}\"')
+print(f'MLFLOW_EXPERIMENT_ID=\"{safe(mlflow_experiment_id)}\"')
+print(f'FRESHNESS_JOB_ID=\"{safe(freshness_job_id)}\"')
+# Lakebase resource .name values are full paths containing '/' — safe() strips
+# slashes; safe_url() preserves ':/' which covers path separators.
+print(f'LAKEBASE_BRANCH=\"{safe_url(lakebase_branch)}\"')
+print(f'LAKEBASE_DATABASE=\"{safe_url(lakebase_database)}\"')
 # Scopes are space-separated and may contain ':' (e.g. catalog.tables:read)
 scopes_clean = re.sub(r'[^a-zA-Z0-9_.: -]', '', str(m2m_scopes)).strip()
 print(f'M2M_OAUTH_SCOPES=\"{scopes_clean}\"')
@@ -370,6 +440,26 @@ print(f'M2M_OAUTH_SCOPES=\"{scopes_clean}\"')
 
   if [[ -n "${RESOLVE_ERROR:-}" ]]; then
     fail "resolve_infra_vars failed: ${RESOLVE_ERROR}"
+  fi
+
+  # Experiment ID fallback: CLI < 1.21 omits .id from bundle summary.
+  # Use the experiment name (always present) to resolve via MLflow API.
+  if [[ -z "${MLFLOW_EXPERIMENT_ID}" && -n "${MLFLOW_EXPERIMENT_NAME}" ]]; then
+    MLFLOW_EXPERIMENT_ID=$(
+      EXP_NAME="${MLFLOW_EXPERIMENT_NAME}" python3 -c '
+import json, os, subprocess, sys
+r = subprocess.run(
+    ["databricks", "experiments", "get-by-name",
+     os.environ["EXP_NAME"], "--output", "json"],
+    capture_output=True, text=True)
+try:
+    d = json.loads(r.stdout) if r.returncode == 0 else {}
+except Exception:
+    d = {}
+exp = d.get("experiment", d)
+print(exp.get("experiment_id", ""))
+' 2>/dev/null) || MLFLOW_EXPERIMENT_ID=""
+    MLFLOW_EXPERIMENT_ID=$(safe "${MLFLOW_EXPERIMENT_ID}")
   fi
 
   # UC connections are metastore-level (flat names, no dots allowed)
@@ -382,38 +472,91 @@ print(f'M2M_OAUTH_SCOPES=\"{scopes_clean}\"')
   ok "  m2m_spn_prefix=${M2M_SPN_PREFIX}"
   ok "  m2m_keys=${M2M_CLIENT_ID_KEY}, ${M2M_CLIENT_SECRET_KEY}"
   ok "  m2m_oauth_scopes=${M2M_OAUTH_SCOPES}"
+  ok "  mlflow_experiment=${MLFLOW_EXPERIMENT_ID}"
+  ok "  freshness_job=${FRESHNESS_JOB_ID}"
+  ok "  lakebase_branch=${LAKEBASE_BRANCH}"
+  ok "  lakebase_database=${LAKEBASE_DATABASE}"
 }
 
 # --------------------------------------------------------------------------- #
-# ensure_http_connection — check if the HTTP connection exists for MCP service
+# check_mcp_connection — check if the MCP HTTP connection exists (status only)
 #
-# Connection creation requires valid M2M SPN credentials (admin-provisioned
-# client_secret) and the app URL (only available after Bundle 2 deploys the
-# app). The setup_gateway_connection notebook creates the connection via SQL
-# DDL with secret() references to the M2M SPN keys (hi-genie pattern):
-#
-#   CREATE CONNECTION IF NOT EXISTS `name` TYPE HTTP OPTIONS (
-#     host 'https://<app-url>',
-#     base_path '/mcp',
-#     client_id secret('<scope>', '<key>'),
-#     client_secret secret('<scope>', '<key>'),
-#     oauth_scope '<m2m_oauth_scopes>',  # from var.m2m_oauth_scopes; scoped secret must include these
-#     token_endpoint 'https://<workspace>/oidc/v1/token'
-#   )
-#
-# This function only checks existence — creation is delegated to the notebook.
+# Used by Phase 1 to report connection status. Connection creation is handled
+# in Phase 2 by running the create_mcp_connection job (Python task).
+# Schema-level connections use a three-part name: catalog.schema.connection.
 # --------------------------------------------------------------------------- #
-ensure_http_connection() {
-  local connection_name="${MCP_CONNECTION_NAME}"
+check_mcp_connection() {
+  local full_name="${CATALOG}.${SCHEMA}.${MCP_CONNECTION_NAME}"
 
-  log "Checking HTTP connection: ${connection_name}"
+  log "Checking MCP connection: ${full_name}"
 
-  if databricks api get /api/2.1/unity-catalog/connections/"${connection_name}" >/dev/null 2>&1; then
-    ok "Connection exists: ${connection_name}"
+  if databricks api get /api/2.1/unity-catalog/connections/"${full_name}" >/dev/null 2>&1; then
+    ok "Connection exists: ${full_name}"
     return 0
   else
-    warn "Connection '${connection_name}' does not exist yet."
-    warn "It will be created by setup_gateway_connection after Bundle 2 deploys."
+    warn "Connection '${full_name}' does not exist yet."
+    warn "It will be created automatically on the next --app deploy."
+    return 1
+  fi
+}
+
+# --------------------------------------------------------------------------- #
+# run_create_mcp_connection — run the Python task job to create/update the
+# schema-level MCP HTTP connection (Phase 2)
+#
+# The create_mcp_connection job (app bundle) runs a Python script that:
+#   1. Reads M2M credentials from the secret scope (dbutils.secrets.get)
+#   2. POST /connections (create) or PATCH /connections/{full_name} (update)
+#   3. GET /connections/{full_name} (verify)
+#
+# Schema-level connections need CREATE CONNECTION on the schema, which is
+# covered by ALL PRIVILEGES on the catalog. No metastore grant needed.
+# --------------------------------------------------------------------------- #
+run_create_mcp_connection() {
+  local app_url="$1"
+
+  if [[ -z "${app_url}" ]]; then
+    warn "App URL not available — cannot create MCP connection."
+    return 1
+  fi
+
+  if [[ -z "${M2M_CLIENT_ID_KEY}" || -z "${M2M_CLIENT_SECRET_KEY}" ]]; then
+    warn "M2M SPN key names not resolved — cannot create connection."
+    warn "Deploy infra with --run-setup first to create the M2M SPN."
+    return 1
+  fi
+
+  local connection_name="${MCP_CONNECTION_NAME}"
+  local full_name="${CATALOG}.${SCHEMA}.${MCP_CONNECTION_NAME}"
+  local token_endpoint="${WORKSPACE_HOST}/oidc/v1/token"
+
+  log "Creating/updating MCP connection: ${full_name}"
+  ok "  app_url=${app_url}"
+  ok "  scope=${SCOPE_NAME}"
+  ok "  token_endpoint=${token_endpoint}"
+
+  if (cd_bundle "${SCRIPT_DIR}/${APP_BUNDLE}" && \
+      databricks bundle run create_mcp_connection --target "${TARGET}" \
+        "${APP_EXTRA_ARGS[@]}" \
+        --params "connection_name=${connection_name}" \
+        --params "catalog=${CATALOG}" \
+        --params "schema_name=${SCHEMA}" \
+        --params "app_url=${app_url}" \
+        --params "base_path=${MCP_BASE_PATH}" \
+        --params "scope_name=${SCOPE_NAME}" \
+        --params "client_id_key=${M2M_CLIENT_ID_KEY}" \
+        --params "client_secret_key=${M2M_CLIENT_SECRET_KEY}" \
+        --params "oauth_scopes=${M2M_OAUTH_SCOPES}" \
+        --params "token_endpoint=${token_endpoint}"); then
+    ok "MCP connection ready: ${full_name}"
+    return 0
+  else
+    warn "create_mcp_connection job failed — check the run output above."
+    warn "Common causes:"
+    warn "  - PERMISSION_DENIED: deployer lacks CREATE CONNECTION on the schema"
+    warn "    (need CREATE CONNECTION on catalog or schema, not metastore)"
+    warn "  - M2M client_secret not provisioned in the secret scope"
+    warn "  - Serverless compute unavailable"
     return 1
   fi
 }
@@ -720,13 +863,11 @@ if [[ "${DEPLOY_INFRA}" == true ]]; then
   # Step 1a: Resolve variables from bundle summary (works pre-deploy too)
   resolve_infra_vars
 
-  # Step 1b: Check MCP connection status
-  # Connection requires valid SPN credentials (only available after Bundle 2).
-  # Pre-Bundle 2: MCP service resource will fail (expected, non-blocking).
-  # Post-Bundle 2: setup_gateway_connection creates connection via SQL DDL,
-  # then re-deploy infra succeeds for MCP service.
+  # Step 1b: Check MCP connection status (informational only).
+  # Connection is created by Phase 2 (app deploy) via the
+  # create_mcp_connection job. This is just a status check.
   if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
-    ensure_http_connection || true
+    check_mcp_connection || true
   fi
 
   # Step 1c: Deploy the infra bundle
@@ -752,19 +893,145 @@ fi
 # Phase 2: App bundle (Bundle 2)
 # --------------------------------------------------------------------------- #
 if [[ "${DEPLOY_APP}" == true ]]; then
-  # TODO: After Bundle 2 is scaffolded:
-  # 1. deploy_bundle "${APP_BUNDLE}"
-  # 2. Resolve app URL from app bundle summary
-  # 2b. Grant CAN_USE on the app to the M2M SPN (resolve application_id by
-  #     display name "${M2M_SPN_PREFIX}-${TARGET}" and pass as --var, or via
-  #     a post-process job — see m2m_service_principal_plan.md §7.1)
-  # 2c. OBO grants: M2M SPN needs USE CATALOG, USE SCHEMA, SELECT on tables,
-  #     and CAN_USE on the SQL warehouse. When the app declares user_api_scopes,
-  #     regenerate the secret with scope >= {apps + user_api_scopes} and update
-  #     var.m2m_oauth_scopes to match.
-  # 3. Run post_deploy_setup job (creates connection via SQL DDL + registers MCP)
-  # 4. Re-deploy infra to register MCP service DAB resource
-  warn "Bundle 2 (${APP_BUNDLE}) not yet implemented — skipping."
+
+  # Step 2a: Ensure infra vars are resolved (--app only runs skip Phase 1)
+  if [[ -z "${CATALOG}" ]]; then
+    log "Resolving infra vars for app deploy (--app only)"
+    resolve_infra_vars
+  fi
+
+  # Step 2b: Build the --var list for the app bundle.
+  # Variables that deploy.sh resolves from infra are passed explicitly.
+  # Variables that are static per-target (agents_serving_endpoint_name) stay
+  # in the app's databricks.yml target block — not passed here.
+  # Built BEFORE display-name resolution so bundle summary has required vars.
+  APP_EXTRA_ARGS=(
+    "--var" "catalog=${CATALOG}"
+    "--var" "schema_name=${SCHEMA}"
+    "--var" "sql_warehouse_id=${SQL_WAREHOUSE_ID}"
+    "--var" "agents_mlflow_experiment_experimentId=${MLFLOW_EXPERIMENT_ID}"
+    "--var" "job_id=${FRESHNESS_JOB_ID}"
+    "--var" "postgres_branch=${LAKEBASE_BRANCH}"
+    "--var" "postgres_database=${LAKEBASE_DATABASE}"
+  )
+
+  # Step 2a': Resolve the app display name from the app bundle's target variables.
+  # The app name is target-specific (e.g. dev-semantic-ground-truth, semantic-ground-truth).
+  # Requires APP_EXTRA_ARGS — bundle summary fails without resolved vars.
+  APP_DISPLAY_NAME=$(
+    cd_bundle "${SCRIPT_DIR}/${APP_BUNDLE}" && \
+    databricks bundle summary --target "${TARGET}" "${APP_EXTRA_ARGS[@]}" --output json 2>/dev/null | \
+    sed -n '/^{/,$p' | \
+    python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+print(data.get("variables", {}).get("app_display_name", {}).get("value", ""))
+' 2>/dev/null) || APP_DISPLAY_NAME=""
+  APP_DISPLAY_NAME=$(safe "${APP_DISPLAY_NAME}")
+
+  if [[ -z "${APP_DISPLAY_NAME}" ]]; then
+    warn "Could not resolve app_display_name from app bundle summary."
+    APP_DISPLAY_NAME="semantic-ground-truth"  # fallback
+  fi
+  ok "App display name: ${APP_DISPLAY_NAME}"
+
+  log "Deploying app bundle with infra-resolved variables"
+  ok "  catalog=${CATALOG}"
+  ok "  schema_name=${SCHEMA}"
+  ok "  sql_warehouse_id=${SQL_WAREHOUSE_ID}"
+  ok "  mlflow_experiment=${MLFLOW_EXPERIMENT_ID}"
+  ok "  job_id=${FRESHNESS_JOB_ID}"
+  ok "  postgres_branch=${LAKEBASE_BRANCH}"
+  ok "  postgres_database=${LAKEBASE_DATABASE}"
+
+  # Step 2c: Deploy
+  deploy_bundle "${APP_BUNDLE}" "${APP_EXTRA_ARGS[@]}"
+
+   # Step 2d: Resolve the deployed app URL from the Apps API.
+    # bundle summary doesn't include the live app URL — it's on the running app.
+    if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
+    log "Resolving app URL from Apps API"
+    APP_URL=""
+    APP_URL=$(
+      databricks apps get "${APP_DISPLAY_NAME}" 2>/dev/null | \
+      python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+print(data.get("url", ""))
+' 2>/dev/null) || APP_URL=""
+
+    # Step 2e: Create/update the MCP HTTP connection.
+    # Runs the create_mcp_connection notebook job (schema-level connection via REST).
+    # On first deploy: creates the connection. On subsequent: updates if URL changed.
+    if [[ -n "${APP_URL}" ]]; then
+      ok "App URL: ${APP_URL}"
+
+      # Check if connection already exists (for auto-redeploy decision)
+      connection_existed=false
+      if databricks api get /api/2.1/unity-catalog/connections/"${CATALOG}.${SCHEMA}.${MCP_CONNECTION_NAME}" >/dev/null 2>&1; then
+        connection_existed=true
+      fi
+
+      if run_create_mcp_connection "${APP_URL}"; then
+        # Step 2f: Auto-redeploy if connection was just created.
+        # The MCP service resource needs the connection to exist.
+        if [[ "${connection_existed}" == false ]]; then
+          log "MCP connection created — redeploying app to register MCP service"
+          deploy_bundle "${APP_BUNDLE}" "${APP_EXTRA_ARGS[@]}"
+          if [[ "${LAST_DEPLOY_RC:-1}" -eq 0 ]]; then
+            ok "MCP service registered (first-deploy deferral resolved)"
+          else
+            # Recovery: a 504 timeout can leave the MCP service created but
+            # untracked by the bundle (no state entry, grants not applied).
+            # If the service exists, bind it and deploy once more for grants.
+            local mcp_full_name="${CATALOG}.${SCHEMA}.${MCP_CONNECTION_NAME}"
+            if databricks api get /api/2.1/unity-catalog/mcp-services/"${mcp_full_name}" >/dev/null 2>&1; then
+              log "MCP service exists despite deploy failure — binding to bundle state"
+              if (cd_bundle "${SCRIPT_DIR}/${APP_BUNDLE}" && \
+                  databricks bundle deployment bind ground_truth_mcp "${mcp_full_name}" \
+                    --target "${TARGET}" --auto-approve \
+                    ${APP_EXTRA_ARGS[@]+"${APP_EXTRA_ARGS[@]}"}) 2>&1; then
+                ok "Bound MCP service to bundle state"
+                log "Deploying once more to apply grants"
+                deploy_bundle "${APP_BUNDLE}" "${APP_EXTRA_ARGS[@]}"
+                if [[ "${LAST_DEPLOY_RC:-1}" -eq 0 ]]; then
+                  ok "MCP service registered (recovered via bind after timeout)"
+                else
+                  warn "Grant deploy failed after bind — check output above."
+                fi
+              else
+                warn "bundle deployment bind failed — run manually:"
+                warn "  cd ${APP_BUNDLE} && databricks bundle deployment bind ground_truth_mcp '${mcp_full_name}' --target ${TARGET} --auto-approve"
+              fi
+            else
+              warn "Redeploy after connection creation failed — MCP service may be unregistered."
+              warn "Retry with: ./deploy.sh --target ${TARGET} --app"
+            fi
+          fi
+        fi
+      else
+        warn "MCP connection not created — MCP service will remain unregistered."
+        warn "Check M2M SPN credentials and retry: ./deploy.sh --target ${TARGET} --app"
+      fi
+    else
+      warn "Could not resolve app URL from bundle summary."
+      warn "The app may not have started yet. Check with:"
+      warn "  databricks apps get ${APP_DISPLAY_NAME}"
+    fi
+
+    # Step 2g: Summary.
+    log "App deploy complete: ${APP_DISPLAY_NAME}"
+    echo "  App URL:        ${APP_URL:-UNKNOWN}"
+    echo "  MCP connection: ${CATALOG}.${SCHEMA}.${MCP_CONNECTION_NAME}"
+    echo "  Note: app_role update is NOT needed — AppKit CAN_CONNECT_AND_CREATE"
+    echo "  auto-provisions a Lakebase role for the app SPN."
+  fi
 fi
 
 # --------------------------------------------------------------------------- #

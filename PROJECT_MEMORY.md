@@ -28,7 +28,7 @@ Three-bundle monorepo. Deploy order: infra → app → agent (agent can parallel
 
 | Target | Mode | Status |
 |--------|------|--------|
-| `dev` | development (default) | **Infra deployed** ✅; App + Agent scaffolded |
+| `dev` | development (default) | **Infra deployed** ✅; **App scaffolded** (AppKit Node.js + React); Agent scaffolded |
 | `prod` | production | Scaffolded (all bundles) |
 | `staging` | — | Not yet added (L300-01 proposed it; add when needed) |
 
@@ -74,7 +74,7 @@ From L300-01 spec. **Infra bundle has these configured.** App and Agent bundles 
 - **Confidence scoring:** Wilson score interval (configurable industry standard prior, decay curve)
 - **MCP:** Streamable HTTP via `@modelcontextprotocol/server` v2; registered as Unity Gateway connection
 - **Deployment:** Three-bundle DAB pattern (this repo)
-- **Observability:** OpenTelemetry → MLflow 3 experiment
+- **Observability:** OpenTelemetry → Unity Catalog tables (via `telemetry_export_destinations` in DAB) + MLflow 3 experiment for agent traces
 - **Notifications:** Databricks notification destinations (Slack webhook, Teams, generic webhook)
 - **Secrets:** UC Secrets (`catalog.schema.secret`)
 - **Compliance:** HIPAA (AWS us-east-1); 28/35 features GA+HIPAA, 7 Beta with documented fallbacks
@@ -161,6 +161,31 @@ All open questions from the L300 specs were resolved during Bundle 1 implementat
 | 2026-10-08 | **Bundle 1 fully deployed to dev** | All 8 phases complete. UC schema, SQL warehouse, Lakebase, 4 jobs, metric view fixtures, Unity Gateway runbook, Genie Code skill prompt — all live. Post-deploy cleanup: naming, permissions, YAML split, docs/ restructure. Branch: `mg-genie-bundle-scaffolds`. |
 | 2026-10-08 | Post-deploy refactor | Resource YAML split (one file per resource), folder restructure (`docs/plans/`, `docs/runbooks/`, `docs/sessions/`), display name corrections, warehouse permissions. |
 | 2026-10-09 | Ready for Bundle 2 | All post-deploy manual steps documented. Remaining: UC secrets, Lakebase Lakehouse Sync, Unity Gateway connection, Genie Code skill registration, app_role SP update, job params. |
+| 2026-10-11 | M2M SPN implemented | Bundle-owned OAuth M2M service principal (`semantic-ground-truth-m2m-dev`). New notebooks: `ensure_m2m_service_principal`, `setup_secrets`. Solution-root `deploy.sh` operational — resolves infra vars, deploys, checks M2M credentials. Branch: `mg-genie-m2m-spn`. |
+| 2026-10-13 | M2M verified + deploy.sh mature | Token exchange verified (HTTP 200). `setup_secrets` writes `workspace_url`, reports key status via JSON exit. `report_secret_scope_keys()` added to deploy.sh (Step 1e). Genie One MCP smoke test passed (`smoke_test_genie_one_mcp.py`). M2M secret regenerated with `apps ai-gateway` scopes. Branch merged to main. |
+| 2026-10-14 | App scaffold + infra support plan | AppKit scaffold via `databricks apps init` (Node.js, React 19, Vite, Tailwind 4, pnpm). MCP service moved from infra to app bundle. `app_bundle_support_plan.md` written. MLflow experiment resource created (`app_agents_experiment`, ID `1698842789305538`). Branch: `mg-genie-app-scaffold`. |
+| 2026-10-16 | resolve_infra_vars extended | 5 new outputs: MLFLOW_EXPERIMENT_ID (with CLI <1.21 fallback), MLFLOW_EXPERIMENT_NAME, FRESHNESS_JOB_ID, LAKEBASE_BRANCH, LAKEBASE_DATABASE. New `safe_name()` sanitizer. Full deploy verified green. Committed to `mg-genie-app-scaffold`. |
+| 2026-10-19 | deploy.sh Phase 2 implemented | Replaced TODO block with full app deploy: `--var` passthrough (7 infra-resolved vars), app URL resolution from bundle summary, MCP connection check, first-deploy checklist. Header updated (MCP service → MLflow experiment). Stale remote branches pruned. Branch: `mg-genie-app-scaffold`. |
+| 2026-10-19 | App bundle Phase A + OTel | Dev/prod targets, OBO scopes (sql/genie/files/model-serving), agents-skills commented out, deprecated infra MCP file deleted. OpenTelemetry enabled: `telemetry_export_destinations` in databricks.yml + `OTEL_TRACES_SAMPLER=always_on` in app.yaml. Branch: `mg-genie-app-scaffold`. |
+| 2026-10-19 | **App bundle Phase B — first deploy** ✅ | `dev-semantic-ground-truth` deployed and running. All AppKit plugins operational (agents, analytics, jobs, lakebase, server). Resource bindings active: serving endpoint, MLflow experiment, SQL warehouse, job, Lakebase Postgres. OTel tables created. MCP service pending (expected — connection created post-deploy). Targets reordered: dev (default) → prod → local. `default` renamed to `local`. Bundle state fix required after app rename (delete workspace state + app, fresh deploy). Branch: `mg-genie-app-scaffold` (12 commits ahead of main). |
+| 2026-10-20 | **MCP connection automated — schema-level REST** ✅ | Migrated connection creation from metastore SQL DDL → schema-level REST API via `.ipynb` notebook job (`create_mcp_connection`). Three iterations: SQL file → Python script → notebook. `deploy_bundle()` rewritten: `tee`+filter for calm first-deploy output (no red CLI errors), PIPESTATUS fix, 504 auto-recovery via `bundle deployment bind`. Two successful first-deploy tests (destroy → deploy → deferral note → connection job → redeploy → MCP service registered). Orphaned `.sql`/`.py` files deleted. Session doc: `docs/sessions/2026-10-20_mcp-connection-schema-level-and-deploy-ux.md`. Branch: `mg-genie-app-scaffold` (~28 commits ahead of main). |
+
+---
+
+## OpenTelemetry Tables (App Bundle)
+
+Declared in `ground-truth-app/databricks.yml` via `telemetry_export_destinations` (CLI ≥ 0.294.0). Platform auto-creates tables on first deploy. `OTEL_TRACES_SAMPLER=always_on` in `app.yaml` ensures all spans are recorded.
+
+| Signal | Table | Prefix |
+|--------|-------|--------|
+| Logs | `semantic_ground_truth_otel_logs` | `semantic_ground_truth_` |
+| Metrics | `semantic_ground_truth_otel_metrics` | `semantic_ground_truth_` |
+| Spans | `semantic_ground_truth_otel_spans` | `semantic_ground_truth_` |
+
+**Dev location:** `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_*`
+**Prod location:** `prod_ground_truth.semantic_ground_truth.semantic_ground_truth_otel_*`
+
+Queryable via SQL alongside future Lakebase Lakehouse Sync tables (`lb_*_history`) once those are configured post-deploy.
 
 ---
 
@@ -171,6 +196,71 @@ All open questions from the L300 specs were resolved during Bundle 1 implementat
 3. **Schema dev prefix:** DABs dev mode prepends `dev_<user>_` to schema names. Set the variable to the unprefixed name (e.g. `ground_truth` → deploys as `dev_matthew_giglia_ground_truth`).
 4. **Jobs environments block:** `environment_key: X` on tasks requires `environments: [{environment_key: X, spec: {client: "1"}}]` at the job level.
 5. **Lakebase branch parent:** Use `.id` directly (already `projects/{id}`); no manual prefix needed.
+6. **`engine: direct`** required for `secret_scope`, `job_run`, `mcp_service` resource types.
+7. **Bundle summary field names:** Lakebase branches/databases have `.id` (full resource path) but NO `.name`. Experiments have `.name` but `.id` only in CLI ≥ 1.21.
+8. **`safe()` strips `/`:** Use `safe_url()` for Lakebase resource paths, `safe_name()` for experiment names (preserves spaces and `[]` from dev-mode prefix).
+9. **Backticks in embedded Python comments break bash:** Python code inside `eval "$(python3 -c "...")"` is bash double-quoted — backticks trigger command substitution.
+10. **HTTP MCP connections require valid credentials at creation:** Connection must be created post-deploy when app URL is known. The `create_mcp_connection` notebook job handles this via REST API with M2M SPN creds from UC Secrets. ~~Previously `post_deploy_setup` via SQL DDL~~ — replaced 2026-10-20.
+11. **~~UC connection names are metastore-level flat names~~** **CORRECTED:** Schema-level connections have 3-part names (`catalog.schema.connection`). Created via REST API with `parent: "schemas/<cat>.<schema>"`. SQL DDL is metastore-level only and cannot parse 3-part names.
+12. **App in fatal ERROR state cannot be updated — must delete and recreate.** Platform returns "Cannot update app ... fatal error."
+13. **Bundle state tracks app by ID:** Renaming an app (e.g. `ground-truth-app` → `dev-semantic-ground-truth`) requires deleting the workspace state file (`~/.bundle/<bundle>/dev/state/resources.json`) AND the old app, then fresh deploy. Otherwise bundle tries CREATE and hits ALREADY_EXISTS.
+14. **`default` target renamed to `local`:** App bundle targets: `dev` (default: true), `prod`, `local` (localhost proxy for `pnpm run dev`).
+15. **MCP service resource lives in app bundle, NOT infra.** Post-deploy step 4 is `--app`, not `--infra`. Deprecated infra copy deleted in commit `71b5d14`.
+16. **`deploy_bundle()` must pass `extra_args` to both validate AND deploy.** Fixed — was only passing to deploy.
+17. **Schema-level connections need `CREATE CONNECTION` on the schema**, not metastore. User has `ALL PRIVILEGES` on `hls_fde_dev` catalog → schema-level works without metastore admin grant.
+18. **DABs do not support `connections` as a resource type.** Connection creation must be a job task or manual step.
+19. **`createAsset` `assetType: "file"` → workspace FILE; `assetType: "notebook"` → workspace NOTEBOOK.** `notebook_task` only finds NOTEBOOK objects. The `.sql` and `.py` files created via the file API were invisible to `notebook_task`.
+20. **`bundle deployment bind` works for MCP services.** Recovery path for 504 timeouts: bind the existing service → deploy to apply grants.
+21. **Databricks SQL CONCAT with `'''` adjacent-quote syntax silently drops the quote.** Use `format_string("... '%s' ...", v)` with double-quoted template instead.
+22. **`PIPESTATUS` must be captured before `|| true` in a pipeline.** `|| true` resets it to `(0)`. Capture inside a `{ ...; pipe_rc=("${PIPESTATUS[@]}"); } || true` group.
+23. **`bundle summary` app resources do NOT include the live `url` field.** Use `databricks apps get <name>` to resolve the app URL.
+24. **M2M HTTP connection option keys:** `host`, `port`, `base_path`, `client_id`, `oauth_scope`, `token_endpoint`, `is_mcp_connection`. `client_secret` is write-only (never returned by GET).
+25. **Metastore list endpoint does NOT return schema-level connections.** The 5,673 connections in the metastore list are all metastore-scoped (no dotted names). Schema-level connections are only accessible via their 3-part name in the REST API.
+
+---
+
+## Post-Deploy Checklist
+
+A single `./deploy.sh --target dev --app` now handles the full first-deploy:
+
+1. ✅ App health verified automatically (`databricks apps get`)
+2. ✅ `app_role` update NOT needed — AppKit `CAN_CONNECT_AND_CREATE` auto-provisions Lakebase SPN
+3. ✅ MCP connection created automatically (Phase 2 `create_mcp_connection` notebook job via REST API, schema-level)
+4. ✅ Auto-redeploy registers MCP service + grants after connection creation
+5. ⬜ Verify MCP service tools via Unity Gateway (not yet tested)
+
+**Recovery:** If the MCP service create times out (504), `deploy.sh` auto-recovers: checks if service exists → `bundle deployment bind` → deploy for grants.
+
+> **Note:** The M2M SPN (`16f8923c-...`) handles MCP HTTP connection token exchange only — no Lakebase access. `app_role` is a vestigial PG role (database owner, zero objects owned). App SPN changes on every destroy+redeploy.
+
+26. **CLI positional args:** `databricks experiments get-by-name EXPERIMENT_NAME` (positional), NOT `--experiment-name`.
+
+---
+
+## deploy.sh Cross-Bundle Contract
+
+Solution-root `deploy.sh` orchestrates all three bundles. `resolve_infra_vars()` extracts 16 variables from `databricks bundle summary --target <target> --output json`:
+
+| Variable | Source | Sanitizer |
+|----------|--------|-----------|
+| `CATALOG` | `resources.schemas.*.catalog_name` | `safe()` |
+| `SCHEMA` | `resources.schemas.*.name` | `safe()` |
+| `SCOPE_NAME` | `variables.secret_scope_name` | `safe()` |
+| `WORKSPACE_HOST` | `workspace.host` | `safe_url()` |
+| `SQL_WAREHOUSE_ID` | `resources.sql_warehouses.*.id` | `safe()` |
+| `LAKEBASE_PROJECT_ID` | `resources.postgres_projects.*.project_id` | `safe()` |
+| `M2M_CLIENT_ID_KEY` | `variables.m2m_client_id_dbs_key` | `safe()` |
+| `M2M_CLIENT_SECRET_KEY` | `variables.m2m_client_secret_dbs_key` | `safe()` |
+| `M2M_SPN_PREFIX` | `variables.m2m_spn_prefix` | `safe()` |
+| `M2M_OAUTH_SCOPES` | `variables.m2m_oauth_scopes` | custom |
+| `POST_DEPLOY_JOB_ID` | `resources.jobs.post_deploy_setup.id` | `safe()` |
+| `MLFLOW_EXPERIMENT_ID` | `resources.experiments.app_agents_experiment.id` + fallback | `safe()` |
+| `MLFLOW_EXPERIMENT_NAME` | `resources.experiments.app_agents_experiment.name` | `safe_name()` |
+| `FRESHNESS_JOB_ID` | `resources.jobs.freshness_resurfacing.id` | `safe()` |
+| `LAKEBASE_BRANCH` | `resources.postgres_branches.production.id` | `safe_url()` |
+| `LAKEBASE_DATABASE` | `resources.postgres_databases.app_db.id` | `safe_url()` |
+
+Phase 2 (app deploy) passes these as `--var` to `deploy_bundle`. Phase 2 also resolves the app URL from the app bundle summary and checks/reports MCP HTTP connection status.
 
 ## Deviations from L300 Specs
 

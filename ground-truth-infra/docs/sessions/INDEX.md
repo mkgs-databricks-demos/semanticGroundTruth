@@ -2,6 +2,9 @@
 
 | Date | Summary | Branch |
 |------|---------|--------|
+| 2026-10-20 | [Schema-level MCP connection + deploy UX](../../docs/sessions/2026-10-20_mcp-connection-schema-level-and-deploy-ux.md) | `mg-genie-app-scaffold` |
+| 2026-10-19 | [App bundle Phase B: first deploy + Lakebase SPN investigation](2026-10-19_app-bundle-phase-b-first-deploy.md) | `mg-genie-app-scaffold` |
+| 2026-10-14 | [App bundle scaffold review + MCP service move + infra support plan](2026-10-14_app-bundle-scaffold-and-mcp-move.md) | `mg-genie-app-scaffold` |
 | 2026-10-14 | [setup_secrets, deploy.sh key report, and production fixes](2026-10-14_setup-secrets-deploy-report-and-fixes.md) | `mg-genie-m2m-spn` |
 | 2026-10-13 | [M2M SPN secret keys, ai-gateway scope, Genie One MCP smoke test](2026-10-13_m2m-spn-scopes-and-genie-one-smoke-test.md) | `mg-genie-m2m-spn` |
 | 2026-10-09 | [Group A implementation + feedback pipeline genie_task rework](2026-10-09_group-a-implementation-and-pipeline-rework.md) | `mg-genie-bundle-scaffolds` |

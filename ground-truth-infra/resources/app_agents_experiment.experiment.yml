@@ -1,0 +1,11 @@
+# resources/app_agents_experiment.experiment.yml
+# MLflow experiment for app agent tracing (OpenTelemetry via AppKit agents plugin).
+# The experiment ID is passed to Bundle 2 via deploy.sh resolve_infra_vars().
+# Design source: app_bundle_support_plan.md §1a
+
+resources:
+  experiments:
+    app_agents_experiment:
+      name: /Workspace/.experiments/ground-truth-app-agents
+      # Workspace-level shared experiment (not user-scoped).
+      # Reference: ${resources.experiments.app_agents_experiment.id}

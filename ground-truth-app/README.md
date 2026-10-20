@@ -1,23 +1,188 @@
 # ground-truth-app
 
+A Databricks App powered by [AppKit](https://developers.databricks.com/docs/appkit/v0/), featuring React, TypeScript, and Tailwind CSS.
+
+**Enabled plugins:**
+- **Analytics** -- SQL query execution against Databricks SQL Warehouses
+- **Lakebase** -- Fully managed Postgres database for transactional (OLTP) workloads on Databricks
+- **Server** -- Express HTTP server with static file serving and Vite dev mode
+
+## Prerequisites
+
+- Node.js v22+ and pnpm
+- Databricks CLI (for deployment)
+- Access to a Databricks workspace
+
+## Databricks Authentication
+
+### Local Development
+
+For local development, configure your environment variables by creating a `.env` file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set the environment variables you need:
+
+```env
+DATABRICKS_HOST=https://your-workspace.cloud.databricks.com
+DATABRICKS_APP_PORT=8000
+# ... other environment variables, depending on the plugins you use
+```
+
+#### Lakebase Configuration
+
+The Lakebase plugin requires additional environment variables for PostgreSQL connectivity. To learn how to configure the Lakebase plugin, see the [Lakebase plugin documentation](https://developers.databricks.com/docs/appkit/v0/plugins/lakebase).
+
+### CLI Authentication
+
+The Databricks CLI requires authentication to deploy and manage apps. Configure authentication using one of these methods:
+
+#### OAuth U2M
+
+Interactive browser-based authentication with short-lived tokens:
+
+```bash
+databricks auth login --host https://your-workspace.cloud.databricks.com
+```
+
+This will open your browser to complete authentication. The CLI saves credentials to `~/.databrickscfg`.
+
+#### Configuration Profiles
+
+Use multiple profiles for different workspaces:
+
+```ini
+[DEFAULT]
+host = https://dev-workspace.cloud.databricks.com
+
+[production]
+host = https://prod-workspace.cloud.databricks.com
+client_id = prod-client-id
+client_secret = prod-client-secret
+```
+
+Deploy using a specific profile:
+
+```bash
+databricks bundle deploy --profile production
+```
+
+**Note:** Personal Access Tokens (PATs) are legacy authentication. OAuth is strongly recommended for better security.
+
 ## Getting Started
 
-To deploy and manage this bundle, follow these steps:
+### Install Dependencies
 
-### 1. Deployment
+```bash
+pnpm install
+```
 
-- Click the **deployment rocket** 🚀 in the left sidebar to open the **Deployments** panel, then click **Deploy**.
+### Development
 
-### 2. Running Jobs & Pipelines
+Run the app in development mode with hot reload:
 
-- To run a deployed job or pipeline, hover over the resource in the **Deployments** panel and click the **Run** button.
+```bash
+pnpm run dev
+```
 
-### 3. Managing Resources
+The app will be available at the URL shown in the console output.
 
-- Use the **Add** dropdown to add resources to the bundle.
-- Click **Schedule** on a notebook within the bundle to create a **job definition** that schedules the notebook.
+### Build
 
-## Documentation
+Build both client and server for production:
 
-- For information on using **Declarative Automation Bundles in the workspace**, see: [Declarative Automation Bundles in the workspace](https://docs.databricks.com/aws/en/dev-tools/bundles/workspace-bundles)
-- For details on the **Declarative Automation Bundles format** used in this bundle, see: [Declarative Automation Bundles Configuration reference](https://docs.databricks.com/aws/en/dev-tools/bundles/reference)
+```bash
+pnpm run build
+```
+
+This creates:
+
+- `dist/server.js` - Compiled server bundle
+- `client/dist/` - Bundled client assets
+
+### Production
+
+Run the production build:
+
+```bash
+pnpm start
+```
+
+## Code Quality
+
+There are a few commands to help you with code quality:
+
+```bash
+# Type checking
+pnpm run typecheck
+
+# Linting
+pnpm run lint
+pnpm run lint:fix
+
+# Formatting
+pnpm run format
+pnpm run format:fix
+```
+
+## Deployment with Databricks Asset Bundles
+
+### 1. Configure Bundle
+
+Update `databricks.yml` with your workspace settings:
+
+```yaml
+targets:
+  default:
+    workspace:
+      host: https://your-workspace.cloud.databricks.com
+```
+
+Make sure to replace all placeholder values in `databricks.yml` with your actual resource IDs.
+
+### 2. Deploy
+
+Deploy and start the app with a single command:
+
+```bash
+databricks apps deploy
+```
+
+`databricks apps deploy` validates the project, deploys it, starts the app, and prints its URL.
+
+### Deploy to Production
+
+1. Configure the production target in `databricks.yml`
+2. Deploy to production:
+
+```bash
+databricks apps deploy -t prod
+```
+
+> **Restarting a stopped app:** apps stop after a period of inactivity. To start one again without redeploying, run `databricks apps start <APP_NAME>`.
+
+## Project Structure
+
+```
+* client/          # React frontend
+  * src/           # Source code
+  * public/        # Static assets
+* server/          # Express backend
+  * server.ts      # Server entry point
+  * routes/        # Routes
+* shared/          # Shared types
+* config/          # Configuration
+  * queries/       # SQL query files
+* databricks.yml   # Bundle configuration
+* app.yaml         # App configuration
+* .env.example     # Environment variables example
+```
+
+## Tech Stack
+
+- **Backend**: Node.js, Express
+- **Frontend**: React.js, TypeScript, Vite, Tailwind CSS, React Router
+- **UI Components**: Radix UI, shadcn/ui
+- **Databricks**: AppKit SDK
