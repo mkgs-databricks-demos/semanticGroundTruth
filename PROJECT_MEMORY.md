@@ -168,6 +168,7 @@ All open questions from the L300 specs were resolved during Bundle 1 implementat
 | 2026-10-19 | deploy.sh Phase 2 implemented | Replaced TODO block with full app deploy: `--var` passthrough (7 infra-resolved vars), app URL resolution from bundle summary, MCP connection check, first-deploy checklist. Header updated (MCP service → MLflow experiment). Stale remote branches pruned. Branch: `mg-genie-app-scaffold`. |
 | 2026-10-19 | App bundle Phase A + OTel | Dev/prod targets, OBO scopes (sql/genie/files/model-serving), agents-skills commented out, deprecated infra MCP file deleted. OpenTelemetry enabled: `telemetry_export_destinations` in databricks.yml + `OTEL_TRACES_SAMPLER=always_on` in app.yaml. Branch: `mg-genie-app-scaffold`. |
 | 2026-10-19 | **App bundle Phase B — first deploy** ✅ | `dev-semantic-ground-truth` deployed and running. All AppKit plugins operational (agents, analytics, jobs, lakebase, server). Resource bindings active: serving endpoint, MLflow experiment, SQL warehouse, job, Lakebase Postgres. OTel tables created. MCP service pending (expected — connection created post-deploy). Targets reordered: dev (default) → prod → local. `default` renamed to `local`. Bundle state fix required after app rename (delete workspace state + app, fresh deploy). Branch: `mg-genie-app-scaffold` (12 commits ahead of main). |
+| 2026-10-20 | **MCP connection automated — schema-level REST** ✅ | Migrated connection creation from metastore SQL DDL → schema-level REST API via `.ipynb` notebook job (`create_mcp_connection`). Three iterations: SQL file → Python script → notebook. `deploy_bundle()` rewritten: `tee`+filter for calm first-deploy output (no red CLI errors), PIPESTATUS fix, 504 auto-recovery via `bundle deployment bind`. Two successful first-deploy tests (destroy → deploy → deferral note → connection job → redeploy → MCP service registered). Orphaned `.sql`/`.py` files deleted. Session doc: `docs/sessions/2026-10-20_mcp-connection-schema-level-and-deploy-ux.md`. Branch: `mg-genie-app-scaffold` (~28 commits ahead of main). |
 
 ---
 
@@ -199,28 +200,40 @@ Queryable via SQL alongside future Lakebase Lakehouse Sync tables (`lb_*_history
 7. **Bundle summary field names:** Lakebase branches/databases have `.id` (full resource path) but NO `.name`. Experiments have `.name` but `.id` only in CLI ≥ 1.21.
 8. **`safe()` strips `/`:** Use `safe_url()` for Lakebase resource paths, `safe_name()` for experiment names (preserves spaces and `[]` from dev-mode prefix).
 9. **Backticks in embedded Python comments break bash:** Python code inside `eval "$(python3 -c "...")"` is bash double-quoted — backticks trigger command substitution.
-10. **HTTP MCP connections require valid credentials at creation:** Connection must be created post-deploy when app URL is known. The `post_deploy_setup` job handles this via SQL DDL with M2M SPN creds.
-11. **UC connection names are metastore-level flat names:** No project/schema prefix.
+10. **HTTP MCP connections require valid credentials at creation:** Connection must be created post-deploy when app URL is known. The `create_mcp_connection` notebook job handles this via REST API with M2M SPN creds from UC Secrets. ~~Previously `post_deploy_setup` via SQL DDL~~ — replaced 2026-10-20.
+11. **~~UC connection names are metastore-level flat names~~** **CORRECTED:** Schema-level connections have 3-part names (`catalog.schema.connection`). Created via REST API with `parent: "schemas/<cat>.<schema>"`. SQL DDL is metastore-level only and cannot parse 3-part names.
 12. **App in fatal ERROR state cannot be updated — must delete and recreate.** Platform returns "Cannot update app ... fatal error."
 13. **Bundle state tracks app by ID:** Renaming an app (e.g. `ground-truth-app` → `dev-semantic-ground-truth`) requires deleting the workspace state file (`~/.bundle/<bundle>/dev/state/resources.json`) AND the old app, then fresh deploy. Otherwise bundle tries CREATE and hits ALREADY_EXISTS.
 14. **`default` target renamed to `local`:** App bundle targets: `dev` (default: true), `prod`, `local` (localhost proxy for `pnpm run dev`).
 15. **MCP service resource lives in app bundle, NOT infra.** Post-deploy step 4 is `--app`, not `--infra`. Deprecated infra copy deleted in commit `71b5d14`.
 16. **`deploy_bundle()` must pass `extra_args` to both validate AND deploy.** Fixed — was only passing to deploy.
+17. **Schema-level connections need `CREATE CONNECTION` on the schema**, not metastore. User has `ALL PRIVILEGES` on `hls_fde_dev` catalog → schema-level works without metastore admin grant.
+18. **DABs do not support `connections` as a resource type.** Connection creation must be a job task or manual step.
+19. **`createAsset` `assetType: "file"` → workspace FILE; `assetType: "notebook"` → workspace NOTEBOOK.** `notebook_task` only finds NOTEBOOK objects. The `.sql` and `.py` files created via the file API were invisible to `notebook_task`.
+20. **`bundle deployment bind` works for MCP services.** Recovery path for 504 timeouts: bind the existing service → deploy to apply grants.
+21. **Databricks SQL CONCAT with `'''` adjacent-quote syntax silently drops the quote.** Use `format_string("... '%s' ...", v)` with double-quoted template instead.
+22. **`PIPESTATUS` must be captured before `|| true` in a pipeline.** `|| true` resets it to `(0)`. Capture inside a `{ ...; pipe_rc=("${PIPESTATUS[@]}"); } || true` group.
+23. **`bundle summary` app resources do NOT include the live `url` field.** Use `databricks apps get <name>` to resolve the app URL.
+24. **M2M HTTP connection option keys:** `host`, `port`, `base_path`, `client_id`, `oauth_scope`, `token_endpoint`, `is_mcp_connection`. `client_secret` is write-only (never returned by GET).
+25. **Metastore list endpoint does NOT return schema-level connections.** The 5,673 connections in the metastore list are all metastore-scoped (no dotted names). Schema-level connections are only accessible via their 3-part name in the REST API.
 
 ---
 
-## Post-Deploy Checklist (First Deploy Only)
+## Post-Deploy Checklist
 
-After a successful first deploy of `dev-semantic-ground-truth`:
+A single `./deploy.sh --target dev --app` now handles the full first-deploy:
 
-1. ✅ Verify app health: `databricks apps get dev-semantic-ground-truth`
-2. ~~Note auto-provisioned SPN app ID → update `app_role`~~ **NOT NEEDED** — AppKit `CAN_CONNECT_AND_CREATE` auto-provisions a Lakebase role for the app SPN (`dbrx-apps-55882972-...`). The app creates its own schemas (`app`, `appkit`) on startup. The M2M SPN (`16f8923c-...`) only handles MCP HTTP connection token exchange — no Lakebase access needed. `app_role` stays as a plain PG role (database owner, zero objects owned).
-3. ⬜ Run post-deploy setup: `./deploy.sh --target dev --infra --run-setup` (creates MCP HTTP connection with app URL + M2M SPN creds)
-4. ⬜ Redeploy **app** bundle: `./deploy.sh --target dev --app` (registers MCP service — connection now exists)
-5. ⬜ Verify MCP service in Unity Gateway
+1. ✅ App health verified automatically (`databricks apps get`)
+2. ✅ `app_role` update NOT needed — AppKit `CAN_CONNECT_AND_CREATE` auto-provisions Lakebase SPN
+3. ✅ MCP connection created automatically (Phase 2 `create_mcp_connection` notebook job via REST API, schema-level)
+4. ✅ Auto-redeploy registers MCP service + grants after connection creation
+5. ⬜ Verify MCP service tools via Unity Gateway (not yet tested)
 
-> **Critical:** Step 4 is `--app`, NOT `--infra`. The MCP service resource lives in `ground-truth-app/databricks.yml`, not infra. The deprecated infra copy was deleted in commit `71b5d14`.
-10. **CLI positional args:** `databricks experiments get-by-name EXPERIMENT_NAME` (positional), NOT `--experiment-name`.
+**Recovery:** If the MCP service create times out (504), `deploy.sh` auto-recovers: checks if service exists → `bundle deployment bind` → deploy for grants.
+
+> **Note:** The M2M SPN (`16f8923c-...`) handles MCP HTTP connection token exchange only — no Lakebase access. `app_role` is a vestigial PG role (database owner, zero objects owned). App SPN changes on every destroy+redeploy.
+
+26. **CLI positional args:** `databricks experiments get-by-name EXPERIMENT_NAME` (positional), NOT `--experiment-name`.
 
 ---
 
