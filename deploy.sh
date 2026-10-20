@@ -449,36 +449,35 @@ print(exp.get("experiment_id", ""))
 # check_mcp_connection — check if the MCP HTTP connection exists (status only)
 #
 # Used by Phase 1 to report connection status. Connection creation is handled
-# in Phase 2 by running the create_mcp_connection job (SQL notebook).
+# in Phase 2 by running the create_mcp_connection job (Python task).
+# Schema-level connections use a three-part name: catalog.schema.connection.
 # --------------------------------------------------------------------------- #
 check_mcp_connection() {
-  local connection_name="${MCP_CONNECTION_NAME}"
+  local full_name="${CATALOG}.${SCHEMA}.${MCP_CONNECTION_NAME}"
 
-  log "Checking MCP connection: ${connection_name}"
+  log "Checking MCP connection: ${full_name}"
 
-  if databricks api get /api/2.1/unity-catalog/connections/"${connection_name}" >/dev/null 2>&1; then
-    ok "Connection exists: ${connection_name}"
+  if databricks api get /api/2.1/unity-catalog/connections/"${full_name}" >/dev/null 2>&1; then
+    ok "Connection exists: ${full_name}"
     return 0
   else
-    warn "Connection '${connection_name}' does not exist yet."
+    warn "Connection '${full_name}' does not exist yet."
     warn "It will be created automatically on the next --app deploy."
     return 1
   fi
 }
 
 # --------------------------------------------------------------------------- #
-# run_create_mcp_connection — run the SQL notebook job to create/update the
-# MCP HTTP connection (Phase 2)
+# run_create_mcp_connection — run the Python task job to create/update the
+# schema-level MCP HTTP connection (Phase 2)
 #
-# The create_mcp_connection job (app bundle) runs a SQL notebook that:
-#   1. CREATE CONNECTION IF NOT EXISTS — first deploy
-#   2. ALTER CONNECTION SET OPTIONS  — idempotent update (URL changes, rotations)
-#   3. DESCRIBE CONNECTION           — verification
+# The create_mcp_connection job (app bundle) runs a Python script that:
+#   1. Reads M2M credentials from the secret scope (dbutils.secrets.get)
+#   2. POST /connections (create) or PATCH /connections/{full_name} (update)
+#   3. GET /connections/{full_name} (verify)
 #
-# SQL DDL uses secret() references to the M2M SPN keys. Requires:
-#   - SQL_WAREHOUSE_ID (resolved from infra)
-#   - M2M SPN credentials provisioned in the secret scope
-#   - APP_URL (resolved from app bundle summary after deploy)
+# Schema-level connections need CREATE CONNECTION on the schema, which is
+# covered by ALL PRIVILEGES on the catalog. No metastore grant needed.
 # --------------------------------------------------------------------------- #
 run_create_mcp_connection() {
   local app_url="$1"
@@ -495,9 +494,10 @@ run_create_mcp_connection() {
   fi
 
   local connection_name="${MCP_CONNECTION_NAME}"
+  local full_name="${CATALOG}.${SCHEMA}.${MCP_CONNECTION_NAME}"
   local token_endpoint="${WORKSPACE_HOST}/oidc/v1/token"
 
-  log "Creating/updating MCP connection: ${connection_name}"
+  log "Creating/updating MCP connection: ${full_name}"
   ok "  app_url=${app_url}"
   ok "  scope=${SCOPE_NAME}"
   ok "  token_endpoint=${token_endpoint}"
@@ -506,6 +506,8 @@ run_create_mcp_connection() {
       databricks bundle run create_mcp_connection --target "${TARGET}" \
         "${APP_EXTRA_ARGS[@]}" \
         --params "connection_name=${connection_name}" \
+        --params "catalog=${CATALOG}" \
+        --params "schema_name=${SCHEMA}" \
         --params "app_url=${app_url}" \
         --params "base_path=${MCP_BASE_PATH}" \
         --params "scope_name=${SCOPE_NAME}" \
@@ -513,15 +515,15 @@ run_create_mcp_connection() {
         --params "client_secret_key=${M2M_CLIENT_SECRET_KEY}" \
         --params "oauth_scopes=${M2M_OAUTH_SCOPES}" \
         --params "token_endpoint=${token_endpoint}"); then
-    ok "MCP connection ready: ${connection_name}"
+    ok "MCP connection ready: ${full_name}"
     return 0
   else
     warn "create_mcp_connection job failed — check the run output above."
     warn "Common causes:"
-    warn "  - PERMISSION_DENIED: deployer lacks CREATE CONNECTION on the metastore"
-    warn "    (metastore admin: GRANT CREATE CONNECTION ON METASTORE TO <principal>)"
+    warn "  - PERMISSION_DENIED: deployer lacks CREATE CONNECTION on the schema"
+    warn "    (need CREATE CONNECTION on catalog or schema, not metastore)"
     warn "  - M2M client_secret not provisioned in the secret scope"
-    warn "  - SQL warehouse offline"
+    warn "  - Serverless compute unavailable"
     return 1
   fi
 }
@@ -939,7 +941,7 @@ print(data.get("url", ""))
 
       # Check if connection already exists (for auto-redeploy decision)
       connection_existed=false
-      if databricks api get /api/2.1/unity-catalog/connections/"${MCP_CONNECTION_NAME}" >/dev/null 2>&1; then
+      if databricks api get /api/2.1/unity-catalog/connections/"${CATALOG}.${SCHEMA}.${MCP_CONNECTION_NAME}" >/dev/null 2>&1; then
         connection_existed=true
       fi
 
