@@ -28,7 +28,7 @@ resources:
         - name: client_secret_key
           default: ""
         - name: oauth_scopes
-          default: apps
+          default: all-apis
         - name: token_endpoint
           default: ""
       tasks:
