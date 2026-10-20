@@ -517,7 +517,11 @@ run_create_mcp_connection() {
     return 0
   else
     warn "create_mcp_connection job failed — check the run output above."
-    warn "Common causes: M2M client_secret not provisioned, warehouse offline."
+    warn "Common causes:"
+    warn "  - PERMISSION_DENIED: deployer lacks CREATE CONNECTION on the metastore"
+    warn "    (metastore admin: GRANT CREATE CONNECTION ON METASTORE TO <principal>)"
+    warn "  - M2M client_secret not provisioned in the secret scope"
+    warn "  - SQL warehouse offline"
     return 1
   fi
 }
