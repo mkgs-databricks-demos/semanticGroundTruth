@@ -1,6 +1,6 @@
 # PROJECT_MEMORY — ground-truth-app
 
-> Last updated: 2026-10-19 — Phase B first deploy successful. `dev-semantic-ground-truth` running.
+> Last updated: 2026-10-20 — MCP auth root cause found. All SPN grants applied. Blocked on M2M SPN secret regeneration with `all-apis` scope.
 
 ## Bundle Identity
 
@@ -32,7 +32,10 @@
 | Resource Type | Key | Description | Status |
 |---------------|-----|-------------|--------|
 | `apps` | `app` | `dev-semantic-ground-truth` — AppKit app (Node.js + React) | **Deployed** ✅ |
-| `mcp_services` | `ground_truth_mcp` | MCP service in Unity Gateway — moved from infra | Pending (connection needed first) |
+| `mcp_services` | `ground_truth_mcp` | MCP service in Unity Gateway — moved from infra | Deployed ✅ (auth blocked — see Next Steps) |
+| `jobs` | `app_post_deploy_setup` | Grants CAN_USE on app + UC grants for M2M SPN | Deployed ✅ |
+| `jobs` | `create_mcp_connection` | Creates/PATCHes schema-level HTTP connection | Deployed ✅ |
+| `job_runs` | `run_app_post_deploy` | Deploy hook: auto-triggers `app_post_deploy_setup` | Deployed ✅ |
 
 ### App Stack
 
@@ -220,15 +223,42 @@ After a successful first deploy of `dev-semantic-ground-truth`:
 
 ### Remaining (Post-Deploy + Phase C+)
 
+#### IMMEDIATE: Unblock MCP Authentication (2026-10-20)
+
+The MCP service deploys and all grants are correct, but the app sidecar rejects M2M tokens because
+the SPN OAuth secret was scoped to `apps ai-gateway`. The sidecar requires `all-apis` scope.
+OAuth secret scopes are immutable — must generate a new secret.
+
+| Step | Action | How |
+|------|--------|----- |
+| **MCP-1** | Regenerate `semantic-ground-truth-m2m-dev` secret with `all-apis` scope | Settings → Identity and access → Service principals → `semantic-ground-truth-m2m-dev` → Secrets tab → Generate secret → select "all APIs" |
+| **MCP-2** | Update secret in scope | `databricks secrets put-secret semantic_ground_truth_credentials m2m_client_secret_dev --string-value "<new_secret>"` |
+| **MCP-3** | Re-PATCH HTTP connection with new credentials | `bundle run create_mcp_connection --target dev --params connection_name=semantic-ground-truth-mcp,catalog=hls_fde_dev,schema_name=dev_matthew_giglia_semantic_ground_truth,app_url=https://dev-semantic-ground-truth-7474657291520070.aws.databricksapps.com,scope_name=semantic_ground_truth_credentials,client_id_key=m2m_client_id_dev,client_secret_key=m2m_client_secret_dev,oauth_scopes=all-apis,token_endpoint=https://fevm-hls-fde.cloud.databricks.com/oidc/v1/token` |
+| **MCP-4** | Also update `oauth_scopes` default in job YAML | Change `apps` → `all-apis` in `resources/jobs/create_mcp_connection.job.yml` and notebook widget default |
+| **MCP-5** | Verify MCP service Overview tab | "Authentication required" should clear. Expect new error: `/mcp` not implemented (Phase H) |
+| **MCP-6** | Revoke old `apps ai-gateway` secret | Settings → same SPN → Secrets tab → revoke old entry |
+
+#### App Code Phases (ordered by dependency)
+
+| # | Phase | Item | Blocked on |
+|---|-------|------|-----------|
+| 7 | C | Lakebase migrations (`server/migrations/` framework + 5 files) | Nothing |
+| 8 | D | Auth + Middleware (OBO identity extraction, OTel, error handler) | Nothing |
+| 9 | E | Review Engine Service | C, D |
+| 10 | F | Campaign Manager Service | C, D |
+| 11 | G | REST API Routes | D, E, F |
+| 12 | H | **MCP Server (`/mcp` endpoint)** | E, G — also unblocks MCP auth testing |
+| 13 | I | React Frontend | G |
+| 14 | J | Agents | E, G |
+
+#### Remaining Post-Deploy Manual Steps
+
 | # | Item | Blocked on |
 |---|------|------------|
 | ~~2p~~ | ~~Note SPN app ID, update `app_role`~~ | ✅ NOT NEEDED — AppKit auto-provisions |
-| 3p | Run `post_deploy_setup` (MCP connection) | Nothing |
-| 4p | Redeploy app (MCP service registration) | Step 3p |
-| 7 | Lakebase migrations (TypeScript, run on startup) | App code authoring |
-| 8 | Replace sample todo routes with Review Engine | App code authoring |
-| 9 | Replace sample agents with Ground Truth agents | App code authoring |
-| 11 | Update infra `app_role` to SERVICE_PRINCIPAL | Step 2p |
+| 15 | UC Secrets: `slack_webhook_url`, `teams_webhook_url`, `git_token` in scope | Nothing |
+| 16 | Lakebase Lakehouse Sync: configure in Lakebase App UI | After Phase C |
+| 17 | Genie Code skill registration | After Phase E |
 
 ---
 
@@ -252,6 +282,7 @@ After a successful first deploy of `dev-semantic-ground-truth`:
 | 2026-10-14 | Scaffolded | AppKit init (Node.js + React). MCP service moved from infra. `app_bundle_support_plan.md` written. |
 | 2026-10-19 | Phase A complete | Dev/prod/local targets, OBO scopes, OTel, agents-skills commented out, deprecated infra MCP deleted. |
 | 2026-10-19 | **Phase B — first deploy** ✅ | `dev-semantic-ground-truth` running. All AppKit plugins operational (agents, analytics, jobs, lakebase, server). MCP service pending (expected). 12 commits ahead of main on `mg-genie-app-scaffold`. |
+| 2026-10-20 | **Resource refactor + MCP auth investigation** | Extracted resources to `resources/`. Fixed SPN grant bugs (Permissions + UC Grants API need `application_id` UUID). All grants confirmed. Root cause: M2M SPN secret scoped to `apps ai-gateway` — sidecar needs `all-apis`. SQL DDL confirmed metastore-only for connections. Branch: `mg-genie-app-resource-refactor`. |
 
 ---
 
