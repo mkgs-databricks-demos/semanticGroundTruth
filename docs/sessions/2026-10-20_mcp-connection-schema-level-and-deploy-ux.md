@@ -151,6 +151,6 @@ Capturing output and replaying it after classification was considered (option 1)
 
 ## Remaining
 
-- [ ] Delete test connection `hls_fde_dev.dev_matthew_giglia_bcda.mkgs_test` (manual)
+- [x] Delete test connection `hls_fde_dev.dev_matthew_giglia_bcda.mkgs_test` (deleted manually; verified via API — `ResourceDoesNotExist`)
 - [ ] Test MCP `tools/list` call through Unity Gateway
 - [ ] Draft PR description for merge to `main`
