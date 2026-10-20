@@ -255,20 +255,44 @@ deploy_bundle() {
     ok "Destroyed: ${bundle_name}"
   else
     log "Deploying ${bundle_name} (target: ${TARGET})"
+    local deploy_log
+    deploy_log=$(mktemp)
     local deploy_rc=0
+    # Stream output live via tee; capture to log for post-deploy filtering.
+    # Piping strips the CLI's colour, so "Error:" appears as plain text.
     if [[ ${#extra_args[@]} -gt 0 ]]; then
-      (cd_bundle "${bundle_dir}" && databricks bundle deploy --target "${TARGET}" "${extra_args[@]}") || deploy_rc=$?
+      (cd_bundle "${bundle_dir}" && databricks bundle deploy --target "${TARGET}" "${extra_args[@]}") 2>&1 | tee "${deploy_log}" || true
+      deploy_rc=${PIPESTATUS[0]}
     else
-      (cd_bundle "${bundle_dir}" && databricks bundle deploy --target "${TARGET}") || deploy_rc=$?
+      (cd_bundle "${bundle_dir}" && databricks bundle deploy --target "${TARGET}") 2>&1 | tee "${deploy_log}" || true
+      deploy_rc=${PIPESTATUS[0]}
     fi
+
     if [[ ${deploy_rc} -eq 0 ]]; then
       ok "Deployed: ${bundle_name}"
     else
-      warn "Deploy completed with errors (exit ${deploy_rc}). Some resources may have failed."
-      warn "Check output above. Common expected failures:"
-      warn "  - MCP service: connection doesn't exist yet (pre-Bundle 2)"
-      warn "  - Job run: notebooks not committed to Git branch"
+      # Classify errors: MCP-service / grant failures on first deploy are
+      # expected (connection doesn't exist yet) and get a calm message.
+      # Any other error is surfaced as a warning.
+      local mcp_errors unexpected_errors
+      mcp_errors=$(grep -ciE '(mcp_services|ground_truth_mcp).*(does not exist|INVALID_PARAMETER_VALUE)' "${deploy_log}" 2>/dev/null || true)
+      unexpected_errors=$(grep -ciE '^Error:' "${deploy_log}" 2>/dev/null || true)
+      unexpected_errors=$(( unexpected_errors - mcp_errors ))
+      if [[ ${unexpected_errors} -le 0 && ${mcp_errors} -gt 0 ]]; then
+        log "Deploy note (${bundle_name})"
+        ok "MCP service deferred: connection not created yet (expected on first deploy)."
+        ok "deploy.sh will create the connection and auto-redeploy after this step."
+      else
+        warn "Deploy completed with errors (exit ${deploy_rc}). Some resources may have failed."
+        if [[ ${mcp_errors} -gt 0 ]]; then
+          ok "MCP service errors are expected on first deploy (connection not yet created)."
+        fi
+        if [[ ${unexpected_errors} -gt 0 ]]; then
+          warn "${unexpected_errors} unexpected error(s) — review the output above."
+        fi
+      fi
     fi
+    rm -f "${deploy_log}"
   fi
 }
 
@@ -951,6 +975,7 @@ print(data.get("url", ""))
         if [[ "${connection_existed}" == false ]]; then
           log "MCP connection created — redeploying app to register MCP service"
           deploy_bundle "${APP_BUNDLE}" "${APP_EXTRA_ARGS[@]}"
+          ok "MCP service registered (first-deploy deferral resolved)"
         fi
       else
         warn "MCP connection not created — MCP service will remain unregistered."
