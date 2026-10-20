@@ -379,7 +379,7 @@ for proj_name, proj in pg_projects.items():
 m2m_id_key     = get_var('m2m_client_id_dbs_key')
 m2m_secret_key = get_var('m2m_client_secret_dbs_key')
 m2m_prefix     = get_var('m2m_spn_prefix', 'semantic-ground-truth-m2m')
-m2m_scopes     = get_var('m2m_oauth_scopes', 'apps ai-gateway')
+m2m_scopes     = get_var('m2m_oauth_scopes', 'all-apis')
 
 # --- post_deploy_setup job ID (empty before the first deploy) ---
 post_deploy_job_id = resources.get('jobs', {}).get('post_deploy_setup', {}).get('id', '')
