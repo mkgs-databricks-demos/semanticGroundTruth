@@ -965,7 +965,7 @@ print(data.get("url", ""))
     # Step 2g: Summary.
     log "App deploy complete: ${APP_DISPLAY_NAME}"
     echo "  App URL:        ${APP_URL:-UNKNOWN}"
-    echo "  MCP connection: ${MCP_CONNECTION_NAME}"
+    echo "  MCP connection: ${CATALOG}.${SCHEMA}.${MCP_CONNECTION_NAME}"
     echo "  Note: app_role update is NOT needed — AppKit CAN_CONNECT_AND_CREATE"
     echo "  auto-provisions a Lakebase role for the app SPN."
   fi
