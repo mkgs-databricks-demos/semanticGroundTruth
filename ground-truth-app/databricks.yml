@@ -113,24 +113,8 @@ resources:
           default: ""
       tasks:
         - task_key: create_connection
-          spark_python_task:
-            python_file: src/notebooks/create_mcp_connection.py
-            parameters:
-              - "--connection_name={{job.parameters.connection_name}}"
-              - "--catalog={{job.parameters.catalog}}"
-              - "--schema_name={{job.parameters.schema_name}}"
-              - "--app_url={{job.parameters.app_url}}"
-              - "--base_path={{job.parameters.base_path}}"
-              - "--scope_name={{job.parameters.scope_name}}"
-              - "--client_id_key={{job.parameters.client_id_key}}"
-              - "--client_secret_key={{job.parameters.client_secret_key}}"
-              - "--oauth_scopes={{job.parameters.oauth_scopes}}"
-              - "--token_endpoint={{job.parameters.token_endpoint}}"
-          environment_key: default
-      environments:
-        - environment_key: default
-          spec:
-            client: "1"
+          notebook_task:
+            notebook_path: src/notebooks/create_mcp_connection.ipynb
 
   # MCP Service — moved from Bundle 1 (infra) to Bundle 2 (app).
   # The MCP service points at the app's /mcp endpoint and must deploy with the app.
