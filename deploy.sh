@@ -987,7 +987,32 @@ print(data.get("url", ""))
           if [[ "${LAST_DEPLOY_RC:-1}" -eq 0 ]]; then
             ok "MCP service registered (first-deploy deferral resolved)"
           else
-            warn "Redeploy after connection creation failed — MCP service may be unregistered."
+            # Recovery: a 504 timeout can leave the MCP service created but
+            # untracked by the bundle (no state entry, grants not applied).
+            # If the service exists, bind it and deploy once more for grants.
+            local mcp_full_name="${CATALOG}.${SCHEMA}.${MCP_CONNECTION_NAME}"
+            if databricks api get /api/2.1/unity-catalog/mcp-services/"${mcp_full_name}" >/dev/null 2>&1; then
+              log "MCP service exists despite deploy failure — binding to bundle state"
+              if (cd_bundle "${SCRIPT_DIR}/${APP_BUNDLE}" && \
+                  databricks bundle deployment bind ground_truth_mcp "${mcp_full_name}" \
+                    --target "${TARGET}" --auto-approve \
+                    ${APP_EXTRA_ARGS[@]+"${APP_EXTRA_ARGS[@]}"}) 2>&1; then
+                ok "Bound MCP service to bundle state"
+                log "Deploying once more to apply grants"
+                deploy_bundle "${APP_BUNDLE}" "${APP_EXTRA_ARGS[@]}"
+                if [[ "${LAST_DEPLOY_RC:-1}" -eq 0 ]]; then
+                  ok "MCP service registered (recovered via bind after timeout)"
+                else
+                  warn "Grant deploy failed after bind — check output above."
+                fi
+              else
+                warn "bundle deployment bind failed — run manually:"
+                warn "  cd ${APP_BUNDLE} && databricks bundle deployment bind ground_truth_mcp '${mcp_full_name}' --target ${TARGET} --auto-approve"
+              fi
+            else
+              warn "Redeploy after connection creation failed — MCP service may be unregistered."
+              warn "Retry with: ./deploy.sh --target ${TARGET} --app"
+            fi
           fi
         fi
       else
