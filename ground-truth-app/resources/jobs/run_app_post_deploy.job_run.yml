@@ -1,6 +1,6 @@
 # resources/jobs/run_app_post_deploy.job_run.yml
 # Deploy hook: auto-triggers app_post_deploy_setup on every `bundle deploy`.
-# Ensures M2M SPN can authenticate through the app's auth sidecar.
+# Ensures M2M SPN has App CAN_USE + UC grants (USE CATALOG/SCHEMA, EXECUTE).
 # Requires: engine: direct, CLI >= 1.7.0
 
 resources:
@@ -11,3 +11,6 @@ resources:
         app_name: ${var.app_display_name}
         scope_name: semantic_ground_truth_credentials
         client_id_key: m2m_client_id_${bundle.target}
+        catalog: ${var.catalog}
+        schema_name: ${var.catalog}.${var.schema_name}
+        mcp_service_name: ${var.catalog}.${var.schema_name}.semantic-ground-truth-mcp
