@@ -2,6 +2,8 @@
 
 | Date | Wave | Session | Title | Mode | Status | Branch |
 |------|------|---------|-------|------|--------|--------|
+| 2026-10-20 | 5 | 16 | App README and first-deploy runbook | edit | error | `mg-genie-app-build-waves` |
+| 2026-10-20 | 5 | 15 | Tests and scaffold cleanup | edit | error | `mg-genie-app-build-waves` |
 | 2026-10-20 | 4 | 14 | Ground Truth agents | edit | error | `mg-genie-app-build-waves` |
 | 2026-10-20 | 4 | 13 | Leaderboard, steward, admin, executive pages | edit | error | `mg-genie-app-build-waves` |
 | 2026-10-20 | 4 | 12 | App shell and card-swipe review experience | edit | error | `mg-genie-app-build-waves` |
