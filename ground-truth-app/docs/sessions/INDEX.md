@@ -2,6 +2,10 @@
 
 | Date | Wave | Session | Title | Mode | Status | Branch |
 |------|------|---------|-------|------|--------|--------|
+| 2026-10-20 | 4 | 14 | Ground Truth agents | edit | error | `mg-genie-app-build-waves` |
+| 2026-10-20 | 4 | 13 | Leaderboard, steward, admin, executive pages | edit | error | `mg-genie-app-build-waves` |
+| 2026-10-20 | 4 | 12 | App shell and card-swipe review experience | edit | error | `mg-genie-app-build-waves` |
+| 2026-10-20 | 4 | 11 | MCP server at /mcp | edit | error | `mg-genie-app-build-waves` |
 | 2026-10-20 | 3 | 10 | Client API layer | edit | error | `mg-genie-app-build-waves` |
 | 2026-10-20 | 3 | 09 | REST routes and composition root | edit | error | `mg-genie-app-build-waves` |
 | 2026-10-20 | 2 | 08 | Notification Service | edit | error | `mg-genie-app-build-waves` |
