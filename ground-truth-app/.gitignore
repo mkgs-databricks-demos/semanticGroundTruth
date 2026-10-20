@@ -12,3 +12,6 @@ playwright-report/
 # Auto-generated types (endpoint-specific, varies per developer)
 shared/appkit-types/serving.d.ts
 
+# Genie Build Waves per-run status and gate files (never committed)
+.build-status/
+
