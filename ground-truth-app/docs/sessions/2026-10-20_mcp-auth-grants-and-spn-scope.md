@@ -169,12 +169,65 @@ Scopes 'all-apis' are not assigned to the client 16f8923c-a948-4f0e-b00a-f54ad3f
 
 ---
 
+---
+
+## Resolution: MCP-1 through MCP-4 Complete
+
+**All auth issues resolved in the same session (2026-10-20 15:26 UTC)**
+
+### MCP-1: Regenerate OAuth Secret
+User generated a new OAuth secret for `semantic-ground-truth-m2m-dev` via Settings UI with **"all APIs"** scope (no restriction = `all-apis` default). Old secret remains active until manually revoked.
+
+### MCP-2: Store New Secret  
+```sh
+databricks secrets put-secret semantic_ground_truth_credentials m2m_client_secret_dev --string-value "<new_secret>"
+```
+
+### MCP-3: Re-PATCH HTTP Connection
+```sh
+bundle run create_mcp_connection --target dev \
+  --params connection_name=semantic-ground-truth-mcp,\
+catalog=hls_fde_dev,\
+schema_name=dev_matthew_giglia_semantic_ground_truth,\
+app_url=https://dev-semantic-ground-truth-7474657291520070.aws.databricksapps.com,\
+scope_name=semantic_ground_truth_credentials,\
+client_id_key=m2m_client_id_dev,\
+client_secret_key=m2m_client_secret_dev,\
+oauth_scopes=all-apis,\
+token_endpoint=https://fevm-hls-fde.cloud.databricks.com/oidc/v1/token
+```
+Result: SUCCESS. Connection `oauth_scope` updated to `all-apis`, `access_token_expiration` refreshed to `2026-10-20 16:28:12`.
+
+### MCP-4: Update Job YAML Default
+Changed `oauth_scopes` default from `apps` → `all-apis` in both `resources/jobs/create_mcp_connection.job.yml` and `src/notebooks/create_mcp_connection.ipynb` widget.
+
+### Verification
+```python
+# HTTP 200 from Unity Gateway
+# Error body: {"code": -32603, "message": "Cannot POST /mcp", "upstream_status": 404}
+```
+302 redirect to browser OAuth is **gone**. App sidecar now accepts the `all-apis` M2M token. 404 is expected — Phase H not built yet.
+
+---
+
+## What Is (and Isn't) Wired to the Deploy Hook
+
+The `run_app_post_deploy` job_run resource auto-triggers `app_post_deploy_setup` on every `bundle deploy`.
+
+| Step | Auto on `bundle deploy`? | How |
+|------|--------------------------|-----|
+| App `CAN_USE` for M2M SPN | ✅ Yes | `run_app_post_deploy` → `app_post_deploy_setup` |
+| `USE_CATALOG` for M2M SPN | ✅ Yes | same |
+| `USE_SCHEMA` for M2M SPN | ✅ Yes | same |
+| `EXECUTE` on MCP service for M2M SPN | ✅ Yes | same |
+| Connection PATCH (`create_mcp_connection`) | ❌ Manual | `bundle run create_mcp_connection --params ...` |
+
+**Why the connection isn't wired:** The job requires `app_url` as a parameter. The URL is stable (app ID `7474657291520070` is fixed at app creation), so it could be added as a per-target variable and wired via a second `job_run` hook in a future improvement.
+
+---
+
 ## Next Steps
 
-See PROJECT_MEMORY.md § Next Steps for the prioritized action list.
+See PROJECT_MEMORY.md § Next Steps for the full ordered list.
 
-**Immediate unblocked action:**
-1. Regenerate `semantic-ground-truth-m2m-dev` OAuth secret with `all-apis` scope
-2. Update `m2m_client_secret_dev` in `semantic_ground_truth_credentials` scope
-3. Re-PATCH the connection and verify MCP service auth resolves
-4. Then proceed to Phase H (MCP server implementation)
+**Immediate priority:** Phase C (Lakebase migrations) or Phase H (/mcp endpoint) — both unblocked.

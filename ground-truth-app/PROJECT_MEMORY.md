@@ -1,6 +1,6 @@
 # PROJECT_MEMORY — ground-truth-app
 
-> Last updated: 2026-10-20 — MCP auth root cause found. All SPN grants applied. Blocked on M2M SPN secret regeneration with `all-apis` scope.
+> Last updated: 2026-10-20 — MCP auth **fully resolved**. All SPN grants applied. Connection PATCHed with `all-apis` scope. Unity Gateway delivers to app (404 expected — Phase H not built).
 
 ## Bundle Identity
 
@@ -235,8 +235,10 @@ OAuth secret scopes are immutable — must generate a new secret.
 | **MCP-2** | Update secret in scope | `databricks secrets put-secret semantic_ground_truth_credentials m2m_client_secret_dev --string-value "<new_secret>"` |
 | **MCP-3** | Re-PATCH HTTP connection with new credentials | `bundle run create_mcp_connection --target dev --params connection_name=semantic-ground-truth-mcp,catalog=hls_fde_dev,schema_name=dev_matthew_giglia_semantic_ground_truth,app_url=https://dev-semantic-ground-truth-7474657291520070.aws.databricksapps.com,scope_name=semantic_ground_truth_credentials,client_id_key=m2m_client_id_dev,client_secret_key=m2m_client_secret_dev,oauth_scopes=all-apis,token_endpoint=https://fevm-hls-fde.cloud.databricks.com/oidc/v1/token` |
 | **MCP-4** | Also update `oauth_scopes` default in job YAML | Change `apps` → `all-apis` in `resources/jobs/create_mcp_connection.job.yml` and notebook widget default |
-| **MCP-5** | Verify MCP service Overview tab | "Authentication required" should clear. Expect new error: `/mcp` not implemented (Phase H) |
-| **MCP-6** | Revoke old `apps ai-gateway` secret | Settings → same SPN → Secrets tab → revoke old entry |
+| **MCP-5** | ~~Verify MCP service Overview tab~~ | ✅ Verified — 302 gone, Unity Gateway returns 404 `/mcp` (expected) |
+| **MCP-6** | Revoke old `apps ai-gateway` secret | Settings → same SPN → Secrets tab → revoke old entry (non-urgent) |
+
+> **Deploy hook wiring gap:** `app_post_deploy_setup` (SPN grants) is fully automated via `run_app_post_deploy` hook. The `create_mcp_connection` job (connection PATCH) is **not** wired — still a manual `bundle run`. Future improvement: add `app_url` as a per-target variable (URL is stable: `https://dev-semantic-ground-truth-7474657291520070.aws.databricksapps.com`) and create a second `job_run` hook.
 
 #### App Code Phases (ordered by dependency)
 
@@ -282,7 +284,7 @@ OAuth secret scopes are immutable — must generate a new secret.
 | 2026-10-14 | Scaffolded | AppKit init (Node.js + React). MCP service moved from infra. `app_bundle_support_plan.md` written. |
 | 2026-10-19 | Phase A complete | Dev/prod/local targets, OBO scopes, OTel, agents-skills commented out, deprecated infra MCP deleted. |
 | 2026-10-19 | **Phase B — first deploy** ✅ | `dev-semantic-ground-truth` running. All AppKit plugins operational (agents, analytics, jobs, lakebase, server). MCP service pending (expected). 12 commits ahead of main on `mg-genie-app-scaffold`. |
-| 2026-10-20 | **Resource refactor + MCP auth investigation** | Extracted resources to `resources/`. Fixed SPN grant bugs (Permissions + UC Grants API need `application_id` UUID). All grants confirmed. Root cause: M2M SPN secret scoped to `apps ai-gateway` — sidecar needs `all-apis`. SQL DDL confirmed metastore-only for connections. Branch: `mg-genie-app-resource-refactor`. |
+| 2026-10-20 | **Resource refactor + MCP auth fully resolved** | Extracted resources to `resources/`. Fixed SPN grant bugs (Permissions + UC Grants API need `application_id` UUID). All grants applied. SQL DDL confirmed metastore-only for connections. Root cause: SPN secret scoped to `apps ai-gateway` — sidecar needs `all-apis`. New secret generated, connection PATCHed, 404 on `/mcp` confirmed (auth works, Phase H not built). Branch: `mg-genie-app-resource-refactor`. |
 
 ---
 
