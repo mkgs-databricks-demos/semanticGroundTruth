@@ -21,6 +21,7 @@ Phases A and C–I can proceed independently.
 | F | Campaign Manager Service | TypeScript | C, D | 1 |
 | G | REST API Routes | TypeScript | D, E, F | 1 |
 | H | MCP Server | TypeScript | E, G | 1–2 |
+| — | App Post-Deploy Setup | Python (notebook) | B | ½ (done) |
 | I | React Frontend | TypeScript/React | G | 3–4 |
 | J | Agents | TypeScript/Markdown | E, G | 1–2 |
 
@@ -533,11 +534,41 @@ Keep `tracer-bullets` skill (useful for planning conversations). Add:
 7. **Phase I** (frontend, once routes exist — can parallelize with H)
 8. **Phase J** (agents, once services exist)
 
+### Post-deploy automation (runs after every deploy)
+
+6b. **App post-deploy setup** — runs after deploy, before MCP connection step
+   - Configures M2M SPN access on the app (auth sidecar prerequisite)
+   - Python notebook uses the workspace API (idempotent PATCH)
+   - Job resource: `app_post_deploy_setup` in `databricks.yml`
+   - deploy.sh Phase 2 needs a corresponding `bundle run` step
+
 ### Post-deploy cleanup (after Phase B succeeds)
 
 - Delete infra deprecated MCP file
 - Update infra `app_role` to SERVICE_PRINCIPAL
 - Enable Lakebase CDF for all app tables (Lakebase UI)
+
+---
+
+## App Post-Deploy Setup (new, 2026-10-20)
+
+**Goal:** Ensure the M2M SPN can authenticate through the app's auth sidecar.
+**Notebook:** `src/notebooks/grant_app_permissions.ipynb` (Python)
+**Job:** `app_post_deploy_setup` in `databricks.yml`
+
+**Why Python, not SQL:** App-level access configuration uses the workspace API, not SQL DDL.
+
+**Parameters:**
+
+| Param | Description | Dev value |
+|-------|-------------|-----------|
+| `app_name` | Databricks App name | `dev-semantic-ground-truth` |
+| `scope_name` | Secret scope with M2M creds | `semantic_ground_truth_credentials` |
+| `client_id_key` | Key for M2M client_id in scope | `m2m_client_id_dev` |
+
+**Root cause:** The MCP HTTP connection authenticates with M2M SPN credentials, but the
+app's auth sidecar rejects tokens from SPNs that aren't registered on the app.
+Without this setup, the UC MCP service page shows "Authentication required."
 
 ---
 

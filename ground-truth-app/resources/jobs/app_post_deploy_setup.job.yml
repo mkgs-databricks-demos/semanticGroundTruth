@@ -1,0 +1,28 @@
+# resources/jobs/app_post_deploy_setup.job.yml
+# Post-deploy setup for the app.
+# Ensures M2M SPN has:
+#   1. CAN_USE on the App (auth sidecar)
+#   2. USE CATALOG / USE SCHEMA / EXECUTE on MCP service (UC grants)
+# Run by deploy.sh Phase 2 or auto-triggered by run_app_post_deploy job_run.
+
+resources:
+  jobs:
+    app_post_deploy_setup:
+      name: ${var.app_display_name}-post-deploy-setup
+      parameters:
+        - name: app_name
+          default: ""
+        - name: scope_name
+          default: ""
+        - name: client_id_key
+          default: ""
+        - name: catalog
+          default: ""
+        - name: schema_name
+          default: ""
+        - name: mcp_service_name
+          default: ""
+      tasks:
+        - task_key: setup_app_access
+          notebook_task:
+            notebook_path: ../../src/notebooks/grant_app_permissions.ipynb

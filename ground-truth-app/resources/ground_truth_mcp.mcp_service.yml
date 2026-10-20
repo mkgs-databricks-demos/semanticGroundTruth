@@ -1,0 +1,24 @@
+# resources/ground_truth_mcp.mcp_service.yml
+# MCP Service — moved from Bundle 1 (infra) to Bundle 2 (app).
+# The MCP service points at the app's /mcp endpoint and must deploy with the app.
+# Dependency: source_connection (HTTP connection) must exist first.
+# See ground-truth-infra/docs/runbooks/unity-gateway-setup.md for connection creation.
+
+resources:
+  mcp_services:
+    ground_truth_mcp:
+      parent: schemas/${var.catalog}.${var.schema_name}
+      mcp_service_id: semantic-ground-truth-mcp
+      comment: "Semantic Ground Truth app MCP service — exposes review, campaign, and metric view tools via Unity Gateway"
+      config:
+        source_connection:
+          # Schema-level connection (three-part name: catalog.schema.connection)
+          name: connections/${var.catalog}.${var.schema_name}.semantic-ground-truth-mcp
+        include_tool_selectors:
+          - "review_*"
+          - "campaign_*"
+          - "metric_view_*"
+      grants:
+        - principal: ${var.mcp_execute_principal}
+          privileges:
+            - EXECUTE

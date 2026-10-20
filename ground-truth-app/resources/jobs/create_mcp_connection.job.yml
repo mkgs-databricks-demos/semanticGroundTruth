@@ -1,0 +1,37 @@
+# resources/jobs/create_mcp_connection.job.yml
+# Create/update schema-level MCP HTTP connection.
+# Run by deploy.sh Phase 2 after the app deploys and the URL is known.
+# Python task reads M2M credentials via dbutils.secrets.get(), then
+# calls the Connections REST API (POST create / PATCH update).
+# Schema-level connections need CREATE CONNECTION on the schema
+# (covered by ALL PRIVILEGES on the catalog).
+
+resources:
+  jobs:
+    create_mcp_connection:
+      name: ${var.app_display_name}-create-mcp-connection
+      parameters:
+        - name: connection_name
+          default: ""
+        - name: catalog
+          default: ""
+        - name: schema_name
+          default: ""
+        - name: app_url
+          default: ""
+        - name: base_path
+          default: /mcp
+        - name: scope_name
+          default: ""
+        - name: client_id_key
+          default: ""
+        - name: client_secret_key
+          default: ""
+        - name: oauth_scopes
+          default: all-apis
+        - name: token_endpoint
+          default: ""
+      tasks:
+        - task_key: create_connection
+          notebook_task:
+            notebook_path: ../../src/notebooks/create_mcp_connection.ipynb
