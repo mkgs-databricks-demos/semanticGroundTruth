@@ -258,15 +258,17 @@ deploy_bundle() {
     local deploy_log
     deploy_log=$(mktemp)
     local deploy_rc=0
+    local -a pipe_rc=()
     # Stream output live via tee; capture to log for post-deploy filtering.
     # Piping strips the CLI's colour, so "Error:" appears as plain text.
-    if [[ ${#extra_args[@]} -gt 0 ]]; then
-      (cd_bundle "${bundle_dir}" && databricks bundle deploy --target "${TARGET}" "${extra_args[@]}") 2>&1 | tee "${deploy_log}" || true
-      deploy_rc=${PIPESTATUS[0]}
-    else
-      (cd_bundle "${bundle_dir}" && databricks bundle deploy --target "${TARGET}") 2>&1 | tee "${deploy_log}" || true
-      deploy_rc=${PIPESTATUS[0]}
-    fi
+    # PIPESTATUS is captured INSIDE the group: a trailing `|| true` would
+    # overwrite it with 0. The group's `|| true` only stops set -e aborting.
+    {
+      (cd_bundle "${bundle_dir}" && databricks bundle deploy --target "${TARGET}" ${extra_args[@]+"${extra_args[@]}"}) 2>&1 | tee "${deploy_log}"
+      pipe_rc=("${PIPESTATUS[@]}")
+    } || true
+    deploy_rc=${pipe_rc[0]:-1}
+    LAST_DEPLOY_RC=${deploy_rc}  # read by callers; function itself never fails
 
     if [[ ${deploy_rc} -eq 0 ]]; then
       ok "Deployed: ${bundle_name}"
@@ -274,10 +276,17 @@ deploy_bundle() {
       # Classify errors: MCP-service / grant failures on first deploy are
       # expected (connection doesn't exist yet) and get a calm message.
       # Any other error is surfaced as a warning.
+      # Expected = the MCP service failing ONLY because its connection is
+      # missing, plus its grants failing as a dependency of that.
+      local conn_missing_re='^Error: cannot create resources\.mcp_services\.ground_truth_mcp: Connection .* does not exist'
+      local grants_dep_re='^Error: cannot create resources\.mcp_services\.ground_truth_mcp\.grants: dependency failed'
       local mcp_errors unexpected_errors
-      mcp_errors=$(grep -ciE '(mcp_services|ground_truth_mcp).*(does not exist|INVALID_PARAMETER_VALUE)' "${deploy_log}" 2>/dev/null || true)
-      unexpected_errors=$(grep -ciE '^Error:' "${deploy_log}" 2>/dev/null || true)
-      unexpected_errors=$(( unexpected_errors - mcp_errors ))
+      mcp_errors=$(grep -cE "${conn_missing_re}|${grants_dep_re}" "${deploy_log}" || true)
+      unexpected_errors=$(grep -E '^Error:' "${deploy_log}" | grep -cvE "${conn_missing_re}|${grants_dep_re}" || true)
+      if ! grep -qE "${conn_missing_re}" "${deploy_log}"; then
+        # Grants failing without the connection-missing cause is not expected.
+        unexpected_errors=$(( unexpected_errors + mcp_errors )); mcp_errors=0
+      fi
       if [[ ${unexpected_errors} -le 0 && ${mcp_errors} -gt 0 ]]; then
         log "Deploy note (${bundle_name})"
         ok "MCP service deferred: connection not created yet (expected on first deploy)."
@@ -958,7 +967,7 @@ print(data.get("url", ""))
 ' 2>/dev/null) || APP_URL=""
 
     # Step 2e: Create/update the MCP HTTP connection.
-    # Runs the create_mcp_connection SQL notebook job against the warehouse.
+    # Runs the create_mcp_connection notebook job (schema-level connection via REST).
     # On first deploy: creates the connection. On subsequent: updates if URL changed.
     if [[ -n "${APP_URL}" ]]; then
       ok "App URL: ${APP_URL}"
@@ -975,7 +984,11 @@ print(data.get("url", ""))
         if [[ "${connection_existed}" == false ]]; then
           log "MCP connection created — redeploying app to register MCP service"
           deploy_bundle "${APP_BUNDLE}" "${APP_EXTRA_ARGS[@]}"
-          ok "MCP service registered (first-deploy deferral resolved)"
+          if [[ "${LAST_DEPLOY_RC:-1}" -eq 0 ]]; then
+            ok "MCP service registered (first-deploy deferral resolved)"
+          else
+            warn "Redeploy after connection creation failed — MCP service may be unregistered."
+          fi
         fi
       else
         warn "MCP connection not created — MCP service will remain unregistered."
