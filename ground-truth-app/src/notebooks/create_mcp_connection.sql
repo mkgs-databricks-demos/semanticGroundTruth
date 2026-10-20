@@ -34,31 +34,31 @@ SET VAR v_client_secret_key = :client_secret_key;
 SET VAR v_oauth_scopes      = :oauth_scopes;
 SET VAR v_token_endpoint    = :token_endpoint;
 
+-- Shared OPTIONS clause. format_string() with a double-quoted template keeps the
+-- single quotes literal. Do NOT use '' escapes inside CONCAT: Databricks SQL
+-- parses 'abc''' as two adjacent literals ('abc' + ''), silently dropping quotes.
+DECLARE OR REPLACE VARIABLE v_options STRING;
+SET VAR v_options = format_string(
+  "host '%s', base_path '%s', client_id secret('%s', '%s'), client_secret secret('%s', '%s'), oauth_scope '%s', token_endpoint '%s'",
+  v_app_url, v_base_path,
+  v_scope_name, v_client_id_key,
+  v_scope_name, v_client_secret_key,
+  v_oauth_scopes, v_token_endpoint
+);
+
 -- Create connection if it doesn't exist (first deploy).
 -- DDL identifiers and OPTIONS literals don't bind :param — use EXECUTE IMMEDIATE.
-EXECUTE IMMEDIATE CONCAT(
-  'CREATE CONNECTION IF NOT EXISTS `', v_connection_name, '` TYPE HTTP OPTIONS (',
-    'host ''',          v_app_url,           ''', ',
-    'base_path ''',     v_base_path,         ''', ',
-    'client_id secret(''',     v_scope_name, ''', ''', v_client_id_key,     '''), ',
-    'client_secret secret(''', v_scope_name, ''', ''', v_client_secret_key, '''), ',
-    'oauth_scope ''',   v_oauth_scopes,      ''', ',
-    'token_endpoint ''', v_token_endpoint,   '''',
-  ')'
+EXECUTE IMMEDIATE format_string(
+  "CREATE CONNECTION IF NOT EXISTS `%s` TYPE HTTP OPTIONS (%s)",
+  v_connection_name, v_options
 );
 
 -- Ensure options are current (handles app URL changes and credential rotations).
--- ALTER is idempotent — safe to run even if CREATE just succeeded above.
-EXECUTE IMMEDIATE CONCAT(
-  'ALTER CONNECTION `', v_connection_name, '` SET OPTIONS (',
-    'host ''',          v_app_url,           ''', ',
-    'base_path ''',     v_base_path,         ''', ',
-    'client_id secret(''',     v_scope_name, ''', ''', v_client_id_key,     '''), ',
-    'client_secret secret(''', v_scope_name, ''', ''', v_client_secret_key, '''), ',
-    'oauth_scope ''',   v_oauth_scopes,      ''', ',
-    'token_endpoint ''', v_token_endpoint,   '''',
-  ')'
+-- Syntax is ALTER CONNECTION <name> OPTIONS (...) — no SET keyword.
+EXECUTE IMMEDIATE format_string(
+  "ALTER CONNECTION `%s` OPTIONS (%s)",
+  v_connection_name, v_options
 );
 
 -- Verify: surface connection details for the job run output
-EXECUTE IMMEDIATE CONCAT('DESCRIBE CONNECTION `', v_connection_name, '`');
+EXECUTE IMMEDIATE format_string("DESCRIBE CONNECTION `%s`", v_connection_name);
