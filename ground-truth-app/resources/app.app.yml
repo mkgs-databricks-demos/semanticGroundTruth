@@ -1,0 +1,61 @@
+# resources/app.app.yml
+# Primary app resource — AppKit (Node.js + React), OBO auth, OpenTelemetry.
+
+resources:
+  apps:
+    app:
+      name: "${var.app_display_name}"
+      description: "A Databricks App powered by AppKit"
+      source_code_path: ../
+
+      # Start the app automatically on deploy.
+      lifecycle:
+        started: true
+      # On behalf of user (OBO) API scopes — the app acts as the logged-in user for these APIs.
+      # Available scopes: sql, genie, files, model-serving
+      user_api_scopes:
+        - sql
+        - genie
+        - files
+        - model-serving
+
+      # OpenTelemetry — logs, metrics, and traces to Unity Catalog.
+      # Platform captures system logs + login events automatically.
+      # OTEL_TRACES_SAMPLER=always_on in app.yaml ensures all spans are recorded.
+      # Requires CLI >= 0.294.0 (we have 1.21.0).
+      telemetry_export_destinations:
+        - unity_catalog:
+            logs_table: ${var.catalog}.${var.schema_name}.semantic_ground_truth_otel_logs
+            metrics_table: ${var.catalog}.${var.schema_name}.semantic_ground_truth_otel_metrics
+            traces_table: ${var.catalog}.${var.schema_name}.semantic_ground_truth_otel_spans
+
+      # The resources which this app has access to.
+      resources:
+        - name: agents-serving-endpoint
+          serving_endpoint:
+            name: ${var.agents_serving_endpoint_name}
+            permission: CAN_QUERY
+        - name: agents-mlflow-experiment
+          experiment:
+            experiment_id: ${var.agents_mlflow_experiment_experimentId}
+            permission: CAN_EDIT
+        # Optional: UC volume for remote agent skills. Uncomment when needed.
+        # Skills currently served from local server/agents/skills/ directory.
+        # - name: agents-skills
+        #   uc_securable:
+        #     securable_full_name: ${var.agents_skills_path}
+        #     securable_type: VOLUME
+        #     permission: READ_VOLUME
+        - name: sql-warehouse
+          sql_warehouse:
+            id: ${var.sql_warehouse_id}
+            permission: CAN_USE
+        - name: job
+          job:
+            id: ${var.job_id}
+            permission: CAN_MANAGE_RUN
+        - name: postgres
+          postgres:
+            branch: ${var.postgres_branch}
+            database: ${var.postgres_database}
+            permission: CAN_CONNECT_AND_CREATE

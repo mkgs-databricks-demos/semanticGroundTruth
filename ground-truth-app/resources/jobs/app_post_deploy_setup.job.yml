@@ -1,0 +1,20 @@
+# resources/jobs/app_post_deploy_setup.job.yml
+# Post-deploy setup for the app.
+# Ensures M2M SPN can authenticate through the app's auth sidecar.
+# Run by deploy.sh Phase 2 or auto-triggered by run_app_post_deploy job_run.
+
+resources:
+  jobs:
+    app_post_deploy_setup:
+      name: ${var.app_display_name}-post-deploy-setup
+      parameters:
+        - name: app_name
+          default: ""
+        - name: scope_name
+          default: ""
+        - name: client_id_key
+          default: ""
+      tasks:
+        - task_key: setup_app_access
+          notebook_task:
+            notebook_path: ../../src/notebooks/grant_app_permissions.ipynb

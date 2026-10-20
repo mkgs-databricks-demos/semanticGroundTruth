@@ -21,122 +21,12 @@ variables:
     description: "Target Unity Catalog catalog name (must match Bundle 1)"
   schema_name:
     description: "Fully qualified UC schema name (resolved from Bundle 1, e.g. dev_matthew_giglia_semantic_ground_truth)"
+  mcp_execute_principal:
+    description: "Group or user principal granted EXECUTE on the MCP service"
 
-resources:
-  apps:
-    app:
-      name: "${var.app_display_name}"
-      description: "A Databricks App powered by AppKit"
-      source_code_path: ./
-
-      # Start the app automatically on deploy.
-      lifecycle:
-        started: true
-      # On behalf of user (OBO) API scopes — the app acts as the logged-in user for these APIs.
-      # Available scopes: sql, genie, files, model-serving
-      user_api_scopes:
-        - sql
-        - genie
-        - files
-        - model-serving
-
-      # OpenTelemetry — logs, metrics, and traces to Unity Catalog.
-      # Platform captures system logs + login events automatically.
-      # OTEL_TRACES_SAMPLER=always_on in app.yaml ensures all spans are recorded.
-      # Requires CLI >= 0.294.0 (we have 1.21.0).
-      telemetry_export_destinations:
-        - unity_catalog:
-            logs_table: ${var.catalog}.${var.schema_name}.semantic_ground_truth_otel_logs
-            metrics_table: ${var.catalog}.${var.schema_name}.semantic_ground_truth_otel_metrics
-            traces_table: ${var.catalog}.${var.schema_name}.semantic_ground_truth_otel_spans
-
-      # The resources which this app has access to.
-      resources:
-        - name: agents-serving-endpoint
-          serving_endpoint:
-            name: ${var.agents_serving_endpoint_name}
-            permission: CAN_QUERY
-        - name: agents-mlflow-experiment
-          experiment:
-            experiment_id: ${var.agents_mlflow_experiment_experimentId}
-            permission: CAN_EDIT
-        # Optional: UC volume for remote agent skills. Uncomment when needed.
-        # Skills currently served from local server/agents/skills/ directory.
-        # - name: agents-skills
-        #   uc_securable:
-        #     securable_full_name: ${var.agents_skills_path}
-        #     securable_type: VOLUME
-        #     permission: READ_VOLUME
-        - name: sql-warehouse
-          sql_warehouse:
-            id: ${var.sql_warehouse_id}
-            permission: CAN_USE
-        - name: job
-          job:
-            id: ${var.job_id}
-            permission: CAN_MANAGE_RUN
-        - name: postgres
-          postgres:
-            branch: ${var.postgres_branch}
-            database: ${var.postgres_database}
-            permission: CAN_CONNECT_AND_CREATE
-
-  # Job: create/update schema-level MCP HTTP connection.
-  # Run by deploy.sh Phase 2 after the app deploys and the URL is known.
-  # Python task reads M2M credentials via dbutils.secrets.get(), then
-  # calls the Connections REST API (POST create / PATCH update).
-  # Schema-level connections need CREATE CONNECTION on the schema
-  # (covered by ALL PRIVILEGES on the catalog).
-  jobs:
-    create_mcp_connection:
-      name: ${var.app_display_name}-create-mcp-connection
-      parameters:
-        - name: connection_name
-          default: ""
-        - name: catalog
-          default: ""
-        - name: schema_name
-          default: ""
-        - name: app_url
-          default: ""
-        - name: base_path
-          default: /mcp
-        - name: scope_name
-          default: ""
-        - name: client_id_key
-          default: ""
-        - name: client_secret_key
-          default: ""
-        - name: oauth_scopes
-          default: apps ai-gateway
-        - name: token_endpoint
-          default: ""
-      tasks:
-        - task_key: create_connection
-          notebook_task:
-            notebook_path: src/notebooks/create_mcp_connection.ipynb
-
-  # MCP Service — moved from Bundle 1 (infra) to Bundle 2 (app).
-  # The MCP service points at the app's /mcp endpoint and must deploy with the app.
-  # Dependency: source_connection (HTTP connection) must exist first.
-  # See ground-truth-infra/docs/runbooks/unity-gateway-setup.md for connection creation.
-  mcp_services:
-    ground_truth_mcp:
-      parent: schemas/${var.catalog}.${var.schema_name}
-      mcp_service_id: semantic-ground-truth-mcp
-      comment: "Semantic Ground Truth app MCP service — exposes review, campaign, and metric view tools via Unity Gateway"
-      config:
-        source_connection:
-          # Schema-level connection (three-part name: catalog.schema.connection)
-          name: connections/${var.catalog}.${var.schema_name}.semantic-ground-truth-mcp
-        include_tool_selectors:
-          - "review_*"
-          - "campaign_*"
-          - "metric_view_*"
-      grants:
-        - principal: data-engineers
-          privileges:
-            - EXECUTE
+include:
+  - resources/*.yml
+  - resources/*/*.yml
 
 targets:
   # Dev target — deployed by: ./deploy.sh --target dev --app
@@ -154,8 +44,13 @@ targets:
       # Resolved at deploy time by deploy.sh --var (placeholder values below):
       catalog: hls_fde_dev
       schema_name: dev_matthew_giglia_semantic_ground_truth
-      # sql_warehouse_id, job_id, postgres_branch, postgres_database,
-      # agents_mlflow_experiment_experimentId: resolved by deploy.sh
+      mcp_execute_principal: account users
+      sql_warehouse_id: 0ea84986a23a47c3
+      job_id: "1103481179431341"
+      postgres_branch: projects/dev-matthew-giglia-ground-truth/branches/production
+      postgres_database: projects/dev-matthew-giglia-ground-truth/branches/production/databases/ground-truth-app
+      agents_mlflow_experiment_experimentId: "1698842789305538"
+      # ↑ These are also resolved at deploy time by deploy.sh --var passthrough.
 
   # Prod target — deployed by: ./deploy.sh --target prod --app
   prod:
@@ -170,6 +65,7 @@ targets:
       agents_serving_endpoint_name: databricks-claude-opus-4-8
       catalog: prod_ground_truth
       schema_name: semantic_ground_truth
+      mcp_execute_principal: account users
 
   # Local development — pnpm run dev against the AppKit local proxy.
   # All variables have concrete values for local testing.
@@ -187,3 +83,4 @@ targets:
       postgres_database: projects/dev-matthew-giglia-ground-truth/branches/production/databases/ground-truth-app
       catalog: hls_fde_dev
       schema_name: dev_matthew_giglia_semantic_ground_truth
+      mcp_execute_principal: account users
