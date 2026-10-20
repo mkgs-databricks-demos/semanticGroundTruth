@@ -2,6 +2,8 @@
 
 | Date | Wave | Session | Title | Mode | Status | Branch |
 |------|------|---------|-------|------|--------|--------|
+| 2026-10-20 | 3 | 10 | Client API layer | edit | error | `mg-genie-app-build-waves` |
+| 2026-10-20 | 3 | 09 | REST routes and composition root | edit | error | `mg-genie-app-build-waves` |
 | 2026-10-20 | 2 | 08 | Notification Service | edit | error | `mg-genie-app-build-waves` |
 | 2026-10-20 | 2 | 07 | Campaign Manager | edit | error | `mg-genie-app-build-waves` |
 | 2026-10-20 | 2 | 06 | Review Engine | edit | error | `mg-genie-app-build-waves` |
