@@ -1,6 +1,8 @@
 # Session Index — ground-truth-app
 
 |------|----- |---------|-------|------|--------|--------|
+| 2026-10-21 | 3 | 10 | [Client API layer](2026-10-21_w3-10-client-api-layer.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 3 | 09 | [REST routes and composition root](2026-10-21_w3-09-rest-routes-revalidate2.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
 | 2026-10-21 | 2 | 08 | [Notification Service](2026-10-21_w2-08-notification-service-revalidate2.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
 | 2026-10-21 | 2 | 07 | [Campaign Manager](2026-10-21_w2-07-campaign-manager.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
 | 2026-10-21 | 2 | 06 | [Review Engine](2026-10-21_w2-06-review-engine-revalidate.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
