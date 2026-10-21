@@ -51,3 +51,7 @@ Session 07 (wave 2) wrote `campaignManager.ts` before migration 003 was finalise
 | No stale proxy comment | pass |
 | Routes pass `UserContext` to RBAC-aware methods | pass |
 | `bundle validate --strict --target dev` | pass |
+
+## Re-validation (run 963652240700815)
+
+All 7 acceptance criteria re-verified against the current code on branch `mg-genie-app-first-deploy`. No changes needed — prior run 294202284707072 already applied all fixes. `bundle validate --strict --target dev` = Validation OK. RBAC grep confirmed `isVisibleTo` and `rbacGroups` references are consistent across codebase.
