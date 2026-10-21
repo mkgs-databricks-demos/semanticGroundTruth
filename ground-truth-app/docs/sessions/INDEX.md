@@ -1,6 +1,9 @@
 # Session Index — ground-truth-app
 
 |------|----- |---------|-------|------|--------|--------|
+| 2026-10-21 | 1 | 05 | [Asset registry, metric view reader, dev seed](2026-10-21_w1-05-asset-registry-revalidate.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 1 | 04 | [Auth and middleware](2026-10-21_w1-04-auth-middleware-revalidate3.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 1 | 03 | [Lakebase migrations](2026-10-21_w1-03-lakebase-migrations.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
 | 2026-10-21 | 0 | 02 | [Server foundation library + dependencies](2026-10-21_w0-02-server-foundation.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
 | 2026-10-21 | 0 | 01 | [Shared domain contracts](2026-10-21_w0-01-shared-contracts-revalidate2.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
 | 2026-10-21 | 0 | 02 | [Server foundation library + dependencies](2026-10-21_w0-02-server-foundation.md) | edit | pass | `mg-genie-app-first-deploy` | run 743159204973081 (re-validated) |
