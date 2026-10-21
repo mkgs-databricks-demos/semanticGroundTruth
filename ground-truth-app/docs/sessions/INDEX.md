@@ -1,6 +1,7 @@
 # Session Index — ground-truth-app
 
 |------|----- |---------|-------|------|--------|--------|
+| 2026-10-21 | 7 | 19 | [Deploy app and post-deploy job, fix until stable](2026-10-21_w7-19-converge-app.md) | converge | blocked | `mg-genie-app-first-deploy` | run 963652240700815 |
 | 2026-10-21 | 6 | 18 | [Campaign completed_at + RBAC consistency](2026-10-21_w6-18-campaign-completed-at-rbac.md) | edit | pass | `mg-genie-app-first-deploy` |
 | 2026-10-21 | 6 | 17 | [Fix ErrorCode casts and UPSTREAM mismatch](2026-10-21_w6-17-fix-error-code-casts.md) | edit | pass | `mg-genie-app-first-deploy` |
 | 2026-10-21 | — | — | [First deploy planning: waves 6–8 + lockfile + build launch](2026-10-21_first-deploy-planning.md)
