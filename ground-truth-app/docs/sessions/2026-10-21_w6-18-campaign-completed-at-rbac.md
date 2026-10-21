@@ -55,3 +55,7 @@ Session 07 (wave 2) wrote `campaignManager.ts` before migration 003 was finalise
 ## Re-validation (run 963652240700815)
 
 All 7 acceptance criteria re-verified against the current code on branch `mg-genie-app-first-deploy`. No changes needed — prior run 294202284707072 already applied all fixes. `bundle validate --strict --target dev` = Validation OK. RBAC grep confirmed `isVisibleTo` and `rbacGroups` references are consistent across codebase.
+
+## Re-validation (run 187770715982911)
+
+All 7 acceptance criteria re-verified against current code on branch `mg-genie-app-first-deploy`. No changes needed — all fixes from prior run 294202284707072 remain intact. Verified: `completedAt` at entities.ts:128, `toCampaign` mapping at campaignManager.ts:41, `completedAtClause` at campaignManager.ts:230-233, no stale proxy comment, routes pass `UserContext` to `list()`/`get()`. `bundle validate --strict --target dev` = Validation OK. Grep confirmed `rbac_groups`/`isVisibleTo` references outside campaign service are consistent (migrations, MCP tools, agent SQL).

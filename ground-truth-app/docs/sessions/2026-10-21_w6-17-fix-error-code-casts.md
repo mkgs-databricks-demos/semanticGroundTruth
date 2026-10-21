@@ -1,8 +1,8 @@
 # Session 17: Fix ErrorCode casts and UPSTREAM mismatch (Wave 6)
 
 **Date:** 2026-10-21  
-**Run ID:** 963652240700815  
-**Prior Run:** 294202284707072 (originally applied the fixes)  
+**Run ID:** 187770715982911  
+**Prior Run:** 294202284707072 (originally applied the fixes), 963652240700815 (re-validated)  
 **Mode:** edit  
 **Status:** pass (already completed)  
 
