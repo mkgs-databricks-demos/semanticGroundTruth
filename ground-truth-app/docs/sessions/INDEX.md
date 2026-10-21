@@ -2,6 +2,8 @@
 
 | Date | Wave | Session | Title | Mode | Status | Branch |
 |------|------|---------|-------|------|--------|--------|
+| 2026-10-21 | 5 | 16 | [App README and first-deploy runbook](2026-10-21_w5-16-docs-and-runbook.md) | edit | pass | `mg-genie-app-build-waves` | run 425081720670565 |
+| 2026-10-21 | 5 | 15 | [Tests and scaffold cleanup](2026-10-21_w5-15-tests-and-cleanup.md) | edit | pass | `mg-genie-app-build-waves` | run 425081720670565 |
 | 2026-10-21 | 4 | 14 | [Ground Truth agents](2026-10-21_w4-14-ground-truth-agents.md) | edit | pass | `mg-genie-app-build-waves` | run 16400513324108 |
 | 2026-10-21 | 4 | 13 | [Leaderboard, steward, admin, executive pages](2026-10-21_w4-13-client-secondary-pages.md) | edit | pass | `mg-genie-app-build-waves` | run 16400513324108 |
 | 2026-10-21 | 4 | 12 | [App shell and card-swipe review experience](2026-10-21_w4-12-client-review-experience.md) | edit | pass | `mg-genie-app-build-waves` | run 16400513324108 |
