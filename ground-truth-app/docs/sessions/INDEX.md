@@ -1,6 +1,9 @@
 # Session Index — ground-truth-app
 
 |------|----- |---------|-------|------|--------|--------|
+| 2026-10-21 | 2 | 08 | [Notification Service](2026-10-21_w2-08-notification-service-revalidate.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
+| 2026-10-21 | 2 | 07 | [Campaign Manager](2026-10-21_w2-07-campaign-manager.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
+| 2026-10-21 | 2 | 06 | [Review Engine](2026-10-21_w2-06-review-engine.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
 | 2026-10-21 | 1 | 05 | [Asset registry, metric view reader, dev seed](2026-10-21_w1-05-asset-registry-metric-views.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
 | 2026-10-21 | 1 | 04 | [Auth and middleware](2026-10-21_w1-04-auth-middleware-revalidate.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
 | 2026-10-21 | 1 | 03 | [Lakebase migrations](2026-10-21_w1-03-lakebase-migrations.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
