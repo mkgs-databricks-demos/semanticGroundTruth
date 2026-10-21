@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "description": "Ground Truth Agent (Bundle 3, ground-truth-agent) — Genie Agent over metric views for operational analytics. Depends on Part A (app deploy) completing first.",
+  "workflow": {
+    "mode": "git"
+  },
+  "repo_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth",
+  "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-agent",
+  "branch": "mg-genie-agent-build",
+  "bundle_target": "dev",
+  "status_dir": ".build-status",
+  "plans_dir": "docs/plans",
+  "sessions_dir": "docs/sessions",
+  "context_files": [
+    "../PROJECT_MEMORY.md",
+    "../docs/design/L200-C9_operational_genie_agent.md",
+    "../docs/design/L300-14_genie_agent_creation.md",
+    "../docs/design/L300-15_bundle3_deploy.md",
+    "../docs/design/L300-05_metric_views_cdf.md"
+  ],
+
+  "runtime_targets": {
+    "agent": {
+      "type": "genie_space",
+      "name": "Ground Truth Operations",
+      "resource_key": "ground_truth_ops",
+      "bundle_target": "dev",
+      "deploy_commands": [
+        "bundle deploy --target dev"
+      ],
+      "stability": {"soak_minutes": 5}
+    },
+    "deploy_metric_views": {
+      "type": "job",
+      "resource_key": "deploy_metric_views",
+      "bundle_target": "dev",
+      "deploy_commands": [
+        "bundle deploy --target dev",
+        "bundle run deploy_metric_views --target dev"
+      ],
+      "stability": {"soak_minutes": 5}
+    },
+    "agent_verification": {
+      "type": "job",
+      "resource_key": "agent_verification",
+      "bundle_target": "dev",
+      "deploy_commands": [
+        "bundle deploy --target dev",
+        "bundle run agent_verification --target dev"
+      ],
+      "stability": {"soak_minutes": 5}
+    }
+  },
+
+  "waves": [
+    {
+      "wave_id": "0",
+      "name": "Bundle config and notebooks",
+      "concurrency": 2,
+      "gate": [
+        "All wave 0 sessions have status done",
+        "bundle validate --strict --target dev passes",
+        "databricks.yml has genie_spaces.ground_truth_ops resource with file_path",
+        "ground_truth_ops.geniespace.json has version 2 format with 6 data sources",
+        "src/notebooks/deploy_metric_views.ipynb exists",
+        "src/notebooks/agent_verification.ipynb exists",
+        "resources/jobs/ has 2 job YAML files"
+      ],
+      "sessions": [
+        {
+          "session_id": "01",
+          "title": "Bundle config and Genie Agent resource",
+          "plan_file": "01_bundle_config_and_genie_resource.md",
+          "mode": "edit",
+          "scope": "Configure databricks.yml variables, targets, and genie_spaces resource. Create .geniespace.json with data sources, instructions, and sample questions.",
+          "owned_paths": ["databricks.yml", "ground_truth_ops.geniespace.json"],
+          "depends_on": []
+        },
+        {
+          "session_id": "02",
+          "title": "Metric view SQL and deploy/verification jobs",
+          "plan_file": "02_metric_views_and_deploy_jobs.md",
+          "mode": "edit",
+          "scope": "Create deploy_metric_views notebook (reads infra YAML fixtures, executes DDL, adds OTel views), agent_verification notebook, and 2 job resource YAMLs.",
+          "owned_paths": ["src/notebooks/**", "resources/jobs/**"],
+          "depends_on": []
+        }
+      ]
+    },
+    {
+      "wave_id": "1",
+      "name": "Converge: deploy agent and verify",
+      "gate": [
+        "bundle validate --strict --target dev passes",
+        "Session 03 status is pass with a final attempt classified stable"
+      ],
+      "runtime_gate": ["agent", "deploy_metric_views", "agent_verification"],
+      "sessions": [
+        {
+          "session_id": "03",
+          "title": "Deploy agent, create metric views, verify",
+          "plan_file": "03_converge_deploy_and_verify.md",
+          "mode": "converge",
+          "scope": "Deploy the agent bundle, wait for Lakehouse Sync tables, create metric views (fixing column drift), deploy Genie Agent, run verification until all checks pass.",
+          "runtime_targets": ["agent", "deploy_metric_views", "agent_verification"],
+          "owned_paths": ["databricks.yml", "ground_truth_ops.geniespace.json", "src/notebooks/**", "resources/jobs/**"],
+          "max_attempts": 6,
+          "timeout_minutes": 120,
+          "context_notes": "Depends on Part A (app deploy) completing. Lakehouse Sync tables may take 1-15 minutes after app deploys. Column drift between infra fixtures and actual lb_*_history schemas is expected — fix in-session. OTel tables already exist and can be used immediately. Infra metric view YAML paths: ../../ground-truth-infra/fixtures/metric_views/mv_*.yaml.",
+          "depends_on": ["01", "02"]
+        }
+      ]
+    }
+  ]
+}
