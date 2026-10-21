@@ -32,28 +32,30 @@ interface AgentsClientConfig {
 /**
  * Minimal chat surface for the `agents` plugin.
  *
- * The template ships a single coordinator agent and uses the agents
- * plugin's sub-agent feature to compose two authoring forms behind it:
+ * The app ships a coordinator agent and uses the agents plugin's
+ * sub-agent feature to compose two authoring forms behind it:
  *
- *   - `planner` (markdown, `server/agents/planner/agent.md`) is the
- *     user-facing chat: pure prose, no tools, opinionated planning
- *     prompt. Declares `agents: [helper]` in its frontmatter so it
- *     can delegate computational actions.
- *   - `helper` (code, `server/agents/helper/agent.ts`) holds the tools
- *     (`current_time`, `count_words`). It's reachable from planner as
- *     the `agent-helper` tool; planner calls it when the user
- *     explicitly asks for a side-effecty action.
+ *   - `review-assistant` (markdown, `server/agents/review-assistant/agent.md`)
+ *     is the user-facing chat: read-only Ground Truth Q&A, review
+ *     guidance, scoring explanations. Declares `agents: [review-worker]`
+ *     in its frontmatter so it can delegate data lookups.
+ *   - `review-worker` (code, `server/agents/review-worker/agent.ts`)
+ *     holds read-only tools (`get_asset`, `search_assets`,
+ *     `explain_confidence`, `get_leaderboard`, `get_campaigns`,
+ *     `get_coverage_summary`). It's reachable from review-assistant as
+ *     the `agent-review-worker` tool; review-assistant calls it when
+ *     the user asks for data lookups.
  *
- * The page renders one chat against the default agent (planner). To
- * show a picker, drop in more registered top-level agents and add a
+ * The page renders one chat against the default agent (review-assistant).
+ * To show a picker, drop in more registered top-level agents and add a
  * tab list reading from `agents` below. Today's two-agents-one-tab
  * shape is deliberate: it demonstrates the dual-form composition
- * pattern without confusing scaffolded users with redundant tabs.
+ * pattern without confusing users with redundant tabs.
  */
 export function AgentChat() {
   // Agent registry comes from the agents plugin's `clientConfig()` payload
   // (boot-time, no fetch). `defaultAgent` is null only when no agents are
-  // registered; both `planner` and `helper` are registered here.
+  // registered; both `review-assistant` and `review-worker` are registered here.
   const { agents, defaultAgent, skills } =
     usePluginClientConfig<AgentsClientConfig>('agents');
   const activeAgent = defaultAgent ?? agents[0] ?? null;
@@ -67,8 +69,8 @@ export function AgentChat() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Surface tool-call events as inline messages. Sub-agent delegations
-  // show up here as `agent-helper` tool calls — same wire shape as a
-  // function tool, so the same row renders both.
+  // show up here as `agent-review-worker` tool calls — same wire shape
+  // as a function tool, so the same row renders both.
   const handleEvent = (event: AgentChatEvent) => {
     if (
       event.type === 'response.output_item.added' &&
@@ -136,14 +138,14 @@ export function AgentChat() {
       <div>
         <h2 className="text-2xl font-bold text-foreground">Chat</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          You're talking to <code className="mx-1">planner</code>, a
+          You're talking to <code className="mx-1">review-assistant</code>, a
           markdown agent at
-          <code className="mx-1">server/agents/planner/agent.md</code>.
-          For computational actions it delegates to its sub-agent
-          <code className="mx-1">helper</code> (code-defined at
-          <code className="mx-1">server/agents/helper/agent.ts</code>), which
+          <code className="mx-1">server/agents/review-assistant/agent.md</code>.
+          For data lookups it delegates to its sub-agent
+          <code className="mx-1">review-worker</code> (code-defined at
+          <code className="mx-1">server/agents/review-worker/agent.ts</code>), which
           surfaces as an
-          <code className="mx-1">agent-helper</code> tool call.
+          <code className="mx-1">agent-review-worker</code> tool call.
         </p>
       </div>
 
@@ -154,10 +156,10 @@ export function AgentChat() {
         >
           {messages.length === 0 && (
             <p className="text-sm text-muted-foreground text-center mt-8">
-              Try "help me plan a feature" for a planning conversation,
-              or "what time is it?" / "count the words in: the quick
-              brown fox" to watch planner delegate to{' '}
-              <code>agent-helper</code>.
+              Try "explain the confidence score for an asset" for a
+              review conversation, or "show me the leaderboard" /
+              "what's the coverage summary?" to watch review-assistant
+              delegate to <code>agent-review-worker</code>.
             </p>
           )}
           {messages.map((m) => {

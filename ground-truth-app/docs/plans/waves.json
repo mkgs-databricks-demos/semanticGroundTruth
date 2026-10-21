@@ -1,0 +1,292 @@
+{
+  "version": 1,
+  "description": "Semantic Ground Truth App (Bundle 2, ground-truth-app) — build Phases C-J on top of the deployed AppKit scaffold. Edit-only sessions; no Node toolchain in sessions; typecheck/deploy happen later from the interactive controller session.",
+  "workflow": {
+    "mode": "git"
+  },
+  "repo_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth",
+  "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-app",
+  "branch": "mg-genie-app-build-waves",
+  "bundle_target": "dev",
+  "status_dir": ".build-status",
+  "plans_dir": "docs/plans",
+  "sessions_dir": "docs/sessions",
+  "context_files": [
+    "docs/plans/build_conventions.md",
+    "PROJECT_MEMORY.md",
+    "../PROJECT_MEMORY.md",
+    "../docs/design/L100_semantic_ground_truth_app.md"
+  ],
+  "waves": [
+    {
+      "wave_id": "0",
+      "name": "Contracts and server foundation",
+      "concurrency": 2,
+      "manual_prereqs": [],
+      "gate": [
+        "All wave 0 sessions have status done",
+        "bundle validate --strict --target dev passes",
+        "shared/contracts/ contains values.ts, entities.ts, review.ts, api.ts, mcp.ts, errors.ts, index.ts",
+        "No file under shared/ contains the keyword 'enum ' or 'namespace '",
+        "shared/contracts/mcp.ts defines exactly 12 tool names and every one starts with review_, campaign_ or metric_view_",
+        "tsconfig.client.json include list contains shared/contracts",
+        "server/lib/ contains db.ts, errors.ts, http.ts, context.ts, config.ts, events.ts, databricks.ts, logger.ts, deps.ts, index.ts",
+        "package.json parses as JSON and its dependencies include @modelcontextprotocol/sdk, @tanstack/react-query and framer-motion",
+        "No file under server/lib/ has a non-type import from 'express'"
+      ],
+      "sessions": [
+        {
+          "session_id": "01",
+          "title": "Shared domain contracts",
+          "plan_file": "01_shared_contracts.md",
+          "scope": "Create shared/contracts/ (values, entities, review, api DTOs + zod schemas, MCP tool shapes, error codes, index) and add shared/contracts to tsconfig.client.json include. Types/schemas only.",
+          "mode": "edit",
+          "owned_paths": ["shared/contracts/**", "tsconfig.client.json"],
+          "allow_deploy": false,
+          "depends_on": []
+        },
+        {
+          "session_id": "02",
+          "title": "Server foundation library + dependencies",
+          "plan_file": "02_server_foundation.md",
+          "scope": "Create server/lib/ (db, errors, http, context, config, events, databricks, logger, deps, index) with the exact signatures in build_conventions.md section 7, and add @modelcontextprotocol/sdk, @tanstack/react-query, framer-motion to package.json dependencies. Do not touch pnpm-lock.yaml or server.ts.",
+          "mode": "edit",
+          "owned_paths": ["server/lib/**", "package.json"],
+          "allow_deploy": false,
+          "depends_on": []
+        }
+      ]
+    },
+    {
+      "wave_id": "1",
+      "name": "Data model and cross-cutting server modules",
+      "concurrency": 3,
+      "manual_prereqs": [],
+      "gate": [
+        "All wave 1 sessions have status done",
+        "bundle validate --strict --target dev passes",
+        "server/migrations/ contains runner.ts, types.ts, index.ts and six migration files 001_ through 006_",
+        "No migration SQL contains a DROP statement and every CREATE TABLE / CREATE INDEX uses IF NOT EXISTS",
+        "server/middleware/index.ts exports registerMiddleware",
+        "server/services/asset/assetRegistry.ts exports class AssetRegistry and server/services/metricView/metricViewService.ts exports class MetricViewService",
+        "server/seed/seed.ts exports seedSampleAssets",
+        "Every relative import in files changed this wave resolves to an existing file"
+      ],
+      "sessions": [
+        {
+          "session_id": "03",
+          "title": "Lakebase migrations",
+          "plan_file": "03_lakebase_migrations.md",
+          "scope": "Create server/migrations/ with a custom idempotent runner (runMigrations(db)) and migrations 001-006 for schema app per L200-C1/C5/C7 plus build_conventions.md section 5 additions. Do not wire into server.ts.",
+          "mode": "edit",
+          "owned_paths": ["server/migrations/**"],
+          "allow_deploy": false,
+          "depends_on": ["02"]
+        },
+        {
+          "session_id": "04",
+          "title": "Auth and middleware",
+          "plan_file": "04_middleware.md",
+          "scope": "Create server/middleware/ (identity from x-forwarded-* headers, roles, request log, otel attributes, locals typing, registerMiddleware). No runtime imports from express or @opentelemetry.",
+          "mode": "edit",
+          "owned_paths": ["server/middleware/**"],
+          "allow_deploy": false,
+          "depends_on": ["01", "02"]
+        },
+        {
+          "session_id": "05",
+          "title": "Asset registry, metric view reader, dev seed",
+          "plan_file": "05_asset_registry_metric_views.md",
+          "scope": "Implement AssetRegistry (server/services/asset/), MetricViewService over the SQL Statement API with the user's OBO token (server/services/metricView/), and an idempotent dev seed of 12 sample assets (server/seed/).",
+          "mode": "edit",
+          "owned_paths": ["server/services/asset/**", "server/services/metricView/**", "server/seed/**"],
+          "allow_deploy": false,
+          "depends_on": ["01", "02"]
+        }
+      ]
+    },
+    {
+      "wave_id": "2",
+      "name": "Domain services",
+      "concurrency": 3,
+      "manual_prereqs": [],
+      "gate": [
+        "All wave 2 sessions have status done",
+        "bundle validate --strict --target dev passes",
+        "server/services/review/ exports wilsonLowerBound, computeConfidence, deriveStatus, surfacingWeight, pickWeighted and class ReviewEngine",
+        "server/services/review/wilsonScore.test.ts expects wilsonLowerBound(10,10,1.96) approximately 0.7225 and wilsonLowerBound(5,10,1.96) approximately 0.2366",
+        "server/services/campaign/campaignManager.ts exports class CampaignManager and only uses campaign_type values automatic, manual, freshness",
+        "server/services/notification/notificationService.ts exports class NotificationService",
+        "No service in server/services/campaign or server/services/notification imports from server/services/review (and vice versa)",
+        "Every relative import in files changed this wave resolves to an existing file"
+      ],
+      "sessions": [
+        {
+          "session_id": "06",
+          "title": "Review Engine",
+          "plan_file": "06_review_engine.md",
+          "scope": "Implement server/services/review/: pure Wilson score + prior, surfacing, gamification, validation query builder (with vitest tests), and ReviewEngine (getNext, submitVote, recompute, stats, leaderboard, executive summary, runQuery).",
+          "mode": "edit",
+          "owned_paths": ["server/services/review/**"],
+          "allow_deploy": false,
+          "depends_on": ["03", "05"]
+        },
+        {
+          "session_id": "07",
+          "title": "Campaign Manager",
+          "plan_file": "07_campaign_manager.md",
+          "scope": "Implement server/services/campaign/: CampaignManager (create/list/get/updateStatus, scope materialisation, RBAC visibility with fail-open, automatic + freshness campaigns, completion checks, event subscriptions) plus pure lifecycle/scope helpers and tests.",
+          "mode": "edit",
+          "owned_paths": ["server/services/campaign/**"],
+          "allow_deploy": false,
+          "depends_on": ["03"]
+        },
+        {
+          "session_id": "08",
+          "title": "Notification Service",
+          "plan_file": "08_notification_service.md",
+          "scope": "Implement server/services/notification/: NotificationService (in-app inbox, preferences, digest, event subscriptions) and Slack/Teams/webhook destinations that are inactive unless their env vars are set. No app.yaml or resources changes.",
+          "mode": "edit",
+          "owned_paths": ["server/services/notification/**"],
+          "allow_deploy": false,
+          "depends_on": ["03"]
+        }
+      ]
+    },
+    {
+      "wave_id": "3",
+      "name": "HTTP surface and client API layer",
+      "concurrency": 2,
+      "manual_prereqs": [],
+      "gate": [
+        "All wave 3 sessions have status done",
+        "bundle validate --strict --target dev passes",
+        "server/routes/lakebase/todo-routes.ts no longer exists and no file under server/ references todo-routes or setupSampleLakebaseRoutes",
+        "server/server.ts calls runMigrations, createServices, registerMiddleware, registerRoutes and mountMcp",
+        "server/routes/health.ts registers GET /health",
+        "server/mcp/index.ts exports mountMcp",
+        "server/services/index.ts exports createServices and getServices",
+        "Every route path in the route table of docs/plans/09_rest_routes_wiring.md appears in server/routes/, and every non-health route path appears in client/src/lib/api/endpoints.ts",
+        "Every relative import in server/server.ts, server/routes/** and client/src/lib/api/** resolves to an existing file"
+      ],
+      "sessions": [
+        {
+          "session_id": "09",
+          "title": "REST routes and composition root",
+          "plan_file": "09_rest_routes_wiring.md",
+          "scope": "Implement every row of the plan 09 route table in server/routes/, createServices/getServices in server/services/index.ts, a stub mountMcp in server/mcp/index.ts, and rewrite server/server.ts startup (migrations, services, seed, middleware, routes, MCP, timers). Delete the sample todo routes.",
+          "mode": "edit",
+          "owned_paths": ["server/routes/**", "server/server.ts", "server/services/index.ts", "server/mcp/index.ts"],
+          "allow_deploy": false,
+          "depends_on": ["04", "05", "06", "07", "08"]
+        },
+        {
+          "session_id": "10",
+          "title": "Client API layer",
+          "plan_file": "10_client_api_layer.md",
+          "scope": "Create client/src/lib/api/: typed fetch client, query keys, endpoint functions and React Query v5 hooks for every non-health row of the plan 09 route table, QueryClient factory and role helper.",
+          "mode": "edit",
+          "owned_paths": ["client/src/lib/api/**"],
+          "allow_deploy": false,
+          "depends_on": ["01", "02"]
+        }
+      ]
+    },
+    {
+      "wave_id": "4",
+      "name": "Interfaces: MCP, UI, agents",
+      "concurrency": 4,
+      "manual_prereqs": [],
+      "gate": [
+        "All wave 4 sessions have status done",
+        "bundle validate --strict --target dev passes",
+        "server/mcp/index.ts no longer contains the 503 stub and registers POST /mcp",
+        "Every name in MCP_TOOL_NAMES is registered in server/mcp/tools/",
+        "client/src/App.tsx routes /, /leaderboard, /steward, /admin, /executive, /assistant and does not import AnalyticsPage, LakebasePage or JobsPage",
+        "client/src/pages/{leaderboard,steward,admin,executive}/ export LeaderboardPage, StewardPage, AdminPage, ExecutivePage",
+        "Exactly one server/agents/*/agent.md has default: true; server/agents/planner and server/agents/helper no longer exist; server/agents/skills/tracer-bullets is unchanged",
+        "No file under client/src/components/ or client/src/pages/ (excluding client/src/pages/agents/, client/src/pages/analytics/, client/src/pages/lakebase/, client/src/pages/jobs/) calls fetch directly (scaffold pages are deleted by session 15 in wave 5)",
+        "Every relative import in files changed this wave resolves to an existing file"
+      ],
+      "sessions": [
+        {
+          "session_id": "11",
+          "title": "MCP server at /mcp",
+          "plan_file": "11_mcp_server.md",
+          "scope": "Replace the stub server/mcp/index.ts with a stateless Streamable HTTP MCP server registering exactly the 12 MCP_TOOL_NAMES tools, per-user session state, markdown + HTML card views and tool error mapping. Do not edit server.ts.",
+          "mode": "edit",
+          "owned_paths": ["server/mcp/**"],
+          "allow_deploy": false,
+          "depends_on": ["09"]
+        },
+        {
+          "session_id": "12",
+          "title": "App shell and card-swipe review experience",
+          "plan_file": "12_client_review_experience.md",
+          "scope": "Rewrite client/src/App.tsx and main.tsx (router, layout, React Query provider), build client/src/components/layout/ and client/src/components/review/ and the ReviewPage at /. Route secondary pages to session 13's fixed paths and /assistant to the existing AgentChat.",
+          "mode": "edit",
+          "owned_paths": ["client/src/App.tsx", "client/src/main.tsx", "client/src/components/layout/**", "client/src/components/review/**", "client/src/pages/review/**"],
+          "allow_deploy": false,
+          "depends_on": ["10"]
+        },
+        {
+          "session_id": "13",
+          "title": "Leaderboard, steward, admin, executive pages",
+          "plan_file": "13_client_secondary_pages.md",
+          "scope": "Build LeaderboardPage, StewardPage, AdminPage, ExecutivePage (named exports at the plan's fixed paths) and their components using the client/src/lib/api hooks.",
+          "mode": "edit",
+          "owned_paths": ["client/src/components/leaderboard/**", "client/src/components/steward/**", "client/src/components/admin/**", "client/src/components/executive/**", "client/src/pages/leaderboard/**", "client/src/pages/steward/**", "client/src/pages/admin/**", "client/src/pages/executive/**"],
+          "allow_deploy": false,
+          "depends_on": ["10"]
+        },
+        {
+          "session_id": "14",
+          "title": "Ground Truth agents",
+          "plan_file": "14_agents.md",
+          "scope": "Replace the sample planner/helper agents with review-assistant (markdown, default) and review-worker (code, read-only tools via getServices), and add review-guide and scoring-model skills. Keep tracer-bullets.",
+          "mode": "edit",
+          "owned_paths": ["server/agents/**"],
+          "exclude_paths": ["server/agents/skills/tracer-bullets/**"],
+          "allow_deploy": false,
+          "depends_on": ["06", "09"]
+        }
+      ]
+    },
+    {
+      "wave_id": "5",
+      "name": "Tests, cleanup, docs",
+      "concurrency": 2,
+      "manual_prereqs": [],
+      "gate": [
+        "All wave 5 sessions have status done",
+        "bundle validate --strict --target dev passes",
+        "client/src/pages/analytics, client/src/pages/lakebase and client/src/pages/jobs no longer exist (or session 15 logged a request explaining why)",
+        "server/example.test.ts no longer exists and the 7 test files listed in plan 15 exist",
+        "README.md links to docs/runbooks/first-deploy-verification.md and the runbook has 12 numbered steps each with an expected result",
+        "No relative import anywhere under server/, client/src/ or shared/ points to a file that does not exist"
+      ],
+      "sessions": [
+        {
+          "session_id": "15",
+          "title": "Tests and scaffold cleanup",
+          "plan_file": "15_tests_and_cleanup.md",
+          "scope": "Delete the analytics/lakebase/jobs sample pages and server/example.test.ts, update AgentChat.tsx copy only, and add the 7 vitest test files listed in the plan.",
+          "mode": "edit",
+          "owned_paths": ["client/src/pages/analytics/**", "client/src/pages/lakebase/**", "client/src/pages/jobs/**", "client/src/pages/agents/**", "server/example.test.ts", "shared/contracts/api.test.ts", "server/lib/errors.test.ts", "server/services/asset/versionHash.test.ts", "server/services/metricView/parseMetricViewYaml.test.ts", "server/middleware/roles.test.ts", "server/migrations/migrations.test.ts", "server/mcp/toolNames.test.ts"],
+          "allow_deploy": false,
+          "depends_on": ["11", "12", "13", "14"]
+        },
+        {
+          "session_id": "16",
+          "title": "App README and first-deploy runbook",
+          "plan_file": "16_docs_and_runbook.md",
+          "scope": "Rewrite README.md for the built app and write docs/runbooks/first-deploy-verification.md (lockfile regeneration, deploy, per-subsystem verification, follow-ups). Documentation only.",
+          "mode": "edit",
+          "owned_paths": ["README.md", "docs/runbooks/**"],
+          "allow_deploy": false,
+          "depends_on": ["11", "12", "13", "14"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+// server/services/index.ts — composition root
+// Session 09 · Wave 3 · No default export
+
+import type { Db } from '../lib/db';
+import type { ConfigStore } from '../lib/config';
+import type { EventBus } from '../lib/events';
+import type { ServiceDeps } from '../lib/deps';
+import { AssetRegistry } from './asset';
+import { MetricViewService } from './metricView';
+import { ReviewEngine } from './review';
+import { CampaignManager } from './campaign';
+import { NotificationService } from './notification';
+
+export interface Services {
+  assets: AssetRegistry;
+  metricViews: MetricViewService;
+  review: ReviewEngine;
+  campaigns: CampaignManager;
+  notifications: NotificationService;
+  config: ConfigStore;
+  db: Db;
+  events: EventBus;
+}
+
+let instance: Services | null = null;
+
+export function createServices(deps: ServiceDeps): Services {
+  const assets = new AssetRegistry(deps);
+  const metricViews = new MetricViewService();
+  const review = new ReviewEngine(deps, assets, metricViews);
+  const campaigns = new CampaignManager(deps);
+  const notifications = new NotificationService(deps);
+
+  campaigns.subscribe();
+  notifications.subscribe();
+
+  instance = {
+    assets,
+    metricViews,
+    review,
+    campaigns,
+    notifications,
+    config: deps.config,
+    db: deps.db,
+    events: deps.events,
+  };
+
+  return instance;
+}
+
+export function getServices(): Services {
+  if (!instance) {
+    throw new Error('Services not initialised');
+  }
+  return instance;
+}

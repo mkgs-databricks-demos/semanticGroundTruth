@@ -1,156 +1,39 @@
-import { createBrowserRouter, RouterProvider, NavLink, Outlet } from 'react-router';
-import { useState } from 'react';
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  useIsMobile,
-} from '@databricks/appkit-ui/react';
-import { Menu } from 'lucide-react';
+// client/src/App.tsx — router + shell
+// Session 12 · Wave 4 · No enum, no namespace, no default export
+
+import { createBrowserRouter, RouterProvider } from 'react-router';
+import { AppLayout } from './components/layout/AppLayout';
+import { ReviewPage } from './pages/review/ReviewPage';
+import { LeaderboardPage } from './pages/leaderboard/LeaderboardPage';
+import { StewardPage } from './pages/steward/StewardPage';
+import { AdminPage } from './pages/admin/AdminPage';
+import { ExecutivePage } from './pages/executive/ExecutivePage';
 import { AgentChat } from './pages/agents/AgentChat';
-import { AnalyticsPage } from './pages/analytics/AnalyticsPage';
-import { LakebasePage } from './pages/lakebase/LakebasePage';
-import { JobsPage } from './pages/jobs/JobsPage';
 
-const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-    isActive
-      ? 'bg-primary text-primary-foreground'
-      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-  }`;
-
-const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-    isActive
-      ? 'bg-primary text-primary-foreground'
-      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-  }`;
-
-type NavLinkClassFn = (props: { isActive: boolean }) => string;
-
-function NavLinks({ className, linkClass, onClick }: { className?: string; linkClass: NavLinkClassFn; onClick?: () => void }) {
+function NotFound() {
   return (
-    <nav className={className}>
-      <NavLink to="/" end className={linkClass} onClick={onClick}>
-        Home
-      </NavLink>
-      <NavLink to="/agents" className={linkClass} onClick={onClick}>
-        Agents
-      </NavLink>
-      <NavLink to="/analytics" className={linkClass} onClick={onClick}>
-        Analytics
-      </NavLink>
-      <NavLink to="/lakebase" className={linkClass} onClick={onClick}>
-        Lakebase
-      </NavLink>
-      <NavLink to="/jobs" className={linkClass} onClick={onClick}>
-        Jobs
-      </NavLink>
-    </nav>
-  );
-}
-
-function Layout() {
-  const isMobile = useIsMobile();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
-  return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b px-4 md:px-6 py-3 flex items-center gap-4">
-        <h1 className="text-lg font-semibold text-foreground">ground-truth-app</h1>
-        {/* Desktop nav — hidden below md breakpoint */}
-        <NavLinks className="hidden md:flex gap-1" linkClass={navLinkClass} />
-        {/* Mobile nav — visible below md breakpoint */}
-        <div className="ml-auto md:hidden">
-          {/* Gate on isMobile so the portaled sheet can't linger on desktop
-              (replaces a set-state-in-effect reset). */}
-          <Sheet open={mobileNavOpen && isMobile} onOpenChange={setMobileNavOpen}>
-            <Button variant="ghost" size="icon" onClick={() => setMobileNavOpen(true)}>
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Open navigation</span>
-            </Button>
-            <SheetContent side="left">
-              <SheetHeader>
-                <SheetTitle>Navigation</SheetTitle>
-              </SheetHeader>
-              <NavLinks className="flex flex-col gap-1" linkClass={mobileNavLinkClass} onClick={() => setMobileNavOpen(false)} />
-            </SheetContent>
-          </Sheet>
-        </div>
-      </header>
-
-      <main className="flex-1 p-4 md:p-6">
-        <Outlet />
-      </main>
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <h2 className="text-2xl font-bold text-foreground">404</h2>
+      <p className="text-muted-foreground mt-2">Page not found.</p>
     </div>
   );
 }
 
 const router = createBrowserRouter([
   {
-    element: <Layout />,
+    element: <AppLayout />,
     children: [
-      { path: '/', element: <HomePage /> },
-      { path: '/agents', element: <AgentChat /> },
-      { path: '/analytics', element: <AnalyticsPage /> },
-      { path: '/lakebase', element: <LakebasePage /> },
-      { path: '/jobs', element: <JobsPage /> },
+      { path: '/', element: <ReviewPage /> },
+      { path: '/leaderboard', element: <LeaderboardPage /> },
+      { path: '/steward', element: <StewardPage /> },
+      { path: '/admin', element: <AdminPage /> },
+      { path: '/executive', element: <ExecutivePage /> },
+      { path: '/assistant', element: <AgentChat /> },
+      { path: '*', element: <NotFound /> },
     ],
   },
 ]);
 
 export default function App() {
   return <RouterProvider router={router} />;
-}
-
-function HomePage() {
-  return (
-    <div className="max-w-2xl mx-auto space-y-6 mt-8">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold mb-2 text-foreground">
-          Welcome to your Databricks App
-        </h2>
-        <p className="text-lg text-muted-foreground">
-          Powered by Databricks AppKit
-        </p>
-      </div>
-
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle>Getting Started</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">Your app is ready. Explore the resources below to continue building.</p>
-          <ul className="space-y-2 text-sm">
-            <li>
-              <a
-                href="https://github.com/databricks/appkit"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline underline-offset-4 hover:text-primary/80"
-              >
-                AppKit on GitHub →
-              </a>
-            </li>
-            <li>
-              <a
-                href="https://developers.databricks.com/docs/appkit/v0/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline underline-offset-4 hover:text-primary/80"
-              >
-                AppKit documentation →
-              </a>
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
-    </div>
-  );
 }

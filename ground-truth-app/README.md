@@ -1,188 +1,256 @@
-# ground-truth-app
+# Semantic Ground Truth App
 
-A Databricks App powered by [AppKit](https://developers.databricks.com/docs/appkit/v0/), featuring React, TypeScript, and Tailwind CSS.
+A crowdsourced review platform for Unity Catalog semantic assets — metric view measures and dimensions, Pages, Domains, and Subdomains. Business users vote on definition quality through a card-swipe interface; confidence scores converge via Wilson score intervals. Built on [Databricks AppKit](https://developers.databricks.com/docs/appkit/v0/).
 
-**Enabled plugins:**
-- **Analytics** -- SQL query execution against Databricks SQL Warehouses
-- **Lakebase** -- Fully managed Postgres database for transactional (OLTP) workloads on Databricks
-- **Server** -- Express HTTP server with static file serving and Vite dev mode
+> **Bundle 2 of 3** in the `semanticGroundTruth` monorepo. Deploy [ground-truth-infra](../ground-truth-infra/) first.
 
-## Prerequisites
+## Architecture
 
-- Node.js v22+ and pnpm
-- Databricks CLI (for deployment)
-- Access to a Databricks workspace
-
-## Databricks Authentication
-
-### Local Development
-
-For local development, configure your environment variables by creating a `.env` file:
-
-```bash
-cp .env.example .env
+```mermaid
+graph LR
+  Client[React SPA] -->|REST /api/*| Server[AppKit Node.js]
+  Client -->|/assistant| Agents[Review Agents]
+  Server -->|SQL| LB[(Lakebase Postgres)]
+  Server -->|OBO SQL Statement API| WH[(SQL Warehouse)]
+  Server -->|Streamable HTTP /mcp| MCP[MCP Server]
+  MCP -->|Unity Gateway| UG[Unity Gateway MCP Service]
 ```
 
-Edit `.env` and set the environment variables you need:
-
-```env
-DATABRICKS_HOST=https://your-workspace.cloud.databricks.com
-DATABRICKS_APP_PORT=8000
-# ... other environment variables, depending on the plugins you use
-```
-
-#### Lakebase Configuration
-
-The Lakebase plugin requires additional environment variables for PostgreSQL connectivity. To learn how to configure the Lakebase plugin, see the [Lakebase plugin documentation](https://developers.databricks.com/docs/appkit/v0/plugins/lakebase).
-
-### CLI Authentication
-
-The Databricks CLI requires authentication to deploy and manage apps. Configure authentication using one of these methods:
-
-#### OAuth U2M
-
-Interactive browser-based authentication with short-lived tokens:
-
-```bash
-databricks auth login --host https://your-workspace.cloud.databricks.com
-```
-
-This will open your browser to complete authentication. The CLI saves credentials to `~/.databrickscfg`.
-
-#### Configuration Profiles
-
-Use multiple profiles for different workspaces:
-
-```ini
-[DEFAULT]
-host = https://dev-workspace.cloud.databricks.com
-
-[production]
-host = https://prod-workspace.cloud.databricks.com
-client_id = prod-client-id
-client_secret = prod-client-secret
-```
-
-Deploy using a specific profile:
-
-```bash
-databricks bundle deploy --profile production
-```
-
-**Note:** Personal Access Tokens (PATs) are legacy authentication. OAuth is strongly recommended for better security.
-
-## Getting Started
-
-### Install Dependencies
-
-```bash
-pnpm install
-```
-
-### Development
-
-Run the app in development mode with hot reload:
-
-```bash
-pnpm run dev
-```
-
-The app will be available at the URL shown in the console output.
-
-### Build
-
-Build both client and server for production:
-
-```bash
-pnpm run build
-```
-
-This creates:
-
-- `dist/server.js` - Compiled server bundle
-- `client/dist/` - Bundled client assets
-
-### Production
-
-Run the production build:
-
-```bash
-pnpm start
-```
-
-## Code Quality
-
-There are a few commands to help you with code quality:
-
-```bash
-# Type checking
-pnpm run typecheck
-
-# Linting
-pnpm run lint
-pnpm run lint:fix
-
-# Formatting
-pnpm run format
-pnpm run format:fix
-```
-
-## Deployment with Databricks Asset Bundles
-
-### 1. Configure Bundle
-
-Update `databricks.yml` with your workspace settings:
-
-```yaml
-targets:
-  default:
-    workspace:
-      host: https://your-workspace.cloud.databricks.com
-```
-
-Make sure to replace all placeholder values in `databricks.yml` with your actual resource IDs.
-
-### 2. Deploy
-
-Deploy and start the app with a single command:
-
-```bash
-databricks apps deploy
-```
-
-`databricks apps deploy` validates the project, deploys it, starts the app, and prints its URL.
-
-### Deploy to Production
-
-1. Configure the production target in `databricks.yml`
-2. Deploy to production:
-
-```bash
-databricks apps deploy -t prod
-```
-
-> **Restarting a stopped app:** apps stop after a period of inactivity. To start one again without redeploying, run `databricks apps start <APP_NAME>`.
+| Component | Description |
+| --- | --- |
+| **Review Engine** | Wilson score confidence, weighted-random surfacing, gamification |
+| **Campaign Manager** | Automatic, manual, and freshness campaigns with RBAC scope |
+| **Notification Service** | In-app inbox; Slack/Teams/webhook when env vars set |
+| **MCP Server** | 12 tools via Streamable HTTP, registered in Unity Gateway |
+| **Agents** | review-assistant (markdown, default) + review-worker (code, read-only tools) |
+| **Card UI** | framer-motion drag, keyboard shortcuts, accessible buttons |
 
 ## Project Structure
 
 ```
-* client/          # React frontend
-  * src/           # Source code
-  * public/        # Static assets
-* server/          # Express backend
-  * server.ts      # Server entry point
-  * routes/        # Routes
-* shared/          # Shared types
-* config/          # Configuration
-  * queries/       # SQL query files
-* databricks.yml   # Bundle configuration
-* app.yaml         # App configuration
-* .env.example     # Environment variables example
+ground-truth-app/
+├── databricks.yml              # Bundle config (app + MCP service resources)
+├── app.yaml                    # App runtime config
+├── appkit.plugins.json         # Plugin manifest
+├── package.json                # pnpm monorepo root
+├── pnpm-workspace.yaml
+├── tsconfig.json / .client / .server / .shared
+├── server/
+│   ├── server.ts               # AppKit entry (plugins, migrations, services, routes, MCP)
+│   ├── lib/                    # db, errors, http, context, config, events, databricks, logger, deps
+│   ├── migrations/             # Idempotent runner + migrations 001-006
+│   ├── middleware/             # Identity (x-forwarded-*), roles, request logging
+│   ├── services/
+│   │   ├── asset/              # AssetRegistry (Lakebase CRUD)
+│   │   ├── metricView/         # MetricViewService (OBO SQL Statement API)
+│   │   ├── review/             # ReviewEngine (Wilson score, surfacing, leaderboard)
+│   │   ├── campaign/           # CampaignManager (lifecycle, scope, RBAC)
+│   │   ├── notification/       # NotificationService (inbox, digest, destinations)
+│   │   └── index.ts            # createServices / getServices singleton
+│   ├── routes/                 # REST handlers (see Route Table below)
+│   ├── mcp/                    # Streamable HTTP MCP server (12 tools)
+│   ├── seed/                   # Dev seed (12 sample assets)
+│   └── agents/
+│       ├── review-assistant/   # Markdown agent (default)
+│       ├── review-worker/      # Code agent (6 read-only tools)
+│       └── skills/             # review-guide, scoring-model, tracer-bullets
+├── client/
+│   └── src/
+│       ├── App.tsx             # Router: /, /leaderboard, /steward, /admin, /executive, /assistant
+│       ├── main.tsx            # QueryClientProvider
+│       ├── lib/api/            # Typed fetch client + React Query hooks
+│       ├── components/
+│       │   ├── layout/         # AppLayout, NavLinks, NotificationBell
+│       │   ├── review/         # CardStack, ReviewCard, SwipeActions, EditSheet, ...
+│       │   ├── leaderboard/    # LeaderboardTable, MyStatsCard, BadgeList
+│       │   ├── steward/        # CampaignList, CreateCampaignSheet, AssetBrowser, ...
+│       │   ├── admin/          # ScoringConfigForm, RoleListsForm, MaintenanceActions, ...
+│       │   └── executive/      # KpiCards, DashboardLink
+│       └── pages/              # ReviewPage, LeaderboardPage, StewardPage, AdminPage, ExecutivePage
+├── shared/
+│   └── contracts/              # Domain types, zod schemas, API DTOs, MCP tool shapes, error codes
+└── config/
+    ├── queries/                # SQL query files
+    └── metric-views/           # Metric view definitions
+```
+
+## Route Table
+
+| Method | Path | Role | Purpose |
+| --- | --- | --- | --- |
+| GET | `/health` | — | Health check (DB + migration count) |
+| GET | `/api/me` | reviewer | Current user context |
+| GET | `/api/review/next` | reviewer | Next review card (campaign/type filter) |
+| POST | `/api/review/vote` | reviewer | Submit vote (approve/reject/edit/skip) |
+| POST | `/api/review/synonym` | reviewer | Add/vote/remove synonym |
+| POST | `/api/review/example` | reviewer | Add/vote example question |
+| POST | `/api/review/run-query` | reviewer | Execute validation query (OBO) |
+| GET | `/api/review/stats/me` | reviewer | Personal stats + streak |
+| GET | `/api/leaderboard` | reviewer | Ranked reviewers (7d/30d/all) |
+| GET | `/api/assets` | reviewer | Paged asset list |
+| GET | `/api/assets/:assetId` | reviewer | Asset detail |
+| GET | `/api/assets/:assetId/versions` | reviewer | Asset version history |
+| POST | `/api/assets/register` | steward | Register/re-register asset |
+| GET | `/api/campaigns` | reviewer | List campaigns (RBAC-filtered) |
+| POST | `/api/campaigns` | steward | Create campaign |
+| GET | `/api/campaigns/:campaignId` | reviewer | Campaign detail |
+| PATCH | `/api/campaigns/:campaignId/status` | steward | Transition campaign status |
+| POST | `/api/campaigns/freshness-check` | admin | Trigger freshness resurfacing |
+| GET | `/api/notifications` | reviewer | Notification inbox |
+| GET | `/api/notifications/unread-count` | reviewer | Unread badge count |
+| POST | `/api/notifications/read` | reviewer | Mark notifications read |
+| GET | `/api/notifications/preferences` | reviewer | Notification preferences |
+| PUT | `/api/notifications/preferences` | reviewer | Update preferences |
+| GET | `/api/admin/config` | admin | App scoring/role config |
+| PUT | `/api/admin/config` | admin | Update config |
+| GET | `/api/admin/summary` | steward | Executive coverage summary |
+| POST | `/api/admin/recompute/:assetId` | admin | Recompute confidence score |
+| GET | `/api/metric-views` | reviewer | List metric views (OBO) |
+| GET | `/api/metric-views/:fullName` | reviewer | Metric view detail (OBO) |
+| POST | `/api/metric-views/:fullName/validate` | reviewer | Validate metric view (OBO) |
+| POST | `/mcp` | — | MCP Streamable HTTP endpoint |
+
+Full route details in [plan 09](docs/plans/09_rest_routes_wiring.md).
+
+## MCP Tools
+
+Registered in Unity Gateway as `semantic-ground-truth-mcp`. 12 tools across three domains:
+
+| Domain | Tools |
+| --- | --- |
+| Review | `review_get_next`, `review_submit_vote`, `review_add_synonym`, `review_add_example`, `review_get_stats`, `review_run_query` |
+| Campaign | `campaign_list`, `campaign_create`, `campaign_update_status` |
+| Metric View | `metric_view_list`, `metric_view_get`, `metric_view_validate` |
+
+## Roles
+
+| Role | Who | How to grant |
+| --- | --- | --- |
+| `reviewer` | All authenticated users | Automatic |
+| `steward` | Data stewards | Add email to `GT_STEWARD_EMAILS` list in Admin config or `app.app_config` |
+| `admin` | App administrators | Add email to `GT_ADMIN_EMAILS` env var or Admin config |
+
+Role checks use a fail-open pattern: if the role list cannot be loaded, reviewer-level access is granted.
+
+## Environment Variables
+
+### Platform-injected (via `app.yaml` resource bindings)
+
+| Variable | Source |
+| --- | --- |
+| `DATABRICKS_SERVING_ENDPOINT_NAME` | agents serving endpoint |
+| `MLFLOW_EXPERIMENT_ID` | MLflow experiment for agent traces |
+| `DATABRICKS_WAREHOUSE_ID` | SQL warehouse for OBO queries |
+| `DATABRICKS_JOB_ID` | Freshness resurfacing job |
+| `LAKEBASE_ENDPOINT` | Lakebase Postgres connection |
+| `OTEL_TRACES_SAMPLER` | `always_on` (record every trace) |
+
+### Application (set in `app.yaml`, `.env`, or Admin UI)
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DATABRICKS_HOST` | Platform-set | Workspace URL |
+| `DEV_USER_EMAIL` | `local-dev@example.com` | Fallback identity in local dev |
+| `SEED_SAMPLE_ASSETS` | `false` | Seed 12 sample assets on startup |
+| `GT_ADMIN_EMAILS` | — | Comma-separated admin email list |
+| `GT_METRIC_VIEW_CATALOG` | — | Catalog for metric view reads |
+| `GT_METRIC_VIEW_SCHEMA` | — | Schema for metric view reads |
+| `SLACK_WEBHOOK_URL` | — | Slack notification destination (optional) |
+| `TEAMS_WEBHOOK_URL` | — | Teams notification destination (optional) |
+| `GENERIC_WEBHOOK_URL` | — | Generic webhook destination (optional) |
+| `VITE_EXEC_DASHBOARD_URL` | — | Link to external AI/BI executive dashboard |
+
+## Bundle Variables and Targets
+
+| Target | Mode | App Name |
+| --- | --- | --- |
+| `dev` (default) | development | `dev-semantic-ground-truth` |
+| `prod` | production | `semantic-ground-truth` |
+| `local` | localhost proxy | — (`http://127.0.0.1:7073`) |
+
+Key bundle variables: `app_display_name`, `agents_serving_endpoint_name`, `agents_mlflow_experiment_experimentId`, `sql_warehouse_id`, `job_id`, `postgres_branch`, `postgres_database`, `catalog`, `schema_name`. Values for `dev` are injected from infra via `deploy.sh --var`.
+
+## Prerequisites
+
+- Node.js v22+ and pnpm 11+
+- Databricks CLI (v0.294.0+ for telemetry export)
+- Access to the target Databricks workspace
+- **ground-truth-infra** bundle deployed (provides Lakebase, UC schema, SQL warehouse, secrets)
+
+## Local Development
+
+```bash
+cp .env.example .env
+# Edit .env with your workspace URL and resource IDs
+pnpm install
+pnpm run dev
+```
+
+The dev server starts at the port shown in console output. The `local` target in `databricks.yml` has all variables hardcoded for `http://127.0.0.1:7073`.
+
+## Deploy
+
+First deploy requires the infra bundle and a multi-step verification. See [First Deploy Verification Runbook](docs/runbooks/first-deploy-verification.md).
+
+Subsequent deploys:
+
+```bash
+# From the monorepo root, using the cross-bundle deploy script:
+./deploy.sh --target dev --app
+
+# Or directly:
+databricks bundle deploy --target dev
+databricks bundle run app --target dev
+```
+
+> **Restarting a stopped app:** `databricks apps start <APP_NAME>`.
+
+## Code Quality
+
+```bash
+pnpm run typecheck    # TypeScript strict check (tsc -b)
+pnpm run lint         # ESLint
+pnpm run lint:fix
+pnpm run format       # Prettier
+pnpm run format:fix
+pnpm test             # vitest
 ```
 
 ## Tech Stack
 
-- **Backend**: Node.js, Express
-- **Frontend**: React.js, TypeScript, Vite, Tailwind CSS, React Router
-- **UI Components**: Radix UI, shadcn/ui
-- **Databricks**: AppKit SDK
+| Layer | Technology |
+| --- | --- |
+| Runtime | Node.js (AppKit v0.84.0) |
+| Package manager | pnpm 11 |
+| Language | TypeScript 5.9 (strict) |
+| Server | Express (via AppKit `server()` plugin) |
+| Client | React 19, Vite, Tailwind CSS 4, react-router 7 |
+| Data queries | React Query v5 (`@tanstack/react-query`) |
+| Animations | framer-motion (card-swipe drag) |
+| MCP | `@modelcontextprotocol/sdk` (Streamable HTTP) |
+| Database | Lakebase (Postgres) — schema `app` |
+| Validation | zod v4 |
+| Testing | vitest |
+| UI components | `@databricks/appkit-ui` + lucide-react icons |
+
+## Observability
+
+OpenTelemetry signals are exported to Unity Catalog tables via `telemetry_export_destinations` in `databricks.yml`:
+
+| Signal | Table |
+| --- | --- |
+| Logs | `semantic_ground_truth_otel_logs` |
+| Metrics | `semantic_ground_truth_otel_metrics` |
+| Traces | `semantic_ground_truth_otel_spans` |
+
+Agent traces are logged to MLflow experiment `app_agents_experiment`.
+
+## Design Documents
+
+Full architecture and component designs live in `../docs/design/`:
+
+- **L100** — System constitution (9 components)
+- **L200-C1..C9** — Component designs (Asset Registry through Operational Agent)
+- **L300-09..L300-13** — Implementation specs for this bundle
+
+Build plans: [docs/plans/INDEX.md](docs/plans/INDEX.md) · Session summaries: [docs/sessions/](docs/sessions/)
