@@ -2,6 +2,10 @@
 
 | Date | Wave | Session | Title | Mode | Status | Branch |
 |------|------|---------|-------|------|--------|--------|
+| 2026-10-21 | 4 | 14 | [Ground Truth agents](2026-10-21_w4-14-ground-truth-agents.md) | edit | pass | `mg-genie-app-build-waves` | run 16400513324108 |
+| 2026-10-21 | 4 | 13 | [Leaderboard, steward, admin, executive pages](2026-10-21_w4-13-client-secondary-pages.md) | edit | pass | `mg-genie-app-build-waves` | run 16400513324108 |
+| 2026-10-21 | 4 | 12 | [App shell and card-swipe review experience](2026-10-21_w4-12-client-review-experience.md) | edit | pass | `mg-genie-app-build-waves` | run 16400513324108 |
+| 2026-10-21 | 4 | 11 | [MCP server at /mcp](2026-10-21_w4-11-mcp-server.md) | edit | pass | `mg-genie-app-build-waves` | run 16400513324108 |
 | 2026-10-21 | 3 | 10 | [Client API layer](2026-10-21_w3-10-client-api-layer.md) | edit | pass | `mg-genie-app-build-waves` | run 16400513324108 |
 | 2026-10-21 | 3 | 09 | [REST routes and composition root](2026-10-21_w3-09-rest-routes-wiring.md) | edit | pass | `mg-genie-app-build-waves` | run 16400513324108 |
 | 2026-10-21 | 2 | 08 | [Notification Service](2026-10-21_w2-08-notification-service.md) | edit | pass | `mg-genie-app-build-waves` | run 16400513324108 |
