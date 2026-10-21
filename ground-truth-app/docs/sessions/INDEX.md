@@ -1,6 +1,8 @@
 # Session Index — ground-truth-app
 
 |------|----- |---------|-------|------|--------|--------|
+| 2026-10-21 | 0 | 02 | [Server foundation library + dependencies](2026-10-21_w0-02-server-foundation.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
+| 2026-10-21 | 0 | 01 | [Shared domain contracts](2026-10-21_w0-01-shared-contracts.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
 | 2026-10-21 | 7 | 19 | [Deploy app and post-deploy job, fix until stable](2026-10-21_w7-19-converge-app.md) | converge | blocked | `mg-genie-app-first-deploy` | run 963652240700815 |
 | 2026-10-21 | 6 | 18 | [Campaign completed_at + RBAC consistency](2026-10-21_w6-18-campaign-completed-at-rbac.md) | edit | pass | `mg-genie-app-first-deploy` |
 | 2026-10-21 | 6 | 17 | [Fix ErrorCode casts and UPSTREAM mismatch](2026-10-21_w6-17-fix-error-code-casts.md) | edit | pass | `mg-genie-app-first-deploy` |
