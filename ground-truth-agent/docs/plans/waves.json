@@ -6,7 +6,7 @@
   },
   "repo_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth",
   "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-agent",
-  "branch": "mg-genie-agent-build",
+  "branch": "mg-genie-app-first-deploy",
   "bundle_target": "dev",
   "status_dir": ".build-status",
   "plans_dir": "docs/plans",
