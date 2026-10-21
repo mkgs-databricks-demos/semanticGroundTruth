@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS app.campaigns (
   reviewed_assets      INTEGER NOT NULL DEFAULT 0,
   created_by           TEXT NOT NULL,
   created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at         TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS app.campaign_assignments (

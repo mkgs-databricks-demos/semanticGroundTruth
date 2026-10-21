@@ -205,7 +205,7 @@
         "client/src/App.tsx routes /, /leaderboard, /steward, /admin, /executive, /assistant and does not import AnalyticsPage, LakebasePage or JobsPage",
         "client/src/pages/{leaderboard,steward,admin,executive}/ export LeaderboardPage, StewardPage, AdminPage, ExecutivePage",
         "Exactly one server/agents/*/agent.md has default: true; server/agents/planner and server/agents/helper no longer exist; server/agents/skills/tracer-bullets is unchanged",
-        "No file under client/src/components/ or client/src/pages/ (excluding client/src/pages/agents/) calls fetch directly",
+        "No file under client/src/components/ or client/src/pages/ (excluding client/src/pages/agents/, client/src/pages/analytics/, client/src/pages/lakebase/, client/src/pages/jobs/) calls fetch directly (scaffold pages are deleted by session 15 in wave 5)",
         "Every relative import in files changed this wave resolves to an existing file"
       ],
       "sessions": [
