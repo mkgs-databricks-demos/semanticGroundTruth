@@ -2,6 +2,9 @@
 
 | Date | Wave | Session | Title | Mode | Status | Branch |
 |------|------|---------|-------|------|--------|--------|
+| 2026-10-21 | 2 | 08 | [Notification Service](2026-10-21_w2-08-notification-service.md) | edit | pass | `mg-genie-app-build-waves` | run 16400513324108 |
+| 2026-10-21 | 2 | 07 | [Campaign Manager](2026-10-21_w2-07-campaign-manager.md) | edit | pass | `mg-genie-app-build-waves` | run 16400513324108 |
+| 2026-10-21 | 2 | 06 | [Review Engine](2026-10-21_w2-06-review-engine.md) | edit | pass | `mg-genie-app-build-waves` | run 16400513324108 |
 | 2026-10-21 | 2 | 08 | [Notification Service](2026-10-21_w2-08-notification-service.md) | edit | pass | `mg-genie-app-build-waves` |
 | 2026-10-21 | 2 | 07 | Campaign Manager | edit | error | `mg-genie-app-build-waves` |
 | 2026-10-21 | 2 | 06 | [Review Engine](2026-10-21_w2-06-review-engine.md) | edit | pass | `mg-genie-app-build-waves` |
