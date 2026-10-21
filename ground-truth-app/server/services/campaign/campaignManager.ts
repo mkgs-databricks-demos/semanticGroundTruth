@@ -38,6 +38,7 @@ function toCampaign(row: Record<string, unknown>): Campaign {
     createdBy: row.created_by as string,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
+    completedAt: row.completed_at ? String(row.completed_at) : null,
   };
 }
 
@@ -226,11 +227,13 @@ export class CampaignManager {
 
     assertTransition(existing.status as CampaignStatus, status);
 
-    // NOTE: Plan specifies setting completed_at on completion, but migration 003
-    // does not include a completed_at column. Using updated_at as proxy until
-    // a migration adds the column. See requests in status file.
+    const completedAtClause =
+      status === 'completed' ? ', completed_at = NOW()'
+      : status === 'active' ? ', completed_at = NULL'
+      : '';
+
     const row = await this.db.one<Record<string, unknown>>(
-      `UPDATE app.campaigns SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+      `UPDATE app.campaigns SET status = $1, updated_at = NOW()${completedAtClause} WHERE id = $2 RETURNING *`,
       [status, campaignId],
     );
 

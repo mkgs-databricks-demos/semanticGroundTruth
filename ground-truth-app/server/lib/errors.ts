@@ -22,12 +22,12 @@ function factory(code: ErrorCode) {
     new AppError(code, message, details);
 }
 
-export const badRequest = factory('BAD_REQUEST' as ErrorCode);
-export const unauthenticated = factory('UNAUTHENTICATED' as ErrorCode);
-export const forbidden = factory('FORBIDDEN' as ErrorCode);
-export const notFound = factory('NOT_FOUND' as ErrorCode);
-export const conflict = factory('CONFLICT' as ErrorCode);
-export const upstream = factory('UPSTREAM' as ErrorCode);
+export const badRequest = factory('BAD_REQUEST');
+export const unauthenticated = factory('UNAUTHENTICATED');
+export const forbidden = factory('FORBIDDEN');
+export const notFound = factory('NOT_FOUND');
+export const conflict = factory('CONFLICT');
+export const upstream = factory('UPSTREAM_ERROR');
 
 interface ZodIssue {
   path: (string | number)[];
@@ -77,7 +77,7 @@ export function toAppError(err: unknown): AppError {
     }
   }
   return new AppError(
-    'INTERNAL' as ErrorCode,
+    'INTERNAL',
     'An unexpected error occurred',
   );
 }

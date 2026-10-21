@@ -125,6 +125,7 @@ export interface Campaign {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  completedAt: string | null;
 }
 
 export interface CampaignAsset {
