@@ -42,7 +42,7 @@ export function registerAdminRoutes(app: Application, services: Services): void 
     const user = getUser(res);
     requireRole(user, 'admin');
 
-    const { assetId } = req.params;
+    const assetId = String(req.params.assetId);
     addSpanAttributes(res, { assetId });
     const score = await services.review.recompute(assetId);
     res.json(score);

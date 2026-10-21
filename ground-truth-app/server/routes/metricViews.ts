@@ -23,7 +23,7 @@ export function registerMetricViewRoutes(app: Application, services: Services): 
     const user = getUser(res);
     requireRole(user, 'reviewer');
 
-    const { fullName } = req.params;
+    const fullName = String(req.params.fullName);
     const detail = await services.metricViews.get(user, fullName);
     res.json(detail);
   }));
@@ -33,7 +33,7 @@ export function registerMetricViewRoutes(app: Application, services: Services): 
     const user = getUser(res);
     requireRole(user, 'reviewer');
 
-    const { fullName } = req.params;
+    const fullName = String(req.params.fullName);
     const result = await services.metricViews.validate(user, fullName);
     res.json(result);
   }));

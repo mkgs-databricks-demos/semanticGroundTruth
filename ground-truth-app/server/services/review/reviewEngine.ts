@@ -6,7 +6,7 @@ import type { Db } from '../../lib/db';
 import type { ConfigStore } from '../../lib/config';
 import type { EventBus } from '../../lib/events';
 import { badRequest } from '../../lib/errors';
-import { logger } from '../../lib/logger';
+
 import type { AssetRegistry } from '../asset/assetRegistry';
 import type { MetricViewService } from '../metricView/metricViewService';
 import type {
@@ -23,7 +23,7 @@ import type {
   VoteResult,
 } from '../../../shared/contracts/api';
 import type { UserContext } from '../../lib/context';
-import type { AssetStatus, VoteType, VoteSource } from '../../../shared/contracts/values';
+import type { VoteType, VoteSource } from '../../../shared/contracts/values';
 import { computeConfidence, deriveStatus } from './wilsonScore';
 import type { Candidate } from './surfacing';
 import { surfacingWeight, pickWeighted, reasonFor } from './surfacing';

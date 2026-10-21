@@ -27,7 +27,7 @@ export function registerAssetRoutes(app: Application, services: Services): void 
     const user = getUser(res);
     requireRole(user, 'reviewer');
 
-    const { assetId } = req.params;
+    const assetId = String(req.params.assetId);
     addSpanAttributes(res, { assetId });
     const asset = await services.assets.get(assetId);
     res.json(asset);
@@ -38,7 +38,7 @@ export function registerAssetRoutes(app: Application, services: Services): void 
     const user = getUser(res);
     requireRole(user, 'reviewer');
 
-    const { assetId } = req.params;
+    const assetId = String(req.params.assetId);
     addSpanAttributes(res, { assetId });
     const versions = await services.assets.listVersions(assetId);
     res.json(versions);

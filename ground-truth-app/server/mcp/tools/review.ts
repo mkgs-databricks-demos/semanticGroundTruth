@@ -112,10 +112,9 @@ export function registerReviewTools(
     McpToolShapes.review_add_synonym,
     async (args) => {
       try {
-        let synonyms;
         switch (args.action) {
           case 'add':
-            synonyms = await services.assets.addSynonym(
+            await services.assets.addSynonym(
               args.asset_id,
               args.synonym,
               user.userId,
@@ -125,27 +124,23 @@ export function registerReviewTools(
             if (!hasRole(user, 'steward')) {
               throw badRequest('Removing synonyms requires steward role.');
             }
-            synonyms = await services.assets.removeSynonym(
+            await services.assets.removeSynonym(
               args.asset_id,
               args.synonym,
             );
             break;
           }
           case 'approve':
-            synonyms = await services.assets.approveSynonym(
-              args.asset_id,
-              args.synonym,
-              user.userId,
-            );
-            break;
           case 'reject':
-            synonyms = await services.assets.rejectSynonym(
+            await services.assets.voteSynonym(
               args.asset_id,
               args.synonym,
               user.userId,
+              args.action as 'approve' | 'reject',
             );
             break;
         }
+        const synonyms = await services.assets.listSynonyms(args.asset_id);
         const text = `Synonym "${args.synonym}" ${args.action}d. Asset now has ${synonyms.length} synonym(s).`;
         return {
           content: [{ type: 'text', text }],
@@ -164,30 +159,24 @@ export function registerReviewTools(
     McpToolShapes.review_add_example,
     async (args) => {
       try {
-        let examples;
         switch (args.action) {
           case 'add':
-            examples = await services.assets.addExample(
+            await services.assets.addExample(
               args.asset_id,
               args.question_text ?? '',
               user.userId,
             );
             break;
           case 'approve':
-            examples = await services.assets.approveExample(
-              args.asset_id,
-              args.question_id ?? '',
-              user.userId,
-            );
-            break;
           case 'reject':
-            examples = await services.assets.rejectExample(
-              args.asset_id,
+            await services.assets.voteExample(
               args.question_id ?? '',
               user.userId,
+              args.action as 'approve' | 'reject',
             );
             break;
         }
+        const examples = await services.assets.listExamples(args.asset_id);
         const text = `Example ${args.action}d. Asset now has ${examples.length} example(s).`;
         return {
           content: [{ type: 'text', text }],

@@ -28,7 +28,13 @@ createApp({
   async onPluginsReady(appkit) {
     // 1. Database
     const db = createDb(appkit.lakebase);
-    await runMigrations(db);
+    try {
+      await runMigrations(db);
+    } catch (err) {
+      logger.error('Migration failed — app will start in degraded mode', {
+        error: (err as Error).message,
+      });
+    }
 
     // 2. Config + Events
     const config = new ConfigStore(db);

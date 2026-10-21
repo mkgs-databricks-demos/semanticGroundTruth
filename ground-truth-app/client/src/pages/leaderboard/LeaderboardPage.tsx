@@ -18,7 +18,7 @@ const PERIODS = ['7d', '30d', 'all'] as const;
 export function LeaderboardPage() {
   const [period, setPeriod] = useState<(typeof PERIODS)[number]>('7d');
   const me = useMe();
-  const { data, isLoading, error } = useLeaderboard({ period });
+  const { data, isLoading, error } = useLeaderboard({ period, limit: 25 });
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">

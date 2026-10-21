@@ -63,7 +63,7 @@ export default createAgent({
       annotations: { effect: 'read' },
       execute: async ({ asset_type, status, limit }) => {
         const { assets } = getServices();
-        return assets.list({ assetType: asset_type, status, limit });
+        return assets.list({ assetType: asset_type as 'measure' | 'dimension' | 'page' | 'domain' | 'subdomain' | undefined, status: status as 'PENDING' | 'REVIEWED' | 'CERTIFIED' | undefined, limit: limit ?? 50, offset: 0 });
       },
     }),
 

@@ -1,6 +1,6 @@
 import type { Request, Response, RequestHandler } from 'express';
 import { z } from 'zod';
-import { AppError, toAppError, badRequest } from './errors';
+import { toAppError, badRequest } from './errors';
 import { logger } from './logger';
 
 interface ErrorResponse {
