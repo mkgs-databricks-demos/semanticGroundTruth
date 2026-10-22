@@ -7,9 +7,9 @@ export const migration: Migration = {
 -- L200-C1 indexes
 CREATE INDEX IF NOT EXISTS idx_assets_type ON app.assets(asset_type);
 CREATE INDEX IF NOT EXISTS idx_assets_environment ON app.assets(environment);
-CREATE INDEX IF NOT EXISTS idx_assets_confidence ON app.assets(confidence_score);
+CREATE INDEX IF NOT EXISTS idx_confidence_scores_confidence ON app.confidence_scores(confidence);
 CREATE INDEX IF NOT EXISTS idx_assets_last_reviewed ON app.assets(last_reviewed_at);
-CREATE INDEX IF NOT EXISTS idx_votes_unprocessed ON app.votes(processed) WHERE processed = FALSE;
+CREATE INDEX IF NOT EXISTS idx_votes_unprocessed ON app.votes(is_processed) WHERE is_processed = FALSE;
 CREATE INDEX IF NOT EXISTS idx_votes_asset ON app.votes(asset_id);
 CREATE INDEX IF NOT EXISTS idx_votes_user ON app.votes(user_id);
 CREATE INDEX IF NOT EXISTS idx_example_questions_asset ON app.example_questions(asset_id);

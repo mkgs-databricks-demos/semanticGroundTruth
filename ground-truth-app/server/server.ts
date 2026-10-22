@@ -28,13 +28,7 @@ createApp({
   async onPluginsReady(appkit) {
     // 1. Database
     const db = createDb(appkit.lakebase);
-    try {
-      await runMigrations(db);
-    } catch (err) {
-      logger.error('Migration failed — app will start in degraded mode', {
-        error: (err as Error).message,
-      });
-    }
+    await runMigrations(db);
 
     // 2. Config + Events
     const config = new ConfigStore(db);
@@ -54,7 +48,11 @@ createApp({
       mountMcp(app, services);
     });
 
-    // 6. Background timers
+    // 6. Startup marker
+    const port = process.env.PORT || 8000;
+    logger.info(`listening on port ${port}`);
+
+    // 7. Background timers
     setInterval(() => {
       services.campaigns.runFreshnessCheck().catch((err) => {
         logger.error('Freshness check failed', { error: (err as Error).message });
