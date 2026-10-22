@@ -2,7 +2,7 @@
 // Session 15 · Wave 5 · Written, not run (no Node toolchain)
 
 import { describe, expect, it } from 'vitest';
-import { MIGRATIONS } from './runner';
+import { MIGRATIONS } from './index';
 
 describe('MIGRATIONS', () => {
   it('has at least one migration', () => {

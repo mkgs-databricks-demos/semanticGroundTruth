@@ -51,19 +51,19 @@ export function registerReviewRoutes(app: Application, services: Services): void
       requireRole(user, 'reviewer');
     }
 
-    let synonyms;
     switch (body.action) {
       case 'add':
-        synonyms = await services.assets.addSynonym(body.assetId, body.synonym, user.userId);
+        await services.assets.addSynonym(body.assetId, body.synonym, user.userId);
         break;
       case 'approve':
       case 'reject':
-        synonyms = await services.assets.voteSynonym(body.assetId, body.synonym, body.action, user.userId);
+        await services.assets.voteSynonym(body.assetId, body.synonym, user.userId, body.action as 'approve' | 'reject');
         break;
       case 'remove':
-        synonyms = await services.assets.removeSynonym(body.assetId, body.synonym);
+        await services.assets.removeSynonym(body.assetId, body.synonym);
         break;
     }
+    const synonyms = await services.assets.listSynonyms(body.assetId);
     res.json(synonyms);
   }));
 
@@ -75,16 +75,16 @@ export function registerReviewRoutes(app: Application, services: Services): void
     const body = parseBody(ExampleBodySchema, req.body);
     addSpanAttributes(res, { assetId: body.assetId });
 
-    let examples;
     switch (body.action) {
       case 'add':
-        examples = await services.assets.addExample(body.assetId, body.questionText!, user.userId);
+        await services.assets.addExample(body.assetId, body.questionText!, user.userId);
         break;
       case 'approve':
       case 'reject':
-        examples = await services.assets.voteExample(body.assetId, body.questionId!, body.action);
+        await services.assets.voteExample(body.questionId!, user.userId, body.action as 'approve' | 'reject');
         break;
     }
+    const examples = await services.assets.listExamples(body.assetId);
     res.json(examples);
   }));
 

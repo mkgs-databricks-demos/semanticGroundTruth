@@ -4,6 +4,7 @@
 import { toAppError } from '../lib/errors';
 
 export interface ToolError {
+  [key: string]: unknown;
   isError: true;
   content: Array<{ type: 'text'; text: string }>;
 }

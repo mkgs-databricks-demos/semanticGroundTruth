@@ -39,7 +39,7 @@ export function registerCampaignRoutes(app: Application, services: Services): vo
     const user = getUser(res);
     requireRole(user, 'reviewer');
 
-    const { campaignId } = req.params;
+    const campaignId = String(req.params.campaignId);
     addSpanAttributes(res, { campaignId });
     const campaign = await services.campaigns.get(user, campaignId);
     res.json(campaign);
@@ -50,7 +50,7 @@ export function registerCampaignRoutes(app: Application, services: Services): vo
     const user = getUser(res);
     requireRole(user, 'steward');
 
-    const { campaignId } = req.params;
+    const campaignId = String(req.params.campaignId);
     addSpanAttributes(res, { campaignId });
     const body = parseBody(UpdateCampaignStatusBodySchema, req.body);
     const campaign = await services.campaigns.updateStatus(campaignId, body.status, user.userId);

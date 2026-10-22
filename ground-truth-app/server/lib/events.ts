@@ -20,7 +20,7 @@ export class EventBus {
 
   on<T extends EventType>(type: T, handler: EventHandler<T>): void {
     const existing = this.handlers.get(type) ?? [];
-    existing.push(handler as EventHandler<EventType>);
+    existing.push(handler as unknown as EventHandler<EventType>);
     this.handlers.set(type, existing);
   }
 

@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "description": "Semantic Ground Truth App (Bundle 2, ground-truth-app) — build Phases C-J on top of the deployed AppKit scaffold. Edit-only sessions; no Node toolchain in sessions; typecheck/deploy happen later from the interactive controller session.",
+  "description": "Semantic Ground Truth App (Bundle 2, ground-truth-app) — build Phases C-J on top of the deployed AppKit scaffold. Waves 0-5: edit-only initial build (complete). Waves 6-8: follow-up converge build to fix known issues, deploy, and verify.",
   "workflow": {
     "mode": "git"
   },
   "repo_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth",
   "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-app",
-  "branch": "mg-genie-app-build-waves",
+  "branch": "mg-genie-app-first-deploy",
   "bundle_target": "dev",
   "status_dir": ".build-status",
   "plans_dir": "docs/plans",
@@ -17,6 +17,51 @@
     "../PROJECT_MEMORY.md",
     "../docs/design/L100_semantic_ground_truth_app.md"
   ],
+
+  "runtime_targets": {
+    "app": {
+      "type": "app",
+      "name": "dev-semantic-ground-truth",
+      "resource_key": "app",
+      "bundle_target": "dev",
+      "deploy_commands": [
+        "bundle deploy --target dev",
+        "bundle run app --target dev"
+      ],
+      "telemetry": {
+        "logs_table": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_logs",
+        "deployment_id_attribute": "app.deployment_id",
+        "log_source_attribute": "app.log_source",
+        "error_patterns": ["error TS\\d+", "ELIFECYCLE", "Error building app", "Unhandled", "UnhandledPromiseRejection", "FATAL", "Cannot find module"],
+        "ignore_patterns": ["Updated file:", "Skipping query type generation"],
+        "required_markers": ["listening on"]
+      },
+      "stability": {"soak_minutes": 10, "max_errors": 0}
+    },
+    "app_post_deploy_setup": {
+      "type": "job",
+      "name": "[dev matthew_giglia] dev-semantic-ground-truth-post-deploy-setup",
+      "resource_key": "app_post_deploy_setup",
+      "bundle_target": "dev",
+      "deploy_commands": [
+        "bundle deploy --target dev",
+        "bundle run app_post_deploy_setup --target dev"
+      ],
+      "stability": {"soak_minutes": 5}
+    },
+    "deploy_verification": {
+      "type": "job",
+      "name": "[dev matthew_giglia] dev-semantic-ground-truth-deploy-verification",
+      "resource_key": "deploy_verification",
+      "bundle_target": "dev",
+      "deploy_commands": [
+        "bundle deploy --target dev",
+        "bundle run deploy_verification --target dev"
+      ],
+      "stability": {"soak_minutes": 5}
+    }
+  },
+
   "waves": [
     {
       "wave_id": "0",
@@ -285,6 +330,87 @@
           "owned_paths": ["README.md", "docs/runbooks/**"],
           "allow_deploy": false,
           "depends_on": ["11", "12", "13", "14"]
+        }
+      ]
+    },
+    {
+      "wave_id": "6",
+      "name": "Known compile fixes (parallel, static gate)",
+      "concurrency": 2,
+      "gate": [
+        "All wave 6 sessions have status done",
+        "bundle validate --strict --target dev passes",
+        "server/lib/errors.ts contains no 'as ErrorCode' casts and no string 'UPSTREAM' (only 'UPSTREAM_ERROR')",
+        "shared/contracts/entities.ts Campaign interface includes completedAt",
+        "server/services/campaign/campaignManager.ts sets completed_at on status transition to completed",
+        "No file outside each session's owned_paths changed"
+      ],
+      "sessions": [
+        {
+          "session_id": "17",
+          "title": "Fix ErrorCode casts and UPSTREAM mismatch",
+          "plan_file": "17_fix_error_code_casts.md",
+          "mode": "edit",
+          "scope": "Remove all 'as ErrorCode' casts in server/lib/errors.ts. Change 'UPSTREAM' to 'UPSTREAM_ERROR' to match the contract.",
+          "owned_paths": ["server/lib/errors.ts"],
+          "depends_on": []
+        },
+        {
+          "session_id": "18",
+          "title": "Campaign completed_at + RBAC consistency",
+          "plan_file": "18_campaign_completed_at_rbac.md",
+          "mode": "edit",
+          "scope": "Add completedAt to Campaign entity, wire through toCampaign mapper and updateStatus. Audit RBAC visibility in routes for consistency.",
+          "owned_paths": ["shared/contracts/entities.ts", "server/services/campaign/**", "server/routes/campaigns.ts"],
+          "depends_on": []
+        }
+      ]
+    },
+    {
+      "wave_id": "7",
+      "name": "Converge: app builds, starts, stays up, post-deploy succeeds",
+      "gate": [
+        "bundle validate --strict --target dev passes",
+        "Session 19 status is pass with a final attempt classified stable"
+      ],
+      "runtime_gate": ["app", "app_post_deploy_setup"],
+      "sessions": [
+        {
+          "session_id": "19",
+          "title": "Deploy app and post-deploy job, fix until stable",
+          "plan_file": "19_converge_app.md",
+          "mode": "converge",
+          "scope": "Deploy the app to dev, diagnose deployment status and OTel logs, fix tsc and runtime errors, and repeat until the app is RUNNING with clean logs and the post-deploy setup job has succeeded.",
+          "runtime_targets": ["app", "app_post_deploy_setup"],
+          "owned_paths": ["server/**", "client/**", "shared/**", "package.json", "pnpm-lock.yaml", "tsconfig*.json", "vitest.config.ts", "app.yaml", "resources/jobs/app_post_deploy_setup.job.yml", "resources/jobs/run_app_post_deploy.job_run.yml", "src/notebooks/grant_app_permissions.ipynb"],
+          "max_attempts": 8,
+          "timeout_minutes": 180,
+          "context_notes": "Interactive session ran tsc and found 50 errors (43 server, 7 client). Full categorized list in plan file 19. Lockfile already regenerated. No zod v4 conflict: MCP SDK 1.32.1 accepts zod v4 natively. See plan file for the error-by-file breakdown. 6 known risks listed in the plan should NOT be fixed unless they block deploy.",
+          "depends_on": ["17", "18"]
+        }
+      ]
+    },
+    {
+      "wave_id": "8",
+      "name": "Converge: deploy verification job passes",
+      "gate": [
+        "bundle validate --strict --target dev passes",
+        "Session 20 status is pass with a final attempt classified stable"
+      ],
+      "runtime_gate": ["deploy_verification", "app"],
+      "sessions": [
+        {
+          "session_id": "20",
+          "title": "Deploy verification job, fix until all checks pass",
+          "plan_file": "20_converge_deploy_verification.md",
+          "mode": "converge",
+          "scope": "Write a verification notebook and job resource that checks the running app (health, API routes, 12 MCP tools, UI routes, MCP service). Deploy, run the job, and fix until it succeeds while the app stays stable.",
+          "runtime_targets": ["deploy_verification", "app"],
+          "owned_paths": ["src/notebooks/deploy_verification.ipynb", "resources/jobs/deploy_verification.job.yml"],
+          "max_attempts": 4,
+          "timeout_minutes": 120,
+          "context_notes": "The verification notebook must use WorkspaceClient().config.authenticate() for all HTTP requests to the app. Plain Bearer tokens and curl fail at the auth sidecar. POST /mcp must return exactly 12 tools matching review_*, campaign_*, metric_view_*. App URL: https://dev-semantic-ground-truth-7474657291520070.aws.databricksapps.com. MCP service: hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic-ground-truth-mcp.",
+          "depends_on": ["19"]
         }
       ]
     }

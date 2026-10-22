@@ -13,7 +13,7 @@ export function registerLeaderboardRoutes(app: Application, services: Services):
     requireRole(user, 'reviewer');
 
     const query = parseQuery(LeaderboardQuerySchema, req.query);
-    const entries = await services.review.getLeaderboard(query);
+    const entries = await services.review.getLeaderboard(query.period, query.limit);
     res.json(entries);
   }));
 }

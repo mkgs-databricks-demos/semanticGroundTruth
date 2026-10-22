@@ -96,7 +96,7 @@ describe('computeConfidence', () => {
       { approvals: 0, rejections: 0, edits: 10 },
       baseSettings,
     );
-    const approvalsOnly = computeConfidence(
+    const approvalsRef = computeConfidence(
       { approvals: 5, rejections: 0, edits: 0 },
       { ...baseSettings, priorWeight: 0 },
     );
@@ -105,6 +105,7 @@ describe('computeConfidence', () => {
     // but editsOnly.score should be > 0
     expect(editsOnly.score).toBeGreaterThan(0);
     expect(editsOnly.total).toBe(10);
+    expect(approvalsRef.score).toBeGreaterThan(0);
   });
 });
 

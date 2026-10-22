@@ -1,5 +1,5 @@
 import type { UserContext } from '../../lib/context';
-import { forbidden, badRequest, upstream } from '../../lib/errors';
+import { forbidden, badRequest } from '../../lib/errors';
 import { executeStatement } from '../../lib/databricks';
 import type {
   MetricViewSummary,

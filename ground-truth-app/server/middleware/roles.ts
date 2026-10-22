@@ -27,7 +27,7 @@ export function resolveRoles(email: string, settings: AppSettings): Role[] {
 }
 
 export function requireRoleMiddleware(role: Role): RequestHandler {
-  return (req, res, next) => {
+  return (_req, res, next) => {
     try {
       const user = getUser(res);
       const hierarchy: Record<Role, number> = {

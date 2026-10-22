@@ -1,7 +1,42 @@
 # Session Index — ground-truth-app
 
-| Date | Wave | Session | Title | Mode | Status | Branch |
-|------|------|---------|-------|------|--------|--------|
+|------|----- |---------|-------|------|--------|--------|
+| 2026-10-22 | — | — | [First deploy completion: interactive controller session](2026-10-22_first-deploy-completion.md) | — | — | `mg-genie-app-first-deploy` | runs 963652240700815 → 187770715982911 → 645309454613045 (pass) |
+| 2026-10-22 | 8 | 20 | [Deploy verification job, fix until all checks pass](2026-10-22_w8-20-deploy-verification.md) | converge | pass | `mg-genie-app-first-deploy` | run 645309454613045, verification run 225279116725097 |
+| 2026-10-22 | 7 | 19 | [Deploy app and post-deploy job, fix until stable](2026-10-22_w7-19-converge-app.md) | converge | pass | `mg-genie-app-first-deploy` | run 645309454613045, deploy `01f1cdc76e341d749b3d5248807e3334` |
+| 2026-10-21 | 7 | 19 | [Deploy app and post-deploy job](2026-10-21_w7-19-converge-app.md) | converge | pass | `mg-genie-app-first-deploy` | run 187770715982911, deploy `01f1cd8398e1164b8248737f8bec8393` |
+| 2026-10-21 | 6 | 18 | [Campaign completed_at + RBAC consistency](2026-10-21_w6-18-campaign-completed-at-rbac.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 |
+| 2026-10-21 | 6 | 17 | [Fix ErrorCode casts and UPSTREAM mismatch](2026-10-21_w6-17-fix-error-code-casts.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 |
+| 2026-10-21 | 5 | 16 | [App README and first-deploy runbook](2026-10-21_w5-16-docs-and-runbook.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 5 | 15 | [Tests and scaffold cleanup](2026-10-21_w5-15-tests-and-cleanup.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 4 | 14 | [Ground Truth agents](2026-10-21_w4-14-ground-truth-agents.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 4 | 13 | [Leaderboard, steward, admin, executive pages](2026-10-21_w4-13-client-secondary-pages-revalidate.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 4 | 12 | [App shell and card-swipe review experience](2026-10-21_w4-12-client-review-experience.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 4 | 11 | [MCP server at /mcp](2026-10-21_w4-11-mcp-server.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 3 | 10 | [Client API layer](2026-10-21_w3-10-client-api-layer.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 3 | 09 | [REST routes and composition root](2026-10-21_w3-09-rest-routes-revalidate2.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 2 | 08 | [Notification Service](2026-10-21_w2-08-notification-service-revalidate2.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 2 | 07 | [Campaign Manager](2026-10-21_w2-07-campaign-manager.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 2 | 06 | [Review Engine](2026-10-21_w2-06-review-engine-revalidate.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 1 | 05 | [Asset registry, metric view reader, dev seed](2026-10-21_w1-05-asset-registry-revalidate.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 1 | 04 | [Auth and middleware](2026-10-21_w1-04-auth-middleware-revalidate3.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 1 | 03 | [Lakebase migrations](2026-10-21_w1-03-lakebase-migrations.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 0 | 02 | [Server foundation library + dependencies](2026-10-21_w0-02-server-foundation.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 0 | 01 | [Shared domain contracts](2026-10-21_w0-01-shared-contracts-revalidate2.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 (re-validated) |
+| 2026-10-21 | 0 | 02 | [Server foundation library + dependencies](2026-10-21_w0-02-server-foundation.md) | edit | pass | `mg-genie-app-first-deploy` | run 743159204973081 (re-validated) |
+| 2026-10-21 | 0 | 01 | [Shared domain contracts](2026-10-21_w0-01-shared-contracts-revalidate.md) | edit | pass | `mg-genie-app-first-deploy` | run 743159204973081 (re-validated) |
+| 2026-10-21 | 2 | 08 | [Notification Service](2026-10-21_w2-08-notification-service-revalidate.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
+| 2026-10-21 | 2 | 07 | [Campaign Manager](2026-10-21_w2-07-campaign-manager.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
+| 2026-10-21 | 2 | 06 | [Review Engine](2026-10-21_w2-06-review-engine.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
+| 2026-10-21 | 1 | 05 | [Asset registry, metric view reader, dev seed](2026-10-21_w1-05-asset-registry-metric-views.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
+| 2026-10-21 | 1 | 04 | [Auth and middleware](2026-10-21_w1-04-auth-middleware-revalidate.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
+| 2026-10-21 | 1 | 03 | [Lakebase migrations](2026-10-21_w1-03-lakebase-migrations.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
+| 2026-10-21 | 0 | 02 | [Server foundation library + dependencies](2026-10-21_w0-02-server-foundation.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
+| 2026-10-21 | 0 | 01 | [Shared domain contracts](2026-10-21_w0-01-shared-contracts.md) | edit | pass | `mg-genie-app-first-deploy` | run 376065156883918 (re-validated) |
+| 2026-10-21 | 7 | 19 | [Deploy app and post-deploy job, fix until stable](2026-10-21_w7-19-converge-app.md) | converge | blocked | `mg-genie-app-first-deploy` | run 963652240700815 |
+| 2026-10-21 | 6 | 18 | [Campaign completed_at + RBAC consistency](2026-10-21_w6-18-campaign-completed-at-rbac.md) | edit | pass | `mg-genie-app-first-deploy` |
+| 2026-10-21 | 6 | 17 | [Fix ErrorCode casts and UPSTREAM mismatch](2026-10-21_w6-17-fix-error-code-casts.md) | edit | pass | `mg-genie-app-first-deploy` |
+| 2026-10-21 | — | — | [First deploy planning: waves 6–8 + lockfile + build launch](2026-10-21_first-deploy-planning.md)
 | 2026-10-21 | — | — | [Build complete: all 16 sessions passed](2026-10-21_build-complete.md) | — | — | `mg-genie-app-build-waves` |
 | 2026-10-21 | — | — | [Post-wave-4 fixes (gate check + migration 003)](2026-10-21_post-wave4-fixes.md) | — | — | `mg-genie-app-build-waves` |
 | 2026-10-21 | 5 | 16 | [App README and first-deploy runbook](2026-10-21_w5-16-docs-and-runbook.md) | edit | pass | `mg-genie-app-build-waves` | run 425081720670565 |

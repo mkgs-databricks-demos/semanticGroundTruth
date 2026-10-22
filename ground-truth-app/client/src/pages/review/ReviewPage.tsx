@@ -1,7 +1,7 @@
 // client/src/pages/review/ReviewPage.tsx — primary review experience at /
 // Session 12 · Wave 4 · No enum, no namespace, no default export
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { Skeleton } from '@databricks/appkit-ui/react';
 import type { AssetType, VoteBody } from '../../../../shared/contracts';
@@ -35,8 +35,7 @@ export function ReviewPage() {
   const params = { campaignId, assetType };
   const { data: card, isLoading } = useNextCard(params);
   const vote = useSubmitVote();
-  const { data: statsBefore } = useUserStats();
-  const prevBadgeCount = useRef(statsBefore?.currentStreakDays ?? 0);
+  useUserStats(); // prefetch for cache invalidation after vote
 
   const [editOpen, setEditOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);

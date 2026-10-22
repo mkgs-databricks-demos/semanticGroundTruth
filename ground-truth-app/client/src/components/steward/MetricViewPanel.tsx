@@ -107,12 +107,8 @@ function MetricViewDetailCard({ fullName }: { fullName: string }) {
             <p className={validate.data.valid ? 'text-green-600' : 'text-destructive'}>
               {validate.data.valid ? 'Validation passed' : 'Validation failed'}
             </p>
-            {validate.data.errors && validate.data.errors.length > 0 && (
-              <ul className="mt-1 list-disc pl-4 text-destructive">
-                {validate.data.errors.map((err, i) => (
-                  <li key={i}>{err}</li>
-                ))}
-              </ul>
+            {validate.data.error && (
+              <p className="mt-1 text-destructive">{validate.data.error}</p>
             )}
           </div>
         )}
