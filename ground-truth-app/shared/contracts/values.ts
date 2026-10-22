@@ -49,3 +49,26 @@ export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number];
 
 export const ROLES = ['reviewer', 'steward', 'admin'] as const;
 export type Role = (typeof ROLES)[number];
+
+// ── App groups (conventions §3) ────────────────────────────────────────
+
+export const APP_GROUP_NAMES = [
+  'semantic-ground-truth-admins',
+  'semantic-ground-truth-stewards',
+  'semantic-ground-truth-users',
+] as const;
+export type AppGroupName = (typeof APP_GROUP_NAMES)[number];
+
+export const APP_GROUP_ROLE: Record<AppGroupName, Role> = {
+  'semantic-ground-truth-admins': 'admin',
+  'semantic-ground-truth-stewards': 'steward',
+  'semantic-ground-truth-users': 'reviewer',
+};
+
+// ── Asset sources (conventions §4) ─────────────────────────────────────
+
+export const SOURCE_TYPES = ['git_folder'] as const;
+export type SourceType = (typeof SOURCE_TYPES)[number];
+
+export const DEFAULT_METRIC_VIEW_GLOB = '**/*.metric_view.yml';
+export const DEFAULT_GLOSSARY_GLOB = '**/semantics/**/*.md';

@@ -1,0 +1,95 @@
+# Metric View Fixture: mv_otel_error_rate
+# Design source: L200-C9 (operational), root build plan 04
+# Source: semantic_ground_truth_otel_logs
+# Measures: Total Logs, Error Count, Error Rate
+
+name: mv_otel_error_rate
+
+sql: |
+  CREATE OR REPLACE VIEW ${catalog}.${schema}.mv_otel_error_rate
+  WITH METRICS
+  LANGUAGE YAML
+  AS $$
+    version: 1.1
+    source: >
+      SELECT
+        record_id,
+        time,
+        date,
+        service_name,
+        severity_text,
+        body::STRING AS log_body,
+        attributes:['http.method']::STRING AS http_method,
+        attributes:['http.route']::STRING AS http_route,
+        attributes:['http.status_code']::STRING AS http_status_code,
+        CASE WHEN severity_text IN ('ERROR', 'FATAL') THEN 1 ELSE 0 END AS is_error,
+        DATE_TRUNC('HOUR', time) AS log_hour,
+        DATE_TRUNC('DAY', time) AS log_date
+      FROM ${catalog}.${schema}.semantic_ground_truth_otel_logs
+      WHERE service_name IS NOT NULL
+    comment: Application error rate metrics from OpenTelemetry logs.
+    dimensions:
+      - name: severity_text
+        expr: severity_text
+        display_name: Severity
+        comment: Log severity level (INFO, WARN, ERROR, FATAL, UNKNOWN)
+        synonyms:
+          - level
+          - log level
+          - severity
+      - name: service_name
+        expr: service_name
+        display_name: Service
+        comment: Name of the emitting service
+        synonyms:
+          - service
+          - app
+      - name: http_route
+        expr: http_route
+        display_name: Route
+        comment: HTTP route that produced the log (if applicable)
+        synonyms:
+          - endpoint
+          - path
+      - name: log_date
+        expr: log_date
+        display_name: Date
+        format:
+          type: date
+          date_format: year_month_day
+      - name: log_hour
+        expr: log_hour
+        display_name: Hour
+        format:
+          type: date
+          date_format: year_month_day
+    measures:
+      - name: Total Logs
+        expr: COUNT(record_id)
+        display_name: Total Logs
+        comment: Number of log records
+        synonyms:
+          - logs
+          - log count
+          - total log entries
+      - name: Error Count
+        expr: SUM(is_error)
+        display_name: Errors
+        comment: Number of ERROR or FATAL log entries
+        synonyms:
+          - errors
+          - error count
+          - failures
+      - name: Error Rate
+        expr: SUM(is_error) / NULLIF(COUNT(record_id), 0)
+        display_name: Error Rate
+        comment: Fraction of log entries that are errors (0.0 to 1.0)
+        format:
+          type: percentage
+          decimal_places:
+            type: exact
+            places: 2
+        synonyms:
+          - error rate
+          - failure rate
+  $$

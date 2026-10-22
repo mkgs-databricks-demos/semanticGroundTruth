@@ -1,0 +1,16 @@
+# Genie Space resource — Ground Truth Operations agent
+# Design sources: L200-C9, L300-14
+resources:
+  genie_spaces:
+    ground_truth_ops:
+      title: "${var.space_title}"
+      description: >-
+        Operational analytics for the Semantic Ground Truth App.
+        Ask questions about reviewer activity, coverage progress,
+        certification rates, campaign health, pipeline operations,
+        and app observability.
+      warehouse_id: "${var.warehouse_id}"
+      file_path: ../ground_truth_ops.geniespace.json
+      permissions:
+        - level: CAN_RUN
+          group_name: users

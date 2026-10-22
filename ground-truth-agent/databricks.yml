@@ -1,11 +1,27 @@
-# Declarative Automation Bundle configuration, more info here: https://docs.databricks.com/en/dev-tools/bundles/settings.html
+# Declarative Automation Bundle configuration — ground-truth-agent
+# Deploy order: this bundle (Bundle 3) deploys AFTER infra (Bundle 1) and app (Bundle 2).
+# Design sources: L200-C9, L300-14, L300-15
 bundle:
   name: "ground-truth-agent"
-  engine: direct  # Required for UC secrets, job_run, mcp_service resources (see docs/research/04)
+  engine: direct  # Required for genie_spaces resource (added CLI 1.3.0)
 
 include:
   - resources/*.yml
   - resources/*/*.yml
+
+variables:
+  catalog:
+    description: "Target Unity Catalog catalog name"
+    default: hls_fde_dev
+  schema_name:
+    description: "Target Unity Catalog schema name (fully expanded; not subject to dev-mode prefix)"
+    default: dev_matthew_giglia_semantic_ground_truth
+  warehouse_id:
+    description: "SQL warehouse ID for the Genie space (infra bundle warehouse)"
+    default: "0ea84986a23a47c3"
+  space_title:
+    description: "Display title for the Ground Truth Operations Genie space"
+    default: "Ground Truth Operations"
 
 targets:
   # The 'dev' target, for development purposes. This target is the default.
@@ -14,15 +30,18 @@ targets:
     default: true
     workspace:
       host: https://fevm-hls-fde.cloud.databricks.com
+      root_path: /Users/matthew.giglia@databricks.com/.bundle/${bundle.name}/${bundle.target}
 
   # The 'prod' target, used for production deployment.
   prod:
     mode: production
     workspace:
       host: https://fevm-hls-fde.cloud.databricks.com
-      # We always use /Users/matthew.giglia@databricks.com for all resources to make sure we only have a single copy.
       root_path: /Users/matthew.giglia@databricks.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: hls_fde
+      schema_name: semantic_ground_truth
+      warehouse_id: "PLACEHOLDER"
+      space_title: "Ground Truth Operations"
     run_as:
-      # This runs as matthew.giglia@databricks.com in production. We could also use a service principal here,
-      # see https://docs.databricks.com/dev-tools/bundles/permissions.html.
       user_name: matthew.giglia@databricks.com

@@ -3,9 +3,18 @@
 // Query-string schemas use z.coerce for numbers/booleans (Express values are strings).
 
 import { z } from 'zod';
-import type { AssetSynonym, ConfidenceScore, ExampleQuestion, Vote } from './entities';
+import type {
+  AppGroup,
+  AssetSource,
+  AssetSynonym,
+  ConfidenceScore,
+  ExampleQuestion,
+  MetricViewSummary,
+  Vote,
+} from './entities';
 import type { ReviewCard } from './review';
 import {
+  APP_GROUP_NAMES,
   ASSET_STATUSES,
   ASSET_TYPES,
   CAMPAIGN_STATUSES,
@@ -260,3 +269,148 @@ export interface HealthResponse {
   migrations: number;
   version: string;
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// Catalog browse (conventions §4)
+// ──────────────────────────────────────────────────────────────────────────
+
+// ── Catalog: GET /api/catalog/catalogs ─────────────────────────────────
+
+export interface CatalogEntry {
+  name: string;
+  comment: string | null;
+}
+
+export type CatalogsResponse = CatalogEntry[];
+
+// ── Catalog: GET /api/catalog/schemas?catalog= ────────────────────────
+
+export const CatalogSchemasQuerySchema = z.object({
+  catalog: z.string().min(1),
+});
+export type CatalogSchemasQuery = z.infer<typeof CatalogSchemasQuerySchema>;
+
+export interface SchemaEntry {
+  name: string;
+  fullName: string;
+  comment: string | null;
+}
+
+export type SchemasResponse = SchemaEntry[];
+
+// ── Catalog: GET /api/catalog/metric-views?catalog=&schema= ───────────
+
+export const CatalogMetricViewsQuerySchema = z.object({
+  catalog: z.string().min(1),
+  schema: z.string().min(1),
+});
+export type CatalogMetricViewsQuery = z.infer<typeof CatalogMetricViewsQuerySchema>;
+
+export type CatalogMetricViewsResponse = MetricViewSummary[];
+
+// ──────────────────────────────────────────────────────────────────────────
+// Asset sources (conventions §4)
+// ──────────────────────────────────────────────────────────────────────────
+
+// ── Sources: GET /api/sources ─────────────────────────────────────────
+
+export type SourcesResponse = AssetSource[];
+
+// ── Sources: POST /api/sources ────────────────────────────────────────
+
+const noTraversalGlob = z.string().min(1).refine(
+  (g) => !g.includes('..'),
+  { message: 'Glob must not contain ".."' },
+);
+
+export const RegisterSourceBodySchema = z.object({
+  workspacePath: z.string().min(1),
+  displayName: z.string().min(1).optional(),
+  metricViewGlob: noTraversalGlob.optional(),
+  glossaryGlob: noTraversalGlob.optional(),
+});
+export type RegisterSourceBody = z.infer<typeof RegisterSourceBodySchema>;
+
+export type RegisterSourceResponse = AssetSource;
+
+// ── Sources: POST /api/sources/:id/scan ───────────────────────────────
+
+export interface ScanMetricViewFile {
+  filePath: string;
+  viewName: string;
+}
+
+export interface ScanGlossaryTerm {
+  filePath: string;
+  term: string;
+  domain?: string;
+  subdomain?: string;
+  definition: string;
+}
+
+export interface ScanSourceResponse {
+  metricViewFiles: ScanMetricViewFile[];
+  glossaryTerms: ScanGlossaryTerm[];
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Import (conventions §4)
+// ──────────────────────────────────────────────────────────────────────────
+
+const fqn = z.string().regex(
+  /^[^.\s]+\.[^.\s]+\.[^.\s]+$/,
+  'Must be a fully qualified name: catalog.schema.name',
+);
+
+// ── Import: POST /api/assets/import ───────────────────────────────────
+
+export const ImportGlossaryTermSchema = z.object({
+  sourceId: uuid,
+  filePath: z.string().min(1),
+  term: z.string().min(1),
+});
+export type ImportGlossaryTerm = z.infer<typeof ImportGlossaryTermSchema>;
+
+export const ImportAssetsBodySchema = z.object({
+  metricViews: z.array(fqn).optional(),
+  sourceId: uuid.optional(),
+  glossaryTerms: z.array(ImportGlossaryTermSchema).optional(),
+}).refine(
+  (d) => (d.metricViews && d.metricViews.length > 0) || (d.glossaryTerms && d.glossaryTerms.length > 0),
+  { message: 'At least one of metricViews or glossaryTerms must be provided' },
+);
+export type ImportAssetsBody = z.infer<typeof ImportAssetsBodySchema>;
+
+export interface ImportAssetsResponse {
+  created: string[];
+  updated: string[];
+  skipped: { ref: string; reason: string }[];
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Admin: app groups (conventions §3)
+// ──────────────────────────────────────────────────────────────────────────
+
+// ── Admin: GET /api/admin/groups ──────────────────────────────────────
+
+export type AdminGroupsResponse = AppGroup[];
+
+// ── Admin: POST /api/admin/groups/:name/members ──────────────────────
+
+export const AddGroupMemberBodySchema = z.object({
+  memberId: z.string().min(1),
+});
+export type AddGroupMemberBody = z.infer<typeof AddGroupMemberBodySchema>;
+
+export const GroupNameParamSchema = z.object({
+  name: z.enum(APP_GROUP_NAMES),
+});
+export type GroupNameParam = z.infer<typeof GroupNameParamSchema>;
+
+// ── Admin: DELETE /api/admin/groups/:name/members/:memberId ──────────
+
+export const RemoveGroupMemberParamSchema = z.object({
+  name: z.enum(APP_GROUP_NAMES),
+  memberId: z.string().min(1),
+});
+export type RemoveGroupMemberParam = z.infer<typeof RemoveGroupMemberParamSchema>;

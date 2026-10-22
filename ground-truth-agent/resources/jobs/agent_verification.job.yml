@@ -1,0 +1,18 @@
+resources:
+  jobs:
+    agent_verification:
+      name: "Ground Truth Agent — Verification"
+      tasks:
+        - task_key: verify
+          notebook_task:
+            notebook_path: ../../src/notebooks/agent_verification.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema_name}
+              warehouse_id: ${var.warehouse_id}
+              space_title: ${var.space_title}
+          environment_key: default
+      environments:
+        - environment_key: default
+          spec:
+            client: "1"

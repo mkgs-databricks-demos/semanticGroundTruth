@@ -1,45 +1,63 @@
 # Metric View Fixture: mv_coverage_metrics
 # Design source: L200-C9, L300-05
-# Source CDF table: lb_assets_history
+# Source: bronze_lakebase_cdf (assets)
 # Measures: Total Assets, Reviewed Assets, Certified Assets, Coverage Pct
 
 name: mv_coverage_metrics
 
 sql: |
-  CREATE VIEW IF NOT EXISTS ${catalog}.${schema}.mv_coverage_metrics
+  CREATE OR REPLACE VIEW ${catalog}.${schema}.mv_coverage_metrics
   WITH METRICS
   LANGUAGE YAML
   AS $$
     version: 1.1
     source: >
       SELECT
-        asset_id,
-        asset_type,
-        display_name,
-        status,
-        last_reviewed_at,
-        created_at,
-        DATE_TRUNC('MONTH', created_at) AS asset_month,
-        CASE WHEN status IN ('REVIEWED', 'CERTIFIED') THEN 1 ELSE 0 END AS is_reviewed,
-        CASE WHEN status = 'CERTIFIED' THEN 1 ELSE 0 END AS is_certified
-      FROM ${catalog}.${schema}.lb_assets_history
-      WHERE _change_type != 'DELETE'
+        data:id::STRING AS id,
+        data:asset_type::STRING AS asset_type,
+        data:name::STRING AS asset_name,
+        data:status::STRING AS status,
+        data:domain::STRING AS domain,
+        data:subdomain::STRING AS subdomain,
+        data:last_reviewed_at::TIMESTAMP AS last_reviewed_at,
+        data:created_at::TIMESTAMP AS created_at,
+        DATE_TRUNC('MONTH', data:created_at::TIMESTAMP) AS asset_month,
+        CASE WHEN data:status::STRING IN ('REVIEWED', 'CERTIFIED') THEN 1 ELSE 0 END AS is_reviewed,
+        CASE WHEN data:status::STRING = 'CERTIFIED' THEN 1 ELSE 0 END AS is_certified
+      FROM (
+        SELECT *
+        FROM ${catalog}.${schema}.bronze_lakebase_cdf
+        WHERE _source_table = 'assets'
+          AND _pg_change_type <> 'update_preimage'
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY _record_key ORDER BY _sort_by DESC) = 1
+      ) WHERE _pg_change_type <> 'delete'
     comment: Coverage metrics showing review progress across the asset catalog.
     dimensions:
       - name: asset_type
         expr: asset_type
         display_name: Asset Type
-        comment: Type of the asset (table, query, dashboard, etc.)
+        comment: Type of the asset (measure, dimension, page)
         synonyms:
           - type
           - kind
       - name: status
         expr: status
         display_name: Review Status
-        comment: Current review status (PENDING, REVIEWED, CERTIFIED, etc.)
+        comment: Current review status (PENDING, REVIEWED, CERTIFIED)
         synonyms:
           - review status
           - certification status
+      - name: domain
+        expr: domain
+        display_name: Domain
+        comment: Business domain of the asset
+        synonyms:
+          - area
+          - category
+      - name: subdomain
+        expr: subdomain
+        display_name: Subdomain
+        comment: Sub-area within the domain
       - name: asset_month
         expr: asset_month
         display_name: Asset Month
@@ -49,8 +67,9 @@ sql: |
           date_format: locale_long_month
     measures:
       - name: Total Assets
-        expr: COUNT(DISTINCT asset_id)
+        expr: COUNT(DISTINCT id)
         display_name: Total Assets
+        comment: Number of distinct registered assets
         synonyms:
           - assets
           - total
@@ -67,7 +86,7 @@ sql: |
           - certified
           - certified count
       - name: Coverage Pct
-        expr: SUM(is_reviewed) / COUNT(DISTINCT asset_id)
+        expr: SUM(is_reviewed) / NULLIF(COUNT(DISTINCT id), 0)
         display_name: Review Coverage
         comment: Fraction of assets that have been reviewed (0.0 to 1.0)
         format:
@@ -80,8 +99,9 @@ sql: |
           - review coverage
           - coverage percentage
       - name: Certification Pct
-        expr: SUM(is_certified) / COUNT(DISTINCT asset_id)
+        expr: SUM(is_certified) / NULLIF(COUNT(DISTINCT id), 0)
         display_name: Certification Rate
+        comment: Fraction of assets that have been certified (0.0 to 1.0)
         format:
           type: percentage
           decimal_places:

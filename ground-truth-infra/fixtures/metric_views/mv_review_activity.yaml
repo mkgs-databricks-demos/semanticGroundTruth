@@ -1,29 +1,31 @@
 # Metric View Fixture: mv_review_activity
 # Design source: L200-C9, L300-05
-# Source CDF table: lb_votes_history
+# Source: bronze_lakebase_cdf (votes)
 # Measures: Total Votes, Unique Reviewers, Approval Rate
 
 name: mv_review_activity
 
 sql: |
-  CREATE VIEW IF NOT EXISTS ${catalog}.${schema}.mv_review_activity
+  CREATE OR REPLACE VIEW ${catalog}.${schema}.mv_review_activity
   WITH METRICS
   LANGUAGE YAML
   AS $$
     version: 1.1
     source: >
       SELECT
-        vote_id,
-        asset_id,
-        vote_type,
-        reviewer_id,
-        comment,
-        created_at,
-        DATE_TRUNC('DAY', created_at) AS vote_date,
-        DATE_TRUNC('WEEK', created_at) AS vote_week,
-        DATE_TRUNC('MONTH', created_at) AS vote_month
-      FROM ${catalog}.${schema}.lb_votes_history
-      WHERE _change_type != 'DELETE'
+        data:id::STRING AS id,
+        data:asset_id::STRING AS asset_id,
+        data:user_id::STRING AS user_id,
+        data:vote_type::STRING AS vote_type,
+        data:source::STRING AS vote_source,
+        data:feedback::STRING AS feedback,
+        data:campaign_id::STRING AS campaign_id,
+        data:created_at::TIMESTAMP AS created_at,
+        DATE_TRUNC('DAY', data:created_at::TIMESTAMP) AS vote_date,
+        DATE_TRUNC('WEEK', data:created_at::TIMESTAMP) AS vote_week,
+        DATE_TRUNC('MONTH', data:created_at::TIMESTAMP) AS vote_month
+      FROM ${catalog}.${schema}.bronze_lakebase_cdf
+      WHERE _source_table = 'votes'
     comment: Review activity metrics over the semantic ground truth vote history.
     dimensions:
       - name: asset_id
@@ -33,14 +35,29 @@ sql: |
       - name: vote_type
         expr: vote_type
         display_name: Vote Type
-        comment: APPROVE, REJECT, or EDIT
+        comment: approve, reject, or edit
         synonyms:
           - vote
           - decision
           - review outcome
-      - name: reviewer_id
-        expr: reviewer_id
+      - name: user_id
+        expr: user_id
         display_name: Reviewer
+        comment: Email or SPN id of the reviewer
+        synonyms:
+          - reviewer
+          - reviewer id
+      - name: vote_source
+        expr: vote_source
+        display_name: Vote Source
+        comment: Channel the vote came from (web, mcp, agent)
+        synonyms:
+          - source
+          - channel
+      - name: campaign_id
+        expr: campaign_id
+        display_name: Campaign ID
+        comment: Campaign that prompted the vote (nullable)
       - name: vote_date
         expr: vote_date
         display_name: Vote Date
@@ -55,20 +72,21 @@ sql: |
           date_format: locale_long_month
     measures:
       - name: Total Votes
-        expr: COUNT(vote_id)
+        expr: COUNT(id)
         display_name: Total Votes
+        comment: Total number of votes cast
         synonyms:
           - votes
           - reviews
           - total reviews
       - name: Unique Reviewers
-        expr: COUNT(DISTINCT reviewer_id)
+        expr: COUNT(DISTINCT user_id)
         display_name: Unique Reviewers
         synonyms:
           - reviewers
           - review participants
       - name: Approval Rate
-        expr: SUM(CASE WHEN vote_type = 'APPROVE' THEN 1 ELSE 0 END) / COUNT(vote_id)
+        expr: SUM(CASE WHEN vote_type = 'approve' THEN 1 ELSE 0 END) / NULLIF(COUNT(id), 0)
         display_name: Approval Rate
         comment: Fraction of votes that were approvals (0.0 to 1.0)
         format:
@@ -80,9 +98,11 @@ sql: |
           - approve rate
           - pass rate
       - name: Reject Count
-        expr: SUM(CASE WHEN vote_type = 'REJECT' THEN 1 ELSE 0 END)
+        expr: SUM(CASE WHEN vote_type = 'reject' THEN 1 ELSE 0 END)
         display_name: Rejections
+        comment: Number of rejection votes
       - name: Edit Count
-        expr: SUM(CASE WHEN vote_type = 'EDIT' THEN 1 ELSE 0 END)
+        expr: SUM(CASE WHEN vote_type = 'edit' THEN 1 ELSE 0 END)
         display_name: Edit Proposals
+        comment: Number of edit proposal votes
   $$

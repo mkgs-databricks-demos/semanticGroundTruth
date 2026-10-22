@@ -1,0 +1,70 @@
+# Lakebase CDF → bronze_lakebase_cdf pipeline configuration
+# Each entry maps a Postgres table to its CDF history table and primary keys.
+# Keys: UUID/BINARY(16) PKs → lower-case 8-4-4-4-12 hex; composite keys joined with | in YAML order.
+# The pipeline skips any history table not yet present in Unity Catalog.
+
+target_table: bronze_lakebase_cdf
+history_table_pattern: "lb_{table}_history"
+cdf_columns:
+  - _pg_change_type
+  - _pg_lsn
+  - _pg_xid
+  - _timestamp
+  - _sort_by
+
+tables:
+  # --- Migration 001: core asset registry ---
+  - name: assets
+    keys: [id]
+  - name: asset_versions
+    keys: [id]
+  - name: asset_synonyms
+    keys: [id]
+  - name: confidence_scores
+    keys: [asset_id]
+
+  # --- Migration 002: voting ---
+  - name: votes
+    keys: [id]
+  - name: synonym_votes
+    keys: [synonym_id, user_id]
+  - name: example_questions
+    keys: [id]
+  - name: example_question_votes
+    keys: [question_id, user_id]
+
+  # --- Migration 003: campaigns ---
+  - name: campaigns
+    keys: [id]
+  - name: campaign_assignments
+    keys: [campaign_id, user_id]
+  - name: campaign_assets
+    keys: [campaign_id, asset_id]
+
+  # --- Migration 004: feedback pipeline ---
+  - name: feedback_batches
+    keys: [id]
+
+  # --- Migration 005: user activity + notifications ---
+  - name: user_activity
+    keys: [user_id]
+  - name: notifications
+    keys: [id]
+  - name: notification_preferences
+    keys: [user_id, event_type]
+
+  # --- Migration 006: app config + MCP sessions ---
+  - name: app_config
+    keys: [key]
+  - name: mcp_sessions
+    keys: [session_id]
+  - name: _migrations
+    keys: [id]
+
+  # --- Migration 007: RBAC groups, asset sources ---
+  - name: app_groups
+    keys: [name]
+  - name: app_group_members
+    keys: [group_name, member_id]
+  - name: asset_sources
+    keys: [id]

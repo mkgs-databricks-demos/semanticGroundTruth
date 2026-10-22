@@ -1,47 +1,47 @@
 # Metric View Fixture: mv_user_leaderboard
 # Design source: L200-C9, L300-05
-# Source CDF table: lb_user_activity_history
-# Measures: Total Reviews, Edits Accepted, Streak Days, Badges
+# Source: bronze_lakebase_cdf (user_activity)
+# Measures: Total Votes, Current Streak, Longest Streak, Active Reviewers
 
 name: mv_user_leaderboard
 
 sql: |
-  CREATE VIEW IF NOT EXISTS ${catalog}.${schema}.mv_user_leaderboard
+  CREATE OR REPLACE VIEW ${catalog}.${schema}.mv_user_leaderboard
   WITH METRICS
   LANGUAGE YAML
   AS $$
     version: 1.1
     source: >
       SELECT
-        user_id,
-        display_name,
-        team,
-        total_reviews,
-        edits_accepted,
-        streak_days,
-        badge_count,
-        last_active_at,
-        DATE_TRUNC('MONTH', last_active_at) AS active_month
-      FROM ${catalog}.${schema}.lb_user_activity_history
-      WHERE _change_type != 'DELETE'
+        data:user_id::STRING AS user_id,
+        data:email::STRING AS email,
+        data:total_votes::INT AS total_votes,
+        data:current_streak_days::INT AS current_streak_days,
+        data:longest_streak_days::INT AS longest_streak_days,
+        data:last_vote_date::DATE AS last_vote_date,
+        data:updated_at::TIMESTAMP AS updated_at,
+        DATE_TRUNC('MONTH', data:updated_at::TIMESTAMP) AS active_month
+      FROM (
+        SELECT *
+        FROM ${catalog}.${schema}.bronze_lakebase_cdf
+        WHERE _source_table = 'user_activity'
+          AND _pg_change_type <> 'update_preimage'
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY _record_key ORDER BY _sort_by DESC) = 1
+      ) WHERE _pg_change_type <> 'delete'
     comment: User leaderboard metrics showing reviewer engagement and contributions.
     dimensions:
       - name: user_id
         expr: user_id
         display_name: User ID
-      - name: display_name
-        expr: display_name
-        display_name: Reviewer Name
+        comment: Primary identifier of the reviewer
+      - name: email
+        expr: email
+        display_name: Email
+        comment: Email address of the reviewer
         synonyms:
           - name
           - user
           - reviewer
-      - name: team
-        expr: team
-        display_name: Team
-        synonyms:
-          - group
-          - department
       - name: active_month
         expr: active_month
         display_name: Active Month
@@ -49,31 +49,33 @@ sql: |
           type: date
           date_format: locale_long_month
     measures:
-      - name: Total Reviews
-        expr: SUM(total_reviews)
-        display_name: Total Reviews
+      - name: Total Votes
+        expr: SUM(total_votes)
+        display_name: Total Votes
+        comment: Aggregate votes across reviewers
         synonyms:
           - reviews
           - review count
           - contributions
-      - name: Edits Accepted
-        expr: SUM(edits_accepted)
-        display_name: Edits Accepted
-        comment: Number of YAML edit proposals accepted
-        synonyms:
-          - accepted edits
-          - edit contributions
-      - name: Streak Days
-        expr: MAX(streak_days)
-        display_name: Max Streak Days
-        comment: Longest consecutive days active
+      - name: Current Streak
+        expr: MAX(current_streak_days)
+        display_name: Max Current Streak
+        comment: Longest active consecutive-day streak among reviewers
         synonyms:
           - streak
-          - consecutive days
-      - name: Badges
-        expr: SUM(badge_count)
-        display_name: Total Badges
+          - active streak
+      - name: Longest Streak
+        expr: MAX(longest_streak_days)
+        display_name: Max All-Time Streak
+        comment: Longest all-time consecutive-day streak among reviewers
         synonyms:
-          - badge count
-          - achievements
+          - record streak
+          - best streak
+      - name: Active Reviewers
+        expr: COUNT(DISTINCT user_id)
+        display_name: Active Reviewers
+        comment: Number of distinct reviewers with activity
+        synonyms:
+          - users
+          - participants
   $$
