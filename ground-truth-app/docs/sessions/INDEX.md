@@ -1,6 +1,7 @@
 # Session Index — ground-truth-app
 
 |------|----- |---------|-------|------|--------|--------|
+| 2026-10-22 | 8 | 20 | [Deploy verification job, fix until all checks pass](2026-10-22_w8-20-deploy-verification.md) | converge | pass | `mg-genie-app-first-deploy` | run 645309454613045, verification run 225279116725097 |
 | 2026-10-22 | 7 | 19 | [Deploy app and post-deploy job, fix until stable](2026-10-22_w7-19-converge-app.md) | converge | pass | `mg-genie-app-first-deploy` | run 645309454613045, deploy `01f1cdc76e341d749b3d5248807e3334` |
 | 2026-10-21 | 7 | 19 | [Deploy app and post-deploy job](2026-10-21_w7-19-converge-app.md) | converge | pass | `mg-genie-app-first-deploy` | run 187770715982911, deploy `01f1cd8398e1164b8248737f8bec8393` |
 | 2026-10-21 | 6 | 18 | [Campaign completed_at + RBAC consistency](2026-10-21_w6-18-campaign-completed-at-rbac.md) | edit | pass | `mg-genie-app-first-deploy` | run 187770715982911 |

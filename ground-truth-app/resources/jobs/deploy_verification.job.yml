@@ -1,0 +1,23 @@
+# resources/jobs/deploy_verification.job.yml
+# Post-deploy verification: programmatic health, API, MCP, and UI checks.
+# Run after app is stable and post-deploy setup has succeeded.
+
+resources:
+  jobs:
+    deploy_verification:
+      name: ${var.app_display_name}-deploy-verification
+      parameters:
+        - name: app_url
+          default: ""
+        - name: app_name
+          default: ${var.app_display_name}
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema_name
+          default: ${var.schema_name}
+        - name: mcp_service_name
+          default: ${var.catalog}.${var.schema_name}.semantic-ground-truth-mcp
+      tasks:
+        - task_key: verify_deployment
+          notebook_task:
+            notebook_path: ../../src/notebooks/deploy_verification.ipynb
