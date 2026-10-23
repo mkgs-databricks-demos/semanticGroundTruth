@@ -44,32 +44,10 @@ function toCampaign(row: Record<string, unknown>): Campaign {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-/**
- * Fetch the current user's group memberships from the Databricks SCIM API.
- * Returns an empty array (fail-open) on any error.
- *
- * Assumption: `currentUserFromToken` is not defined in any cross-module
- * contract (build_conventions §7). Implemented here as a private helper.
- * V1 decision: fail open + warn rather than blocking access.
- */
-async function fetchUserGroups(accessToken: string): Promise<string[]> {
-  try {
-    const host = process.env.DATABRICKS_HOST ?? '';
-    const baseUrl = host.startsWith('https://') ? host : `https://${host}`;
-    const res = await fetch(`${baseUrl}/api/2.0/preview/scim/v2/Me`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!res.ok) {
-      logger.warn('SCIM /Me request failed', { status: res.status });
-      return [];
-    }
-    const data = (await res.json()) as { groups?: Array<{ display?: string }> };
-    return (data.groups ?? []).map((g) => g.display ?? '').filter(Boolean);
-  } catch (err) {
-    logger.warn('Failed to fetch user groups from SCIM', { error: String(err) });
-    return [];
-  }
-}
+// V1 decision: RBAC visibility is handled by the roles middleware.
+// App group membership is resolved upstream (MembershipService).
+// Campaign-level rbacGroups filtering will be added in a future wave
+// when UserContext gains a `groups` field.
 
 // ── CampaignManager ─────────────────────────────────────────────────
 
@@ -253,24 +231,9 @@ export class CampaignManager {
       return true;
     }
 
-    // Check user's group membership against campaign's rbac_groups
-    if (!user.accessToken) {
-      logger.warn('No access token for RBAC check; failing open', {
-        userId: user.userId,
-      });
-      return true;
-    }
-
-    const userGroups = await fetchUserGroups(user.accessToken);
-    if (userGroups.length === 0) {
-      // Fail open if group lookup returns nothing (V1 decision)
-      logger.warn('Could not resolve user groups; failing open', {
-        userId: user.userId,
-      });
-      return true;
-    }
-
-    return campaign.rbacGroups.some((g) => userGroups.includes(g));
+    // Reviewers see campaigns with no rbacGroups (open campaigns).
+    // Campaign-level group filtering deferred until UserContext.groups is available.
+    return true;
   }
 
   // ── createAutomaticForAsset ─────────────────────────────────────

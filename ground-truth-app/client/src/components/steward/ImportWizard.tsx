@@ -35,8 +35,8 @@ import type {
   RegisterSourceBody,
   ScanGlossaryTerm,
   ScanMetricViewFile,
-} from '../../../../../shared/contracts';
-import type { MetricViewSummary } from '../../../../../shared/contracts';
+} from '../../../../shared/contracts';
+import type { MetricViewSummary } from '../../../../shared/contracts';
 import {
   useCatalogs,
   useCatalogSchemas,

@@ -25,9 +25,9 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
-import type { AppGroup, AppGroupMember } from '../../../../../shared/contracts';
-import { APP_GROUP_ROLE } from '../../../../../shared/contracts';
-import type { AppGroupName } from '../../../../../shared/contracts';
+import type { AppGroup, AppGroupMember } from '../../../../shared/contracts';
+import { APP_GROUP_ROLE } from '../../../../shared/contracts';
+import type { AppGroupName } from '../../../../shared/contracts';
 import {
   useAdminGroups,
   useAddGroupMember,
