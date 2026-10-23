@@ -87,14 +87,24 @@ class CdfBronzeBuilder:
     def existing_sources(self) -> List[TableEntry]:
         """Return only tables whose lb_*_history table exists in UC.
 
-        Tables not yet present are logged at WARNING level.
+        Uses information_schema.tables instead of spark.catalog.tableExists()
+        because the latter is blocked in SDP serverless (PY4J_BLOCKED_API).
+        A single query fetches all history tables — more efficient than N calls.
         """
+        result = self._spark.sql(
+            f"SELECT table_name FROM {self._catalog}.information_schema.tables "
+            f"WHERE table_schema = '{self._schema}' "
+            f"AND table_name LIKE 'lb\\_%\\_history'"
+        )
+        existing_tables = {row.table_name for row in result.collect()}
+
         present: List[TableEntry] = []
         for entry in self._config.tables:
-            fq = self._fq_history_table(entry)
-            if self._spark.catalog.tableExists(fq):
+            history_name = self._config.history_table_name(entry.name)
+            if history_name in existing_tables:
                 present.append(entry)
             else:
+                fq = self._fq_history_table(entry)
                 logger.warning("Skipping %s — history table %s not found in UC", entry.name, fq)
         return present
 
@@ -139,6 +149,9 @@ class CdfBronzeBuilder:
                 "streaming table with metadata columns and a VARIANT data column."
             ),
             cluster_by=["_source_table"],
+            table_properties={
+                "delta.feature.timestampNtz": "supported",
+            },
         )
 
         sources = self.existing_sources()

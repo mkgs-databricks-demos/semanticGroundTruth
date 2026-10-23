@@ -23,7 +23,7 @@ resources:
           notebook_task:
             notebook_path: ../../src/notebooks/list_fixtures.py
             base_parameters:
-              fixtures_path: ""
+              fixtures_path: "${workspace.file_path}/fixtures/metric_views"
           environment_key: serverless
 
         - task_key: deploy_metric_views

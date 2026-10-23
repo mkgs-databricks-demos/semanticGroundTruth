@@ -86,13 +86,28 @@ resolved_sql = (
 )
 
 
-def execute_on_warehouse(sql: str, timeout_seconds: int = 120) -> object:
-    """Execute SQL on the warehouse and return the statement result."""
+def execute_on_warehouse(sql: str, timeout_seconds: int = 50) -> object:
+    """Execute SQL on the warehouse and return the statement result.
+
+    The Statement Execution API limits wait_timeout to 0s or 5–50s.
+    For longer queries, we set wait_timeout=0s and poll until done.
+    """
+    import time as _time
+
+    effective_wait = min(timeout_seconds, 50)
     result = w.statement_execution.execute_statement(
         warehouse_id=warehouse_id,
         statement=sql,
-        wait_timeout=f"{timeout_seconds}s",
+        wait_timeout=f"{effective_wait}s",
     )
+    # If the statement is still pending (async), poll until complete
+    deadline = _time.time() + timeout_seconds
+    while result.status.state in (StatementState.PENDING, StatementState.RUNNING):
+        if _time.time() > deadline:
+            raise TimeoutError(f"Statement still {result.status.state} after {timeout_seconds}s")
+        _time.sleep(5)
+        result = w.statement_execution.get_statement(result.id)
+
     if result.status.state == StatementState.SUCCEEDED:
         return result
     error = result.status.error

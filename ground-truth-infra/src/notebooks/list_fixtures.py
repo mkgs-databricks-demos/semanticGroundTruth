@@ -18,8 +18,11 @@ import os
 # Parameters
 # ---------------------------------------------------------------------------
 try:
-    fixtures_path = dbutils.widgets.get("fixtures_path")
+    fixtures_path = dbutils.widgets.get("fixtures_path").strip()
 except Exception:
+    fixtures_path = ""
+
+if not fixtures_path:
     # Default: fixtures/metric_views/ directory relative to the bundle root.
     # When running from a job, the working directory is the bundle root.
     # The YAML files are uploaded as part of the bundle deploy to:
@@ -30,7 +33,7 @@ except Exception:
         "matthew.giglia@databricks.com",
         ".bundle",
         "ground-truth-infra",
-        "dev",  # will be parameterized via job parameter
+        "dev",
         "files",
         "fixtures",
         "metric_views",
