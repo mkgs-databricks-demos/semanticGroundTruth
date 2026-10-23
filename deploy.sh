@@ -39,6 +39,7 @@
 #   ./deploy.sh --target dev --infra --run-setup         # deploy infra + force post-deploy setup
 #   ./deploy.sh --target dev --app                       # deploy only app bundle
 #   ./deploy.sh --target dev --agent                     # deploy only agent bundle
+#   ./deploy.sh --target dev --agent --verify            # deploy agent + run agent_verification
 #   ./deploy.sh --target dev --validate                  # validate only, no deploy
 #   ./deploy.sh --target dev --destroy                   # destroy deployed resources
 #
@@ -120,6 +121,7 @@ DEPLOY_AGENT=true
 VALIDATE_ONLY=false
 DESTROY=false
 RUN_SETUP=false
+RUN_VERIFY=false
 
 # --------------------------------------------------------------------------- #
 # Usage
@@ -134,6 +136,8 @@ Options:
   --app              Deploy only the application bundle.
   --agent            Deploy only the agent bundle.
   --run-setup        Force post-deploy setup tasks (overrides run_setup=false in dev).
+  --verify           After deploy, run the verification job of each deployed bundle
+                     (app: deploy_verification, agent: agent_verification).
   --validate         Validate bundles without deploying.
   --destroy          Destroy deployed resources for the target.
   -h, --help         Show this help message.
@@ -171,6 +175,7 @@ while [[ $# -gt 0 ]]; do
     --app)         DEPLOY_INFRA=false; DEPLOY_APP=true;  DEPLOY_AGENT=false; shift ;;
     --agent)       DEPLOY_INFRA=false; DEPLOY_APP=false; DEPLOY_AGENT=true;  shift ;;
     --run-setup)   RUN_SETUP=true; shift ;;
+    --verify)      RUN_VERIFY=true; shift ;;
     --validate)    VALIDATE_ONLY=true; shift ;;
     --destroy)     DESTROY=true; shift ;;
     -h|--help)     usage ;;
@@ -302,6 +307,29 @@ deploy_bundle() {
       fi
     fi
     rm -f "${deploy_log}"
+  fi
+}
+
+# --------------------------------------------------------------------------- #
+# run_bundle_job — `bundle run <job>` inside a bundle (non-fatal)
+#   $1 = bundle dir name, $2 = resource key, rest = extra args (e.g. --var)
+#   Sets LAST_RUN_RC. Never exits the script.
+# --------------------------------------------------------------------------- #
+run_bundle_job() {
+  local bundle_name="$1"
+  local job_key="$2"
+  shift 2
+  local extra_args=("$@")
+  local bundle_dir="${SCRIPT_DIR}/${bundle_name}"
+
+  log "Running ${job_key} (${bundle_name}, target: ${TARGET})"
+  LAST_RUN_RC=0
+  (cd_bundle "${bundle_dir}" && \
+    databricks bundle run "${job_key}" --target "${TARGET}" ${extra_args[@]+"${extra_args[@]}"}) || LAST_RUN_RC=$?
+  if [[ ${LAST_RUN_RC} -eq 0 ]]; then
+    ok "${job_key} succeeded"
+  else
+    warn "${job_key} failed (exit ${LAST_RUN_RC}) — see the run output above."
   fi
 }
 
@@ -1025,7 +1053,12 @@ print(data.get("url", ""))
       warn "  databricks apps get ${APP_DISPLAY_NAME}"
     fi
 
-    # Step 2g: Summary.
+    # Step 2g: Optional deploy_verification (M2M probes of /health, /api/*, /mcp)
+    if [[ "${RUN_VERIFY}" == true ]]; then
+      run_bundle_job "${APP_BUNDLE}" deploy_verification "${APP_EXTRA_ARGS[@]}"
+    fi
+
+    # Step 2h: Summary.
     log "App deploy complete: ${APP_DISPLAY_NAME}"
     echo "  App URL:        ${APP_URL:-UNKNOWN}"
     echo "  MCP connection: ${CATALOG}.${SCHEMA}.${MCP_CONNECTION_NAME}"
@@ -1038,9 +1071,41 @@ fi
 # Phase 3: Agent bundle (Bundle 3)
 # --------------------------------------------------------------------------- #
 if [[ "${DEPLOY_AGENT}" == true ]]; then
-  # TODO: After Bundle 3 is scaffolded:
-  # 1. deploy_bundle "${AGENT_BUNDLE}"
-  warn "Bundle 3 (${AGENT_BUNDLE}) not yet implemented — skipping."
+
+  # Step 3a: Ensure infra vars are resolved (--agent only runs skip Phase 1)
+  if [[ -z "${CATALOG}" ]]; then
+    log "Resolving infra vars for agent deploy (--agent only)"
+    resolve_infra_vars
+  fi
+
+  # Step 3b: The agent bundle reads metric views + OTel tables from the infra
+  # schema and runs the Genie space on the infra warehouse. space_title stays
+  # in the agent's databricks.yml (static per target).
+  AGENT_EXTRA_ARGS=(
+    "--var" "catalog=${CATALOG}"
+    "--var" "schema_name=${SCHEMA}"
+    "--var" "warehouse_id=${SQL_WAREHOUSE_ID}"
+  )
+
+  log "Deploying agent bundle with infra-resolved variables"
+  ok "  catalog=${CATALOG}"
+  ok "  schema_name=${SCHEMA}"
+  ok "  warehouse_id=${SQL_WAREHOUSE_ID}"
+
+  # Step 3c: Deploy (Genie space + agent_verification job)
+  deploy_bundle "${AGENT_BUNDLE}" "${AGENT_EXTRA_ARGS[@]}"
+
+  # Step 3d: Optional verification (11 checks: space config, data sources,
+  # example SQL EXPLAIN, probe questions)
+  if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
+    if [[ "${LAST_DEPLOY_RC:-1}" -ne 0 ]]; then
+      warn "Agent deploy reported errors — skipping agent_verification."
+    elif [[ "${RUN_VERIFY}" == true ]]; then
+      run_bundle_job "${AGENT_BUNDLE}" agent_verification "${AGENT_EXTRA_ARGS[@]}"
+    else
+      ok "Skipped agent_verification (pass --verify to run it)."
+    fi
+  fi
 fi
 
 # --------------------------------------------------------------------------- #

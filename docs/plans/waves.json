@@ -40,7 +40,7 @@
         "logs_table": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_logs",
         "traces_table": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_spans",
         "trace_service_name": "dev-semantic-ground-truth",
-        "error_patterns": ["error TS\\d+", "Error building app", "Unhandled", "UnhandledPromiseRejection", "FATAL", "Cannot find module"],
+        "error_patterns": ["error TS\\d+", "Error building app", "Unhandled", "UnhandledPromiseRejection", "FATAL", "Cannot find module", "\"level\"\\s*:\\s*\"error\""],
         "ignore_patterns": ["Updated file:", "Skipping query type generation", "App did not respect SIGTERM timeout", "\\[ELIFECYCLE\\] Command failed"],
         "required_markers": ["listening on"]
       },

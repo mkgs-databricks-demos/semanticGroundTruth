@@ -1,5 +1,11 @@
-command: ['pnpm', 'run', 'start']
+# Run node directly (same as `pnpm run start`) so SIGTERM from the platform reaches
+# the server process and its graceful shutdown handler (server/lib/shutdown.ts),
+# instead of going through a pnpm wrapper that prints `[ELIFECYCLE] Command failed`.
+command: ['node', '--env-file-if-exists=./.env', './dist/server.js']
 env:
+  - name: NODE_ENV
+    value: production
+
   # ── App resource bindings (injected by platform from databricks.yml resources) ──
   - name: DATABRICKS_SERVING_ENDPOINT_NAME
     valueFrom: agents-serving-endpoint

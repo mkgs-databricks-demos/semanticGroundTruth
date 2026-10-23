@@ -15,6 +15,30 @@ const JSON_RPC_METHOD_NOT_ALLOWED = {
   id: null,
 };
 
+interface ActiveMcpSession {
+  close: () => Promise<void>;
+}
+
+/** In-flight MCP request transports, drained on shutdown. */
+const activeSessions = new Set<ActiveMcpSession>();
+
+/** Number of MCP transports currently open. */
+export function activeMcpSessionCount(): number {
+  return activeSessions.size;
+}
+
+/**
+ * Close every in-flight MCP transport and server. Called from the graceful
+ * shutdown sequence before the HTTP server closes, so streaming responses end
+ * and their sockets can drain. Returns how many sessions were closed.
+ */
+export async function closeMcpSessions(): Promise<number> {
+  const open = [...activeSessions];
+  activeSessions.clear();
+  await Promise.allSettled(open.map((session) => session.close()));
+  return open.length;
+}
+
 /**
  * Mount the MCP endpoint.
  *
@@ -33,13 +57,24 @@ export function mountMcp(app: Application, services: Services): void {
         sessionIdGenerator: undefined,
       });
 
+      let closed = false;
+      const session: ActiveMcpSession = {
+        close: async () => {
+          if (closed) return;
+          closed = true;
+          activeSessions.delete(session);
+          await transport.close().catch((err: unknown) => {
+            logger.warn('MCP transport close error', { error: String(err) });
+          });
+          await server.close().catch((err: unknown) => {
+            logger.warn('MCP server close error', { error: String(err) });
+          });
+        },
+      };
+      activeSessions.add(session);
+
       res.on('close', () => {
-        transport.close().catch((err: unknown) => {
-          logger.warn('MCP transport close error', { error: String(err) });
-        });
-        server.close().catch((err: unknown) => {
-          logger.warn('MCP server close error', { error: String(err) });
-        });
+        void session.close();
       });
 
       await server.connect(transport);
