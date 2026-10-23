@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Semantic Ground Truth — next build (2026-10, DRAFT, not yet run): Databricks-branded UI (tokens, light/dark, DM Sans/Mono, assets, WCAG 2.1 AA), MCP card brand, runtime config for the executive dashboard, app secret-scope ACL fix, scheduled bronze refresh, executive AI/BI dashboard. Scoped from docs/plans/gap_analysis_2026-10.md and docs/plans/ui_brand_plan.md. Bundle-only, git-editor build; no masking. The root build (waves 0-5, sessions 01-15) shipped in PR #6 (main fbc552b); its manifest is in git history. The app bundle's own manifest (ground-truth-app/docs/plans/waves.json) is left untouched.",
+  "description": "Semantic Ground Truth — next build (2026-10, DRAFT, not yet run; converge waves split to one runtime target each on 2026-10-23): Databricks-branded UI (tokens, light/dark, DM Sans/Mono, assets, WCAG 2.1 AA), MCP card brand, runtime config for the executive dashboard, app secret-scope ACL fix, scheduled bronze refresh, executive AI/BI dashboard. Scoped from docs/plans/gap_analysis_2026-10.md and docs/plans/ui_brand_plan.md. Bundle-only, git-editor build; no masking. The root build (waves 0-5, sessions 01-15) shipped in PR #6 (main fbc552b); its manifest is in git history. The app bundle's own manifest (ground-truth-app/docs/plans/waves.json) is left untouched.",
   "workflow": {"mode": "git"},
   "repo_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth",
   "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth",
@@ -41,7 +41,7 @@
         "logs_table": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_logs",
         "traces_table": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_spans",
         "trace_service_name": "dev-semantic-ground-truth",
-        "error_patterns": ["error TS\\d+", "Error building app", "Unhandled", "UnhandledPromiseRejection", "FATAL", "Cannot find module", "\"level\"\\s*:\\s*\"error\""],
+        "error_patterns": ["error TS\\d+", "Error building app", "Unhandled", "UnhandledPromiseRejection", "FATAL", "Cannot find module", "\"level\"\\s*:\\s*\"(error|fatal)\""],
         "ignore_patterns": ["Updated file:", "Skipping query type generation", "App did not respect SIGTERM timeout", "\\[ELIFECYCLE\\] Command failed"],
         "required_markers": ["listening on"]
       },
@@ -219,34 +219,83 @@
     },
     {
       "wave_id": "2",
-      "name": "Converge: infra (secret ACL, bronze refresh, executive dashboard)",
+      "name": "Converge: infra secret ACL + scheduled bronze refresh",
       "gate": [
-        "Session 22 status is pass with a final attempt classified stable",
+        "Session 22a status is pass with a final attempt classified stable",
         "databricks secrets list-acls semantic_ground_truth_credentials lists the app service principal with READ"
       ],
       "validate_bundles": [
         {"root": "ground-truth-infra", "target": "dev"}
       ],
-      "runtime_gate": ["cdf_bronze_pipeline", "cdf_bronze_refresh", "bronze_lakebase_cdf", "executive_dashboard", "agent_space", "agent_verification"],
+      "runtime_gate": ["cdf_bronze_refresh", "cdf_bronze_pipeline", "bronze_lakebase_cdf"],
       "sessions": [
         {
-          "session_id": "22",
-          "title": "Converge infra: secret ACL, bronze refresh, executive dashboard",
+          "session_id": "22a",
+          "title": "Converge infra: secret ACL + bronze refresh job",
           "plan_file": "22_converge_infra.md",
           "mode": "converge",
-          "scope": "Deploy infra (run_setup=false) with the app SPN variable, confirm the scope ACL keeps app READ after deploy, run cdf_bronze and cdf_bronze_refresh cleanly, publish the executive dashboard with every dataset executing, and re-run agent_verification as a regression check (no agent edits).",
-          "runtime_targets": ["cdf_bronze_pipeline", "cdf_bronze_refresh", "executive_dashboard", "agent_verification"],
+          "scope": "Deploy infra (run_setup=false) with the app SPN variable, confirm the scope ACL keeps app READ after deploy, and run cdf_bronze_refresh (which runs the cdf_bronze pipeline) cleanly with 0 failed/dropped records. Single runtime target: cdf_bronze_refresh; the gate also checks the pipeline update and the bronze table this produces. Do not work on the executive dashboard (session 22b) or the agent (session 22c).",
+          "runtime_targets": ["cdf_bronze_refresh"],
           "owned_paths": ["ground-truth-infra/**", "deploy.sh"],
-          "exclude_paths": ["ground-truth-infra/docs/plans/**", "ground-truth-infra/.databricks/**"],
+          "exclude_paths": ["ground-truth-infra/docs/plans/**", "ground-truth-infra/.databricks/**", "ground-truth-infra/resources/dashboards/**", "ground-truth-infra/src/dashboards/**"],
           "max_attempts": 5,
-          "timeout_minutes": 150,
-          "depends_on": ["18", "21"],
+          "timeout_minutes": 120,
+          "depends_on": ["18"],
           "context_notes": "2026-10-23: secrets list-acls on semantic_ground_truth_credentials showed only matthew.giglia MANAGE; app SPN 55882972-924d-42cd-ab3d-d10c730629c2 lost READ because the infra secret_scope permissions block is authoritative. Every app start logs '[ERROR] error resolving resource m2m-client-id'. bronze_lakebase_cdf last change 06:23 UTC on 2026-10-23 (manual pipeline run only)."
         }
       ]
     },
     {
       "wave_id": "3",
+      "name": "Converge: executive AI/BI dashboard",
+      "gate": [
+        "Session 22b status is pass with a final attempt classified stable",
+        "Session 22b summary records the executive dashboard id and published URL"
+      ],
+      "validate_bundles": [
+        {"root": "ground-truth-infra", "target": "dev"}
+      ],
+      "runtime_gate": ["executive_dashboard"],
+      "sessions": [
+        {
+          "session_id": "22b",
+          "title": "Converge infra: executive dashboard publishes with every dataset executing",
+          "plan_file": "22b_converge_executive_dashboard.md",
+          "mode": "converge",
+          "scope": "Deploy infra (run_setup=false, same app SPN variable as 22a so the scope ACL is preserved), publish the executive dashboard, and fix any dataset that fails LIMIT 1 execution. Record the dashboard id and published URL in the session summary for session 23.",
+          "runtime_targets": ["executive_dashboard"],
+          "owned_paths": ["ground-truth-infra/resources/dashboards/**", "ground-truth-infra/src/dashboards/**"],
+          "max_attempts": 4,
+          "timeout_minutes": 90,
+          "depends_on": ["21", "22a"]
+        }
+      ]
+    },
+    {
+      "wave_id": "4",
+      "name": "Converge: agent regression",
+      "gate": [
+        "Session 22c status is pass with a final attempt classified stable"
+      ],
+      "runtime_gate": ["agent_verification", "agent_space"],
+      "sessions": [
+        {
+          "session_id": "22c",
+          "title": "Converge agent regression: agent_verification after infra changes",
+          "plan_file": "22c_converge_agent_regression.md",
+          "mode": "converge",
+          "scope": "Regression only: run agent_verification after the infra changes in waves 2-3. This build does not change the agent bundle. If a check fails because of an infra change, fix it in ground-truth-infra; if it would need an agent edit, stop as blocked with the failing check.",
+          "runtime_targets": ["agent_verification"],
+          "owned_paths": ["ground-truth-infra/**"],
+          "exclude_paths": ["ground-truth-infra/docs/plans/**", "ground-truth-infra/.databricks/**"],
+          "max_attempts": 3,
+          "timeout_minutes": 60,
+          "depends_on": ["22a", "22b"]
+        }
+      ]
+    },
+    {
+      "wave_id": "5",
       "name": "Converge: app (brand, Logic View, runtime config)",
       "gate": [
         "Session 23 status is pass with a final attempt classified stable"
@@ -261,22 +310,22 @@
           "title": "Converge app: branded UI, runtime config, clean runtime gate",
           "plan_file": "23_converge_app.md",
           "mode": "converge",
-          "scope": "Deploy the app with waves 0-1 changes and exec_dashboard_url resolved from the infra dashboard, make the Apps build (tsc + vitest prebuild) and deploy_verification pass, and keep the runtime gate clean: zero ERROR/FATAL or level=error lines, all probes passing.",
-          "runtime_targets": ["app", "app_deploy_verification"],
+          "scope": "Deploy the app with waves 0-1 changes and exec_dashboard_url from session 22b's summary, make the Apps build (tsc + vitest prebuild) pass, and keep the runtime gate clean: zero ERROR/FATAL or level=error/fatal lines, all probes passing. Single runtime target: app. After the final stable deploy, run deploy_verification once (bundle run deploy_verification) because the wave gate also checks app_deploy_verification for a successful run started during this build.",
+          "runtime_targets": ["app"],
           "owned_paths": ["ground-truth-app/**"],
           "exclude_paths": ["ground-truth-app/docs/plans/**", "ground-truth-app/.build-status/**"],
           "max_attempts": 6,
           "timeout_minutes": 180,
-          "depends_on": ["16", "17", "19", "20", "22"],
+          "depends_on": ["16", "17", "19", "20", "22a", "22b"],
           "context_notes": "2026-10-23 baseline: deploy_verification 6/6 (run 92578084705794); graceful shutdown logs 'Shutdown complete' in 5 ms; app.yaml runs node directly. The m2m-client-id ERROR at start must be gone once wave 2 restores the scope ACL; if it is not, stop as blocked rather than suppressing the log."
         }
       ]
     },
     {
-      "wave_id": "4",
+      "wave_id": "6",
       "name": "Docs and project memory",
       "gate": [
-        "All wave 4 sessions have status done",
+        "All wave 6 sessions have status done",
         "docs/plans/gap_analysis_2026-10.md marks G1, G2, G3, G6, G7, G8, G9 and G17 with their new status",
         "PROJECT_MEMORY.md has a status log entry dated in this build"
       ],
@@ -288,7 +337,7 @@
           "mode": "edit",
           "scope": "Update root and bundle PROJECT_MEMORY/README files, mark gap statuses in gap_analysis_2026-10.md, add docs/runbooks/ui_theming.md (token table, how to add a component, contrast test).",
           "owned_paths": ["PROJECT_MEMORY.md", "README.md", "docs/runbooks/**", "docs/plans/gap_analysis_2026-10.md", "ground-truth-infra/PROJECT_MEMORY.md", "ground-truth-infra/README.md", "ground-truth-app/README.md", "ground-truth-app/PROJECT_MEMORY.md"],
-          "depends_on": ["22", "23"]
+          "depends_on": ["22a", "22b", "22c", "23"]
         }
       ]
     }
