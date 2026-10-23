@@ -37,23 +37,38 @@ databricks bundle deploy --target dev
 
 # Run post-deploy validation
 databricks bundle run post_deploy_validation --target dev
+```
 
-# Deploy metric views
+Preferred: run `./deploy.sh --target dev --infra --run-setup` from the solution root, which also checks the M2M SPN credentials and reports secret-scope keys.
+
+### Data plane (after the app bundle has run migrations)
+
+The Lakebase `app` schema is created by app migrations, so run these **after** `ground-truth-app` is deployed:
+
+```bash
+# 1. Lakehouse Sync: 21 app tables → lb_*_history (idempotent)
+databricks bundle run setup_lakebase_cdf --target dev
+
+# 2. SDP bronze: all lb_*_history → bronze_lakebase_cdf
+databricks bundle run cdf_bronze --target dev
+
+# 3. Metric views: deploy all 7 fixtures (for_each over fixtures/metric_views)
 databricks bundle run metric_view_deploy --target dev
 ```
 
-## Build Plan
+Adding a table or recovering from a schema change: see [CDF → bronze operations](../docs/runbooks/cdf_bronze_operations.md).
 
-See [`docs/plans/infra_build_plan.md`](docs/plans/infra_build_plan.md) for the detailed 8-phase build plan:
+## Build Plans
 
-1. Bundle Configuration (variables, schema resource)
-2. Lakebase Project + Schema (DAB-declared)
-3. SQL Warehouse + UC Secrets + Notifications
-4. Lakeflow Jobs (5 notebooks + 4 job definitions)
-5. Metric View Fixtures (4 YAMLs over CDF tables)
-6. Genie Code Skills (feedback loop prompt)
-7. Unity Gateway Connection
-8. Deploy + Validate
+* **Original bundle build:** [`docs/plans/infra_build_plan.md`](docs/plans/infra_build_plan.md), the 8-phase plan used for the first deploy (2026-10-08).
+* **CDF / bronze / metric views (2026-10-23):** built by the solution-root manifest [`../docs/plans/waves.json`](../docs/plans/waves.json). See sessions 02, 03, 04 (edit) and 13 (converge) in [`../docs/sessions/INDEX.md`](../docs/sessions/INDEX.md).
+
+### Converge lessons (session 13)
+
+* `spark.catalog.tableExists()` is blocked in serverless SDP (`PY4J_BLOCKED_API`). Use an `information_schema.tables` query instead.
+* `TIMESTAMP_NTZ` columns in streaming tables need `delta.feature.timestampNtz = supported` in `table_properties`.
+* Statement Execution `wait_timeout` must be 0 or 5–50 s. Poll for longer statements.
+* An empty-string job parameter is not "missing": `dbutils.widgets.get` returns `""`, so handle empty strings explicitly.
 
 ## Project Structure
 
