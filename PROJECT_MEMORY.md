@@ -169,6 +169,7 @@ All open questions from the L300 specs were resolved during Bundle 1 implementat
 | 2026-10-19 | App bundle Phase A + OTel | Dev/prod targets, OBO scopes (sql/genie/files/model-serving), agents-skills commented out, deprecated infra MCP file deleted. OpenTelemetry enabled: `telemetry_export_destinations` in databricks.yml + `OTEL_TRACES_SAMPLER=always_on` in app.yaml. Branch: `mg-genie-app-scaffold`. |
 | 2026-10-19 | **App bundle Phase B — first deploy** ✅ | `dev-semantic-ground-truth` deployed and running. All AppKit plugins operational (agents, analytics, jobs, lakebase, server). Resource bindings active: serving endpoint, MLflow experiment, SQL warehouse, job, Lakebase Postgres. OTel tables created. MCP service pending (expected — connection created post-deploy). Targets reordered: dev (default) → prod → local. `default` renamed to `local`. Bundle state fix required after app rename (delete workspace state + app, fresh deploy). Branch: `mg-genie-app-scaffold` (12 commits ahead of main). |
 | 2026-10-20 | **MCP connection automated — schema-level REST** ✅ | Migrated connection creation from metastore SQL DDL → schema-level REST API via `.ipynb` notebook job (`create_mcp_connection`). Three iterations: SQL file → Python script → notebook. `deploy_bundle()` rewritten: `tee`+filter for calm first-deploy output (no red CLI errors), PIPESTATUS fix, 504 auto-recovery via `bundle deployment bind`. Two successful first-deploy tests (destroy → deploy → deferral note → connection job → redeploy → MCP service registered). Orphaned `.sql`/`.py` files deleted. Session doc: `docs/sessions/2026-10-20_mcp-connection-schema-level-and-deploy-ux.md`. Branch: `mg-genie-app-scaffold` (~28 commits ahead of main). |
+| 2026-10-23 | **Root build waves 0–4 complete** ✅ | All three bundles built and converged on branch `mg-genie-agent-build`. Wave 0: shared contracts, CDF setup job, bronze pipeline, metric view fixtures, agent bundle config + Genie space resource, agent verification job. Wave 1: migration 007 (app groups, asset sources, REPLICA IDENTITY), RBAC from Lakebase app groups, asset import + catalog browse, client wizard + members page, demo seed job. Wave 2: app converge (7 deploys, stable with probes). Wave 3: infra converge (CDF config, bronze pipeline 21 flows / 281 rows, 7 metric views). Wave 4: agent converge (Genie space deployed, 9/9 example SQLs, verification 11/11). Wave 5: docs + runbooks (this entry). |
 
 ---
 
@@ -185,7 +186,7 @@ Declared in `ground-truth-app/databricks.yml` via `telemetry_export_destinations
 **Dev location:** `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_*`
 **Prod location:** `prod_ground_truth.semantic_ground_truth.semantic_ground_truth_otel_*`
 
-Queryable via SQL alongside future Lakebase Lakehouse Sync tables (`lb_*_history`) once those are configured post-deploy.
+Queryable via SQL alongside the Lakebase Lakehouse Sync tables (`lb_*_history`), now configured and active — 21 history tables feeding into `bronze_lakebase_cdf` via the SDP pipeline.
 
 ---
 
@@ -260,7 +261,13 @@ Solution-root `deploy.sh` orchestrates all three bundles. `resolve_infra_vars()`
 | `LAKEBASE_BRANCH` | `resources.postgres_branches.production.id` | `safe_url()` |
 | `LAKEBASE_DATABASE` | `resources.postgres_databases.app_db.id` | `safe_url()` |
 
-Phase 2 (app deploy) passes these as `--var` to `deploy_bundle`. Phase 2 also resolves the app URL from the app bundle summary and checks/reports MCP HTTP connection status.
+Phase 2 (app deploy) passes these as `--var` to `deploy_bundle`. Phase 2 flow:
+1. Deploy app bundle (MCP service deferred on first deploy — connection doesn't exist yet)
+2. Resolve app URL from `databricks apps get` (not bundle summary — see finding #23)
+3. Run `create_mcp_connection` notebook job (schema-level REST API, creates/updates connection)
+4. Auto-redeploy to register MCP service + grants (with 504 auto-recovery via `bundle deployment bind`)
+
+`deploy_bundle()` pipes CLI output through `tee` (strips colour), classifies MCP vs unexpected errors, and prints calm green notes for expected first-deploy failures.
 
 ## Deviations from L300 Specs
 

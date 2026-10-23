@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-23 | 5 | 15 | [Project memory, runbooks, READMEs](2026-10-23_w5-15-docs-project-memory.md) | edit | pass | `mg-genie-agent-build` |
 | 2026-10-23 | 4 | 14 | [Converge Genie agent + verification](2026-10-23_w4-14-converge-agent.md) | converge | pass | `mg-genie-agent-build` |
 | 2026-10-23 | 3 | 13 | [Converge infra data plane: CDF, bronze, metric views](2026-10-23_w3-13-converge-infra-data-plane.md) | converge | pass | `mg-genie-agent-build` |
 | 2026-10-23 | 2 | 12 | [Converge app: deploy, RBAC bootstrap, demo campaign](2026-10-23_w2-12-converge-app.md) | converge | pass | `mg-genie-agent-build` |

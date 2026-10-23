@@ -66,28 +66,25 @@ Deployed by: `deploy_metric_views` job in this bundle
 
 ## Build Status
 - **2026-10-21:** Planning session complete. Feature branch `mg-genie-agent-build` created from main. Plan files written for sessions 01–03. Waves 0–1 manifest committed.
-- **Dependency:** Part A (app bundle, `mg-genie-app-first-deploy`) wave 8 must pass first.
-- **Not yet started:** No genie-build-waves deployment for this bundle yet (instance suffix `-sgt-agent`).
+- **2026-10-23:** Root build waves 0–4 complete. Genie space deployed, 9 data sources (7 metric views + 2 OTel tables), verification job passing (11/11 checks), 2/2 probe questions returning SQL.
 
-## genie-build-waves Deployment (when ready)
-```bash
-databricks bundle deploy --target dev \
-  --var="project_name=Ground Truth Agent" \
-  --var="build_root=/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-agent" \
-  --var="build_branch=mg-genie-agent-build" \
-  --var="manifest_path=/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-agent/docs/plans/waves.json" \
-  --var="skills_catalog=hls_fde_dev" \
-  --var="skills_schema=dev_matthew_giglia_build_waves" \
-  --var="instance_suffix=-sgt-agent"
-```
-(Run from `/Workspace/Users/matthew.giglia@databricks.com/mbp/genie-build-waves`)
+## Build Results (root manifest waves 0–4)
 
-## Known Risks
+The agent bundle was built as part of the root manifest (`docs/plans/waves.json`), not the agent-local `waves.json`.
+
+- **Wave 0 (sessions 05, 06):** Bundle config with variables/targets, Genie space resource + `ground_truth_ops.geniespace.json`, verification job + notebook.
+- **Wave 4 (session 14, converge):** Deployed space, fixed geniespace JSON structure (instructions to top level, array fields, sorted tables/metric_views), fixed verification notebook (measure discovery, title matching, API field names). 4 attempts, final = stable.
+
+### Converge fixes (session 14)
+- `geniespace.json`: instructions moved from `config` to top level; `question`/`sql`/`content` fields wrapped in arrays; tables sorted alphabetically; metric views in `data_sources.metric_views`.
+- `agent_verification.ipynb`: measure discovery via `columns.is_measure` (not `measures[]`); title matching via `endswith` (handles dev prefix); `space_id` and `attachment_id` API field names.
+
+## Known Risks (updated)
 1. **Lakehouse Sync tables don’t exist yet** — require app to deploy and run migrations first.
 2. **Column drift** — infra metric view fixtures reference columns designed before app migrations were finalized. Converge session (03) must inspect actual `lb_*_history` schemas and fix.
 3. **Agent benchmarking (L300-15)** is a manual follow-up, not automated in this build.
 4. **Branch cross-contamination** — initial commit picked up 16 stray app code files from workspace git state when switching branches. Cleanup needed before PR.
 
-## Open Questions
-- Infra warehouse ID to use as `var.warehouse_id` default (read from infra bundle summary at deploy time).
-- Whether `genie_space_id` needs to be plumbed as an output variable for other resources to consume.
+## Open Questions (resolved)
+- ~~Infra warehouse ID~~ — `0ea84986a23a47c3`, passed as `var.warehouse_id` in targets.
+- ~~Genie space ID as output~~ — Not needed; the verification job discovers the space by title.

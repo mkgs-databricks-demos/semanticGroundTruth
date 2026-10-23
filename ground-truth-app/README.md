@@ -126,11 +126,11 @@ Registered in Unity Gateway as `semantic-ground-truth-mcp`. 12 tools across thre
 
 | Role | Who | How to grant |
 | --- | --- | --- |
-| `reviewer` | All authenticated users | Automatic |
-| `steward` | Data stewards | Add email to `GT_STEWARD_EMAILS` list in Admin config or `app.app_config` |
-| `admin` | App administrators | Add email to `GT_ADMIN_EMAILS` env var or Admin config |
+| `reviewer` | All authenticated users | Automatic (any user with `CAN_USE`) |
+| `steward` | Data stewards | Member of `semantic-ground-truth-stewards` app group |
+| `admin` | App administrators | Member of `semantic-ground-truth-admins` app group |
 
-Role checks use a fail-open pattern: if the role list cannot be loaded, reviewer-level access is granted.
+Roles are stored in Lakebase app groups (`app.app_groups` + `app.app_group_members`), not workspace SCIM groups. `admin` implies `steward`. See [Onboarding Users](../docs/runbooks/onboarding_users.md).
 
 ## Environment Variables
 
@@ -187,6 +187,15 @@ pnpm run dev
 ```
 
 The dev server starts at the port shown in console output. The `local` target in `databricks.yml` has all variables hardcoded for `http://127.0.0.1:7073`.
+
+## Bundle Jobs
+
+| Job | Resource Key | Purpose |
+|---|---|---|
+| Deploy Verification | `deploy_verification` | M2M OAuth probe: `/health`, `/api/me`, `/api/campaigns`, `/mcp` (6 checks) |
+| Demo Campaign Seed | `demo_campaign_seed` | Grants, import from metric views, create campaign, cast votes, verify leaderboard |
+| App Post-Deploy Setup | `app_post_deploy_setup` | `CAN_USE` grants for users group + UC grants for M2M SPN |
+| Create MCP Connection | `create_mcp_connection` | Schema-level HTTP connection for Unity Gateway |
 
 ## Deploy
 

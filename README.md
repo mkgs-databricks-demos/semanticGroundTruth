@@ -24,7 +24,7 @@ Deploy order: **infra → app → agent** (agent can parallel with app).
 - **Auth:** Hybrid OBO (user reads) + Service Principal (app writes)
 - **Confidence scoring:** Wilson score interval with configurable industry standard prior
 - **MCP:** Streamable HTTP via `@modelcontextprotocol/server` v2; Unity Gateway MCP Service
-- **Observability:** OpenTelemetry → MLflow 3 experiment
+- **Observability:** OpenTelemetry → UC tables (logs, metrics, spans) + MLflow 3 experiment for agent traces
 - **Compliance:** HIPAA (AWS us-east-1)
 
 ## Design Documents
@@ -72,11 +72,16 @@ databricks bundle deploy --target dev
 
 | Bundle | Status | Branch |
 |--------|--------|--------|
-| **Infra** (Bundle 1) | ✅ **Deployed to dev** — all 8 phases complete | `mg-genie-bundle-scaffolds` |
-| **App** (Bundle 2) | Scaffolded (empty DAB) | `main` |
-| **Agent** (Bundle 3) | Scaffolded (empty DAB) | `main` |
+| **Infra** (Bundle 1) | ✅ **Deployed to dev** — CDF configured, bronze pipeline running (21 flows), 7 metric views deployed | `mg-genie-agent-build` |
+| **App** (Bundle 2) | ✅ **Deployed to dev** — RBAC, asset import, MCP server, demo campaign seeded | `mg-genie-agent-build` |
+| **Agent** (Bundle 3) | ✅ **Deployed to dev** — Genie space with 9 data sources, verification passing | `mg-genie-agent-build` |
 
-Bundle 1 resources live in `hls_fde_dev.dev_matthew_giglia_ground_truth`. Remaining post-deploy manual steps (UC secrets, Unity Gateway connection, Genie Code skill registration) are documented in the infra `PROJECT_MEMORY.md`.
+All bundles deployed and converged in `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth`. Key resources:
+
+* **App:** `dev-semantic-ground-truth` (Node.js AppKit + React + MCP Server, stable with probes)
+* **Data plane:** Lakebase CDF → `bronze_lakebase_cdf` (281 rows, 13 sources) → 7 metric views
+* **Agent:** `[dev matthew_giglia] Ground Truth Operations` Genie space (9 data sources, 9/9 example SQLs)
+* **Jobs:** `setup_lakebase_cdf`, `cdf_bronze` (SDP pipeline), `metric_view_deploy`, `deploy_verification`, `demo_campaign_seed`, `agent_verification`
 
 ## License
 
