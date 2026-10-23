@@ -41,7 +41,7 @@ export function ExampleQuestions({ assetId, examples }: ExampleQuestionsProps) {
                   onClick={() => action.mutate({ assetId, action: 'approve', questionId: q.id })}
                   aria-label={`Approve question: ${q.questionText}`}
                 >
-                  <Check className="h-3 w-3 text-green-600" />
+                  <Check className="h-3 w-3 text-vote-approve" />
                 </Button>
                 <Button
                   variant="ghost"
@@ -50,7 +50,7 @@ export function ExampleQuestions({ assetId, examples }: ExampleQuestionsProps) {
                   onClick={() => action.mutate({ assetId, action: 'reject', questionId: q.id })}
                   aria-label={`Reject question: ${q.questionText}`}
                 >
-                  <X className="h-3 w-3 text-red-600" />
+                  <X className="h-3 w-3 text-vote-reject" />
                 </Button>
               </>
             )}

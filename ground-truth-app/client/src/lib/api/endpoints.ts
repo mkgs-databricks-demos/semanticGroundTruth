@@ -3,6 +3,7 @@
 // Paths and methods match plan 09 route table character-for-character.
 
 import type {
+  AppRuntimeConfig,
   Asset,
   AssetSynonym,
   AssetVersion,
@@ -336,4 +337,10 @@ export async function removeGroupMember(
   return apiDelete<void>(
     `/api/admin/groups/${encodeURIComponent(groupName)}/members/${encodeURIComponent(memberId)}`,
   );
+}
+
+// ── Runtime config (session 20 route) ───────────────────────────────────
+
+export async function getRuntimeConfig(): Promise<AppRuntimeConfig> {
+  return apiGet<AppRuntimeConfig>('/api/config');
 }

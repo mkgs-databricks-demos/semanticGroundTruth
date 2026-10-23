@@ -36,4 +36,7 @@ export const queryKeys = {
 
   // Admin groups
   adminGroups: ['admin', 'groups'] as const,
+
+  // Runtime config
+  runtimeConfig: ['config'] as const,
 } as const;

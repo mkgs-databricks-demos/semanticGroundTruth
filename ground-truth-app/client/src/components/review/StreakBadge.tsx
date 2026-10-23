@@ -1,5 +1,5 @@
 // client/src/components/review/StreakBadge.tsx
-// Session 12 · Wave 4
+// Session 17 · Wave 1 · semantic token for warning
 
 import { Badge } from '@databricks/appkit-ui/react';
 import { Flame } from 'lucide-react';
@@ -13,7 +13,7 @@ export function StreakBadge() {
 
   return (
     <Badge variant="secondary" className="gap-1">
-      <Flame className="h-3 w-3 text-orange-500" />
+      <Flame className="h-3 w-3 text-[var(--warning)]" />
       {streak}d streak
     </Badge>
   );

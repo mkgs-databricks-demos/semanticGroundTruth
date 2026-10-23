@@ -1,5 +1,5 @@
 // client/src/pages/review/ReviewPage.tsx — primary review experience at /
-// Session 12 · Wave 4 · No enum, no namespace, no default export
+// Session 17 · Wave 1 · updated keyboard hint, skip handling
 
 import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -109,7 +109,7 @@ export function ReviewPage() {
 
       {/* Keyboard shortcut hint */}
       <p className="text-center text-xs text-muted-foreground hidden md:block">
-        Keyboard: ← reject · → approve · E edit
+        Keyboard: ← reject · → approve · ↑ edit · S skip
       </p>
     </div>
   );

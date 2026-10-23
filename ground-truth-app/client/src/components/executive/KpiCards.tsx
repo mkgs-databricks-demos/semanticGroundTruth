@@ -1,5 +1,5 @@
 // client/src/components/executive/KpiCards.tsx — executive summary KPI cards
-// Session 13 · Wave 4 · No enum, no namespace, no default export
+// Session 17 · Wave 1 · brand: 32px Bold value, 12px muted label
 
 import {
   Card,
@@ -45,12 +45,12 @@ export function KpiCards() {
       {kpis.map((kpi) => (
         <Card key={kpi.label}>
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs font-medium text-muted-foreground">
+            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               {kpi.label}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold tabular-nums">{kpi.value}</p>
+            <p className="text-[32px] leading-tight font-bold tabular-nums">{kpi.value}</p>
           </CardContent>
         </Card>
       ))}
