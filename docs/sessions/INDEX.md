@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-23 | — | — | [**Post-build review: SIGTERM + gate fixes, gap analysis, brand UI plan, next build draft**](2026-10-23_post-build-review-brand-plan.md) | interactive | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-23 | all | — | [**Root build summary: waves 0–5 across infra, app, agent**](2026-10-23_root-build-waves-summary.md) | orchestration | pass | `mg-genie-agent-build` |
 | 2026-10-23 | 5 | 15 | [Project memory, runbooks, READMEs](2026-10-23_w5-15-docs-project-memory.md) | edit | pass | `mg-genie-agent-build` |
 | 2026-10-23 | 4 | 14 | [Converge Genie agent + verification](2026-10-23_w4-14-converge-agent.md) | converge | pass | `mg-genie-agent-build` |
