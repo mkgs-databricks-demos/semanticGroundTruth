@@ -12,7 +12,6 @@ import {
   GroupNameParamSchema,
   RemoveGroupMemberParamSchema,
 } from '../../shared/contracts/api';
-import { z } from 'zod';
 
 export function registerAdminRoutes(app: Application, services: Services): void {
   // GET /api/admin/config

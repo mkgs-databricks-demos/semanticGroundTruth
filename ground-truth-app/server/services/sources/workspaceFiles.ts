@@ -4,9 +4,8 @@
 // Uses the app SPN (default credentials), NOT the caller’s OBO token.
 // On 403 return SOURCE_ACCESS_DENIED with the §4 message.
 
-import { workspaceHost } from '../../lib/databricks';
+import { getAppSpnToken, workspaceHost } from '../../lib/databricks';
 import { AppError } from '../../lib/errors';
-import { logger } from '../../lib/logger';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,15 +19,6 @@ interface ListResponse {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-function getAppToken(): string {
-  // AppKit injects DATABRICKS_TOKEN for the app SPN
-  const token = process.env.DATABRICKS_TOKEN;
-  if (!token) {
-    throw new AppError('INTERNAL', 'DATABRICKS_TOKEN not configured');
-  }
-  return token;
-}
 
 function getAppSpnId(): string {
   return process.env.DATABRICKS_APP_SPN_ID ?? 'the app service principal';
@@ -44,7 +34,7 @@ function handleForbidden(path: string): never {
 
 async function workspaceRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const host = workspaceHost();
-  const token = getAppToken();
+  const token = await getAppSpnToken();
   const res = await fetch(`${host}${path}`, {
     ...init,
     headers: {
@@ -114,7 +104,7 @@ export async function listFilesRecursive(
  */
 export async function exportFileContent(filePath: string): Promise<string> {
   const host = workspaceHost();
-  const token = getAppToken();
+  const token = await getAppSpnToken();
 
   const res = await fetch(
     `${host}/api/2.0/workspace/export?path=${encodeURIComponent(filePath)}&direct_download=true&format=SOURCE`,

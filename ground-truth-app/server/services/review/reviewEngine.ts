@@ -288,13 +288,13 @@ export class ReviewEngine {
       `INSERT INTO app.user_activity (
          user_id, email, total_votes, current_streak_days,
          longest_streak_days, last_vote_date, badges
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7::text[])
        ON CONFLICT (user_id) DO UPDATE SET
          total_votes = $3,
          current_streak_days = $4,
          longest_streak_days = $5,
          last_vote_date = $6,
-         badges = $7::jsonb`,
+         badges = $7::text[]`,
       [
         user.userId,
         user.email,
@@ -302,7 +302,7 @@ export class ReviewEngine {
         streakDays,
         longestStreak,
         todayStr,
-        JSON.stringify(allBadges),
+        allBadges, // user_activity.badges is TEXT[]; pg serialises JS arrays natively
       ],
     );
 

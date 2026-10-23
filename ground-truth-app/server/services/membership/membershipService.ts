@@ -9,7 +9,7 @@ import type { Db } from '../../lib/db';
 import type { Role } from '../../lib/context';
 import type { AppGroup, AppGroupMember } from '../../../shared/contracts/entities';
 import type { AppGroupName } from '../../../shared/contracts/values';
-import { APP_GROUP_NAMES, APP_GROUP_ROLE } from '../../../shared/contracts/values';
+import { APP_GROUP_ROLE } from '../../../shared/contracts/values';
 import { conflict } from '../../lib/errors';
 import { logger } from '../../lib/logger';
 

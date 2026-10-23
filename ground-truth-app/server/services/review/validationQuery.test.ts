@@ -25,6 +25,8 @@ function makeAsset(
     status: 'PENDING',
     domain: null,
     subdomain: null,
+    sourceId: null,
+    sourceMetadata: null,
     createdAt: '2026-10-21T00:00:00Z',
     updatedAt: '2026-10-21T00:00:00Z',
     ...overrides,

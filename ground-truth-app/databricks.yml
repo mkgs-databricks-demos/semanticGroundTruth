@@ -23,6 +23,9 @@ variables:
     description: "Fully qualified UC schema name (resolved from Bundle 1, e.g. dev_matthew_giglia_semantic_ground_truth)"
   mcp_execute_principal:
     description: "Group or user principal granted EXECUTE on the MCP service"
+  secret_scope_name:
+    description: "Secret scope holding M2M SPN credentials (must match Bundle 1 secret_scope_name)"
+    default: semantic_ground_truth_credentials
   m2m_client_id_key:
     description: "Key in the secret scope for the M2M SPN client_id"
   m2m_client_secret_key:

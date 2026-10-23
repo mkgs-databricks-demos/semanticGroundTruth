@@ -15,7 +15,7 @@ export function registerMetricViewRoutes(app: Application, services: Services): 
   // ── Catalog browse (conventions §4) ────────────────────────────────────
 
   // GET /api/catalog/catalogs
-  app.get('/api/catalog/catalogs', asyncRoute(async (req, res) => {
+  app.get('/api/catalog/catalogs', asyncRoute(async (_req, res) => {
     const user = getUser(res);
     requireRole(user, 'steward');
 

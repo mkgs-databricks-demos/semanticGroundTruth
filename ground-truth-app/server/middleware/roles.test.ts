@@ -7,7 +7,6 @@ import type { AppSettings } from '../lib/config';
 import { DEFAULT_SETTINGS } from '../lib/config';
 import type { MembershipService } from '../services/membership';
 import type { Role } from '../lib/context';
-import type { AppGroup } from '../../shared/contracts/entities';
 
 // ── helpers ───────────────────────────────────────────────────────────
 

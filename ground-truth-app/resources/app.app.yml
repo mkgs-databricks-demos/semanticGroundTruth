@@ -61,6 +61,6 @@ resources:
             permission: CAN_CONNECT_AND_CREATE
         - name: m2m-client-id
           secret:
-            scope: semantic_ground_truth_credentials
+            scope: ${var.secret_scope_name}
             key: ${var.m2m_client_id_key}
             permission: READ

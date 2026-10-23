@@ -13,10 +13,10 @@ import type { UserContext } from '../../lib/context';
 import type { Campaign } from '../../../shared/contracts/entities';
 import type { CreateCampaignBody, FreshnessCheckResult } from '../../../shared/contracts/api';
 import type { CampaignStatus, CampaignType, CompletionRule } from '../../../shared/contracts/values';
+import type { MembershipService } from '../membership';
 import { notFound, conflict } from '../../lib/errors';
-import { logger } from '../../lib/logger';
 import { assertTransition } from './lifecycle';
-import { buildScopeFilter } from './scope';
+import { buildScopeFilter, checkCampaignVisibility } from './scope';
 
 // ── Row → domain mapper ──────────────────────────────────────────────
 
@@ -42,24 +42,19 @@ function toCampaign(row: Record<string, unknown>): Campaign {
   };
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────
-
-// V1 decision: RBAC visibility is handled by the roles middleware.
-// App group membership is resolved upstream (MembershipService).
-// Campaign-level rbacGroups filtering will be added in a future wave
-// when UserContext gains a `groups` field.
-
 // ── CampaignManager ─────────────────────────────────────────────────
 
 export class CampaignManager {
   private readonly db: Db;
   private readonly config: ConfigStore;
   private readonly events: EventBus;
+  private readonly membership: MembershipService;
 
-  constructor(deps: ServiceDeps) {
+  constructor(deps: ServiceDeps, membership: MembershipService) {
     this.db = deps.db;
     this.config = deps.config;
     this.events = deps.events;
+    this.membership = membership;
   }
 
   // ── create ──────────────────────────────────────────────────────
@@ -153,7 +148,7 @@ export class CampaignManager {
     // Filter by RBAC visibility
     const visible: Campaign[] = [];
     for (const c of campaigns) {
-      if (await this.isVisibleTo(user, c)) {
+      if (await checkCampaignVisibility(user, c.rbacGroups, this.membership)) {
         visible.push(c);
       }
     }
@@ -179,7 +174,7 @@ export class CampaignManager {
 
     const campaign = toCampaign(row);
 
-    if (!(await this.isVisibleTo(user, campaign))) {
+    if (!(await checkCampaignVisibility(user, campaign.rbacGroups, this.membership))) {
       // Return 404 rather than 403 to avoid leaking campaign existence
       throw notFound(`Campaign ${campaignId} not found`);
     }
@@ -216,24 +211,6 @@ export class CampaignManager {
     );
 
     return toCampaign(row!);
-  }
-
-  // ── isVisibleTo ─────────────────────────────────────────────────
-
-  async isVisibleTo(user: UserContext, campaign: Campaign): Promise<boolean> {
-    // Admins and stewards see all campaigns
-    if (user.roles.includes('admin') || user.roles.includes('steward')) {
-      return true;
-    }
-
-    // No RBAC groups = visible to all (default / open campaign)
-    if (campaign.rbacGroups.length === 0) {
-      return true;
-    }
-
-    // Reviewers see campaigns with no rbacGroups (open campaigns).
-    // Campaign-level group filtering deferred until UserContext.groups is available.
-    return true;
   }
 
   // ── createAutomaticForAsset ─────────────────────────────────────

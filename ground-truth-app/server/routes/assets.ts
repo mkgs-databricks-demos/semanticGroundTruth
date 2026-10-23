@@ -78,7 +78,7 @@ export function registerAssetRoutes(app: Application, services: Services): void 
   // ── Sources (conventions §4) ───────────────────────────────────────────
 
   // GET /api/sources
-  app.get('/api/sources', asyncRoute(async (req, res) => {
+  app.get('/api/sources', asyncRoute(async (_req, res) => {
     const user = getUser(res);
     requireRole(user, 'steward');
 

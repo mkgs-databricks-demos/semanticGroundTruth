@@ -35,7 +35,7 @@ const TERM_HEADING_RE = /^###\s+(.+)/;
 const FIELD_RE = /^-\s+\*\*([^*]+):\*\*\s*(.+)/;
 const SECTION_END_RE = /^(###\s|##\s|---)/;
 
-export function parseGlossaryMarkdown(content: string, filePath: string): GlossaryTerm[] {
+export function parseGlossaryMarkdown(content: string, _filePath: string): GlossaryTerm[] {
   const lines = content.split('\n');
   const terms: GlossaryTerm[] = [];
 

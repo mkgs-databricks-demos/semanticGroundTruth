@@ -24,7 +24,7 @@ export class McpSessionStore {
 
   async get(userId: string): Promise<McpSession | null> {
     const row = await this.db.one<Record<string, unknown>>(
-      `SELECT session_id, current_asset_id, current_campaign_id, updated_at
+      `SELECT session_id, current_asset_id, campaign_id, updated_at
        FROM app.mcp_sessions
        WHERE session_id = $1`,
       [`user:${userId}`],
@@ -33,7 +33,7 @@ export class McpSessionStore {
     return {
       userId,
       currentAssetId: (row.current_asset_id as string) ?? null,
-      currentCampaignId: (row.current_campaign_id as string) ?? null,
+      currentCampaignId: (row.campaign_id as string) ?? null,
       updatedAt: String(row.updated_at),
     };
   }
@@ -44,13 +44,13 @@ export class McpSessionStore {
     campaignId?: string,
   ): Promise<void> {
     await this.db.query(
-      `INSERT INTO app.mcp_sessions (session_id, current_asset_id, current_campaign_id, updated_at)
-       VALUES ($1, $2, $3, NOW())
+      `INSERT INTO app.mcp_sessions (session_id, user_id, current_asset_id, campaign_id, updated_at)
+       VALUES ($1, $2, $3, $4, NOW())
        ON CONFLICT (session_id) DO UPDATE SET
-         current_asset_id = $2,
-         current_campaign_id = $3,
+         current_asset_id = $3,
+         campaign_id = $4,
          updated_at = NOW()`,
-      [`user:${userId}`, assetId, campaignId ?? null],
+      [`user:${userId}`, userId, assetId, campaignId ?? null],
     );
   }
 }

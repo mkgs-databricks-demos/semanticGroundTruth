@@ -29,10 +29,10 @@ let instance: Services | null = null;
 export function createServices(deps: ServiceDeps): Services {
   const assets = new AssetRegistry(deps);
   const metricViews = new MetricViewService();
-  const review = new ReviewEngine(deps, assets, metricViews);
-  const campaigns = new CampaignManager(deps);
-  const notifications = new NotificationService(deps);
   const membership = new MembershipService(deps);
+  const review = new ReviewEngine(deps, assets, metricViews);
+  const campaigns = new CampaignManager(deps, membership);
+  const notifications = new NotificationService(deps);
 
   campaigns.subscribe();
   notifications.subscribe();

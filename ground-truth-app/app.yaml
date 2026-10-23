@@ -13,6 +13,8 @@ env:
     valueFrom: postgres
 
   # ── RBAC bootstrap ──
+  # M2M SPN client_id from the m2m-client-id secret resource (resources/app.app.yml).
+  # The resource must be attached via `bundle deploy` before any plain `apps deploy`.
   - name: GT_BOOTSTRAP_ADMIN_IDS
     valueFrom: m2m-client-id
   - name: GT_ADMIN_EMAILS
