@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-23 | 2 | 22a | [Converge infra: secret ACL + bronze refresh job](2026-10-23_w2-22a-converge-infra-secret-acl-bronze.md) | converge | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-23 | 1 | 17 | [App branded components, accessibility, Logic View](2026-10-23_w1-17-app-brand-components-a11y.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-23 | 0 | 21 | [Infra: executive AI/BI dashboard over the metric views](2026-10-23_w0-21-executive-dashboard.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-23 | 0 | 20 | [App runtime config, ACL safety net, verification checks](2026-10-23_w0-20-app-runtime-config-verification.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |

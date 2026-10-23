@@ -77,7 +77,7 @@ targets:
       # dev/prod collisions in the shared workspace scope; matches the SPN naming.
       # App SPN application (client) ID — resolved from `databricks apps get` by deploy.sh.
       # This is the current dev app SPN; deploy.sh overrides it dynamically.
-      app_service_principal_id: "55882972-924d-42cd-ab3d-d10c730629c2"
+      app_service_principal_id: "9f3db838-9415-46fe-9722-9654a6856ecc"
       m2m_client_id_dbs_key: m2m_client_id_dev
       m2m_client_secret_dbs_key: m2m_client_secret_dev
 
