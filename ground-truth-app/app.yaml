@@ -12,6 +12,12 @@ env:
   - name: LAKEBASE_ENDPOINT
     valueFrom: postgres
 
+  # ── RBAC bootstrap ──
+  - name: GT_BOOTSTRAP_ADMIN_IDS
+    valueFrom: m2m-client-id
+  - name: GT_ADMIN_EMAILS
+    value: matthew.giglia@databricks.com
+
   # ── OpenTelemetry ──
   # Record every trace unconditionally. Without this, the default parent-based
   # sampler follows the platform proxy's sampling decision and drops most spans,

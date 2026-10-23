@@ -11,6 +11,7 @@ import {
 import { ShieldAlert } from 'lucide-react';
 import { useMe } from '../../lib/api';
 import { hasRole } from '../../lib/api/roles';
+import { MembersPanel } from '../../components/admin/MembersPanel';
 import { ScoringConfigForm } from '../../components/admin/ScoringConfigForm';
 import { RoleListsForm } from '../../components/admin/RoleListsForm';
 import { MaintenanceActions } from '../../components/admin/MaintenanceActions';
@@ -51,6 +52,7 @@ export function AdminPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <h2 className="text-2xl font-bold">Admin Settings</h2>
+      <MembersPanel />
       <ScoringConfigForm />
       <RoleListsForm />
       <MaintenanceActions />

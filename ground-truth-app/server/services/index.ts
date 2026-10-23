@@ -10,6 +10,7 @@ import { MetricViewService } from './metricView';
 import { ReviewEngine } from './review';
 import { CampaignManager } from './campaign';
 import { NotificationService } from './notification';
+import { MembershipService } from './membership';
 
 export interface Services {
   assets: AssetRegistry;
@@ -17,6 +18,7 @@ export interface Services {
   review: ReviewEngine;
   campaigns: CampaignManager;
   notifications: NotificationService;
+  membership: MembershipService;
   config: ConfigStore;
   db: Db;
   events: EventBus;
@@ -30,6 +32,7 @@ export function createServices(deps: ServiceDeps): Services {
   const review = new ReviewEngine(deps, assets, metricViews);
   const campaigns = new CampaignManager(deps);
   const notifications = new NotificationService(deps);
+  const membership = new MembershipService(deps);
 
   campaigns.subscribe();
   notifications.subscribe();
@@ -40,6 +43,7 @@ export function createServices(deps: ServiceDeps): Services {
     review,
     campaigns,
     notifications,
+    membership,
     config: deps.config,
     db: deps.db,
     events: deps.events,

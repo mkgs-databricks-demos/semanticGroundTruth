@@ -2,13 +2,30 @@ import type { RequestHandler } from 'express';
 import type { Role } from '../lib/context';
 import { getUser } from '../lib/context';
 import type { AppSettings } from '../lib/config';
+import type { MembershipService } from '../services/membership';
 import { forbidden } from '../lib/errors';
 import { sendError } from '../lib/http';
 
-export function resolveRoles(email: string, settings: AppSettings): Role[] {
+/**
+ * Resolve the caller’s roles as the union of:
+ *   1. `reviewer` (every authenticated caller)
+ *   2. roles from app group membership (Lakebase tables)
+ *   3. legacy email lists in app_config
+ *
+ * `admin` implies `steward` (conventions §3).
+ */
+export async function resolveRoles(
+  email: string,
+  settings: AppSettings,
+  membership: MembershipService,
+): Promise<Role[]> {
   const lower = email.toLowerCase();
-  const roles: Role[] = ['reviewer'];
 
+  // App group roles (primary source)
+  const groupRoles = await membership.rolesFor(lower);
+  const roles = new Set<Role>(groupRoles);
+
+  // Legacy email list roles (read-only fallback)
   const isAdmin = settings.adminEmails.some(
     (e) => e.toLowerCase() === lower,
   );
@@ -16,14 +33,16 @@ export function resolveRoles(email: string, settings: AppSettings): Role[] {
     isAdmin ||
     settings.stewardEmails.some((e) => e.toLowerCase() === lower);
 
-  if (isSteward) {
-    roles.push('steward');
-  }
-  if (isAdmin) {
-    roles.push('admin');
-  }
+  if (isSteward) roles.add('steward');
+  if (isAdmin) roles.add('admin');
 
-  return roles;
+  // admin implies steward
+  if (roles.has('admin')) roles.add('steward');
+
+  // reviewer is always present
+  roles.add('reviewer');
+
+  return [...roles];
 }
 
 export function requireRoleMiddleware(role: Role): RequestHandler {

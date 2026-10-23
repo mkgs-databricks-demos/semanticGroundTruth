@@ -9,6 +9,7 @@ import type {
 import { parseMetricViewYaml } from './parseMetricViewYaml';
 
 const IDENTIFIER_RE = /^[A-Za-z0-9_]+\.[A-Za-z0-9_]+\.[A-Za-z0-9_]+$/;
+const SAFE_IDENT_RE = /^[A-Za-z0-9_\-]+$/;
 const SAFE_SQL_RE = /^\s*(\/\*[\s\S]*?\*\/\s*|--[^\n]*\n\s*)*(SELECT|WITH)\s/i;
 
 function requireToken(user: UserContext): string {
@@ -26,7 +27,78 @@ function defaultSchema(): string {
   return process.env.GT_METRIC_VIEW_SCHEMA ?? 'dev_matthew_giglia_semantic_ground_truth';
 }
 
+function requireSafeIdent(value: string, label: string): void {
+  if (!SAFE_IDENT_RE.test(value)) {
+    throw badRequest(`Invalid ${label}: must match [A-Za-z0-9_-]+`);
+  }
+}
+
 export class MetricViewService {
+  // ── Catalog browse (conventions §4) ──────────────────────────────────
+
+  async listCatalogs(token: string): Promise<{ name: string; comment: string | null }[]> {
+    const result = await executeStatement({
+      token,
+      statement:
+        `SELECT catalog_name, comment
+         FROM system.information_schema.catalogs
+         ORDER BY catalog_name`,
+    });
+    return result.rows.map((row) => ({
+      name: row[0] as string,
+      comment: (row[1] as string) ?? null,
+    }));
+  }
+
+  async listSchemas(
+    token: string,
+    catalog: string,
+  ): Promise<{ name: string; fullName: string; comment: string | null }[]> {
+    requireSafeIdent(catalog, 'catalog');
+    const result = await executeStatement({
+      token,
+      statement:
+        `SELECT schema_name, comment
+         FROM \`${catalog}\`.information_schema.schemata
+         WHERE schema_name NOT IN ('information_schema')
+         ORDER BY schema_name`,
+    });
+    return result.rows.map((row) => ({
+      name: row[0] as string,
+      fullName: `${catalog}.${row[0] as string}`,
+      comment: (row[1] as string) ?? null,
+    }));
+  }
+
+  async listMetricViews(
+    token: string,
+    catalog: string,
+    schema: string,
+  ): Promise<MetricViewSummary[]> {
+    requireSafeIdent(catalog, 'catalog');
+    requireSafeIdent(schema, 'schema');
+    const result = await executeStatement({
+      token,
+      statement:
+        `SELECT table_catalog, table_schema, table_name, comment
+         FROM \`${catalog}\`.information_schema.tables
+         WHERE table_type = 'METRIC_VIEW'
+           AND table_schema = :schema
+         ORDER BY table_name`,
+      parameters: [
+        { name: 'schema', value: schema },
+      ],
+    });
+    return result.rows.map((row) => ({
+      fullName: `${row[0] as string}.${row[1] as string}.${row[2] as string}`,
+      comment: (row[3] as string) ?? null,
+      measureCount: 0,
+      dimensionCount: 0,
+    }));
+  }
+
+  // ── Existing list (default catalog/schema) ───────────────────────────
+
   async list(
     user: UserContext,
     opts?: { catalog?: string; schema?: string },

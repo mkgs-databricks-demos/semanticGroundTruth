@@ -24,4 +24,16 @@ export const queryKeys = {
   metricViews: (params?: Record<string, unknown>) =>
     ['metric-views', params] as const,
   metricView: (name: string) => ['metric-views', name] as const,
+
+  // Catalog browse
+  catalogs: ['catalog', 'catalogs'] as const,
+  catalogSchemas: (catalog: string) => ['catalog', 'schemas', catalog] as const,
+  catalogMetricViews: (catalog: string, schema: string) =>
+    ['catalog', 'metric-views', catalog, schema] as const,
+
+  // Asset sources
+  sources: ['sources'] as const,
+
+  // Admin groups
+  adminGroups: ['admin', 'groups'] as const,
 } as const;

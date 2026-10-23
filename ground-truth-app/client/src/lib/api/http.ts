@@ -84,3 +84,14 @@ export async function apiSend<T>(
   });
   return handleResponse<T>(res);
 }
+
+export async function apiDelete<T = void>(
+  path: string,
+): Promise<T> {
+  const res = await fetch(path, {
+    method: 'DELETE',
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+  });
+  return handleResponse<T>(res);
+}

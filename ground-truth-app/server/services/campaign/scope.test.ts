@@ -1,8 +1,10 @@
-// server/services/campaign/scope.test.ts — vitest tests for scope filter builder
-// Session 07 · Wave 2 · Written (not run — no Node toolchain in Genie Code)
+// server/services/campaign/scope.test.ts — vitest tests for scope filter + RBAC visibility
+// Session 08 · Wave 1 · Written (not run — no Node toolchain in Genie Code)
 
-import { describe, it, expect } from 'vitest';
-import { buildScopeFilter } from './scope';
+import { describe, it, expect, vi } from 'vitest';
+import { buildScopeFilter, checkCampaignVisibility } from './scope';
+import type { UserContext, Role } from '../../lib/context';
+import type { MembershipService } from '../membership';
 
 describe('buildScopeFilter', () => {
   it('returns TRUE and empty params for an empty scope', () => {
@@ -68,5 +70,51 @@ describe('buildScopeFilter', () => {
       'domain = $2 AND subdomain = $3 AND asset_type = $4 AND id = ANY($5)',
     );
     expect(result.params).toEqual(['finance', 'revenue', 'measure', ['id-1']]);
+  });
+});
+
+// ── checkCampaignVisibility ──────────────────────────────────────────
+
+function user(roles: Role[], email = 'user@co.com'): UserContext {
+  return { userId: email, email, displayName: 'Test', source: 'web', roles };
+}
+
+function mockMembership(isMember: boolean): MembershipService {
+  return {
+    isMemberOfAny: vi.fn().mockResolvedValue(isMember),
+    rolesFor: vi.fn(),
+    listGroups: vi.fn(),
+    addMember: vi.fn(),
+    removeMember: vi.fn(),
+    bootstrap: vi.fn(),
+  } as unknown as MembershipService;
+}
+
+describe('checkCampaignVisibility', () => {
+  it('admins see all campaigns', async () => {
+    const m = mockMembership(false);
+    expect(await checkCampaignVisibility(user(['admin', 'steward', 'reviewer']), ['group-a'], m)).toBe(true);
+    expect(m.isMemberOfAny).not.toHaveBeenCalled();
+  });
+
+  it('stewards see all campaigns', async () => {
+    const m = mockMembership(false);
+    expect(await checkCampaignVisibility(user(['steward', 'reviewer']), ['group-a'], m)).toBe(true);
+  });
+
+  it('empty rbacGroups means visible to everyone', async () => {
+    const m = mockMembership(false);
+    expect(await checkCampaignVisibility(user(['reviewer']), [], m)).toBe(true);
+  });
+
+  it('reviewer in the named group sees the campaign', async () => {
+    const m = mockMembership(true);
+    expect(await checkCampaignVisibility(user(['reviewer']), ['semantic-ground-truth-users'], m)).toBe(true);
+    expect(m.isMemberOfAny).toHaveBeenCalledWith('user@co.com', ['semantic-ground-truth-users']);
+  });
+
+  it('reviewer NOT in the named group is denied (fail closed)', async () => {
+    const m = mockMembership(false);
+    expect(await checkCampaignVisibility(user(['reviewer']), ['semantic-ground-truth-stewards'], m)).toBe(false);
   });
 });

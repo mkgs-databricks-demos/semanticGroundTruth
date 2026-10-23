@@ -1,5 +1,9 @@
-// server/services/campaign/scope.ts — pure SQL scope filter builder
-// Session 07 · Wave 2 · No enum, no namespace, no default export
+// server/services/campaign/scope.ts — scope filter builder + RBAC visibility
+// Session 08 · Wave 1 · No enum, no namespace, no default export
+//
+// Campaign RBAC now resolves against Lakebase app groups (via
+// MembershipService), not workspace identity groups. Fails closed when
+// membership cannot be determined.
 
 /**
  * Minimal interface for campaign scope fields.
@@ -60,4 +64,37 @@ export function buildScopeFilter(
     where: clauses.length > 0 ? clauses.join(' AND ') : 'TRUE',
     params,
   };
+}
+
+// ── Campaign RBAC visibility (conventions §3) ─────────────────────────
+
+import type { UserContext } from '../../lib/context';
+import type { MembershipService } from '../membership';
+
+/**
+ * Check whether `user` may see a campaign restricted to `rbacGroups`.
+ *
+ * Rules (conventions §3, fail closed):
+ *   1. Admins and stewards see all campaigns.
+ *   2. No rbacGroups (empty array) = visible to everyone.
+ *   3. Otherwise: the user must be a member of at least one named group.
+ *      If membership cannot be determined, the campaign is hidden (fail closed).
+ */
+export async function checkCampaignVisibility(
+  user: UserContext,
+  rbacGroups: string[],
+  membership: MembershipService,
+): Promise<boolean> {
+  // Admins and stewards see all
+  if (user.roles.includes('admin') || user.roles.includes('steward')) {
+    return true;
+  }
+
+  // No RBAC restriction
+  if (rbacGroups.length === 0) {
+    return true;
+  }
+
+  // Fail closed: resolve from Lakebase app group membership
+  return membership.isMemberOfAny(user.email, rbacGroups);
 }

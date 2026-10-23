@@ -23,6 +23,10 @@ variables:
     description: "Fully qualified UC schema name (resolved from Bundle 1, e.g. dev_matthew_giglia_semantic_ground_truth)"
   mcp_execute_principal:
     description: "Group or user principal granted EXECUTE on the MCP service"
+  m2m_client_id_key:
+    description: "Key in the secret scope for the M2M SPN client_id"
+  m2m_client_secret_key:
+    description: "Key in the secret scope for the M2M SPN client_secret"
 
 include:
   - resources/*.yml
@@ -50,6 +54,8 @@ targets:
       postgres_branch: projects/dev-matthew-giglia-ground-truth/branches/production
       postgres_database: projects/dev-matthew-giglia-ground-truth/branches/production/databases/ground-truth-app
       agents_mlflow_experiment_experimentId: "1698842789305538"
+      m2m_client_id_key: m2m_client_id_dev
+      m2m_client_secret_key: m2m_client_secret_dev
       # ↑ These are also resolved at deploy time by deploy.sh --var passthrough.
 
   # Prod target — deployed by: ./deploy.sh --target prod --app
@@ -66,6 +72,8 @@ targets:
       catalog: prod_ground_truth
       schema_name: semantic_ground_truth
       mcp_execute_principal: account users
+      m2m_client_id_key: m2m_client_id_prod
+      m2m_client_secret_key: m2m_client_secret_prod
 
   # Local development — pnpm run dev against the AppKit local proxy.
   # All variables have concrete values for local testing.
@@ -84,3 +92,5 @@ targets:
       catalog: hls_fde_dev
       schema_name: dev_matthew_giglia_semantic_ground_truth
       mcp_execute_principal: account users
+      m2m_client_id_key: m2m_client_id_dev
+      m2m_client_secret_key: m2m_client_secret_dev
