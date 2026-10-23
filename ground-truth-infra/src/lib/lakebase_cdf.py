@@ -109,35 +109,11 @@ class LakebaseCdfConfigurator:
                 return cfg
         return None
 
-    def history_tables(self) -> List[str]:
+    def history_tables(self, spark) -> List[str]:
         """List lb_*_history tables in the destination schema.
 
         Queries information_schema.tables for tables matching the
         'lb_%_history' naming pattern in the destination catalog/schema.
-
-        Returns:
-            Sorted list of fully qualified table names.
-        """
-        rows = self.w.statement_execution.execute_statement(
-            warehouse_id=None,  # serverless
-            catalog=self.dest_catalog,
-            schema=self.dest_schema,
-            statement=(
-                "SELECT table_name "
-                f"FROM {self.dest_catalog}.information_schema.tables "
-                f"WHERE table_schema = '{self.dest_schema}' "
-                "AND table_name LIKE 'lb\\_%\\_history' "
-                "ORDER BY table_name"
-            ),
-        )
-        # Use spark SQL from the notebook instead for simpler execution
-        # This method is meant to be called from a notebook context
-        raise NotImplementedError(
-            "Use history_tables_spark() from a notebook context instead."
-        )
-
-    def history_tables_spark(self, spark) -> List[str]:
-        """List lb_*_history tables using SparkSession.
 
         Args:
             spark: Active SparkSession.
@@ -187,7 +163,7 @@ class LakebaseCdfConfigurator:
         found = []
 
         while time.time() < deadline:
-            found = self.history_tables_spark(spark)
+            found = self.history_tables(spark)
             missing = [t for t in expected_history if t not in found]
             if not missing:
                 logger.info(
@@ -206,7 +182,7 @@ class LakebaseCdfConfigurator:
             time.sleep(poll_interval_s)
 
         # Final check
-        found = self.history_tables_spark(spark)
+        found = self.history_tables(spark)
         missing = [t for t in expected_history if t not in found]
         if missing:
             raise TimeoutError(
