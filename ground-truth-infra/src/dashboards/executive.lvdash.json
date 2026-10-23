@@ -49,7 +49,7 @@
       "name": "ds_campaign_progress",
       "displayName": "Campaign Progress",
       "queryLines": [
-        "SELECT campaign_name, campaign_status, MEASURE(`Total Assets`) AS total_assets, MEASURE(`Reviewed Assets`) AS reviewed_assets, MEASURE(`Avg Completion`) AS avg_completion FROM mv_campaign_progress GROUP BY campaign_name, campaign_status ORDER BY campaign_name"
+        "SELECT campaign_type, campaign_status, MEASURE(`Total Assets`) AS total_assets, MEASURE(`Reviewed Assets`) AS reviewed_assets, MEASURE(`Avg Completion`) AS avg_completion FROM mv_campaign_progress GROUP BY campaign_type, campaign_status ORDER BY campaign_type"
       ],
       "catalog": "hls_fde_dev",
       "schema": "dev_matthew_giglia_semantic_ground_truth"
@@ -305,8 +305,8 @@
                   "datasetName": "ds_campaign_progress",
                   "fields": [
                     {
-                      "name": "campaign_name",
-                      "expression": "`campaign_name`"
+                      "name": "campaign_type",
+                      "expression": "`campaign_type`"
                     },
                     {
                       "name": "campaign_status",
@@ -330,7 +330,7 @@
               "widgetType": "bar",
               "encodings": {
                 "x": {
-                  "fieldName": "campaign_name",
+                  "fieldName": "campaign_type",
                   "scale": {
                     "type": "categorical"
                   },
