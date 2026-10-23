@@ -11,6 +11,12 @@ resources:
           default: ""
         - name: app_name
           default: ${var.app_display_name}
+        - name: scope_name
+          default: semantic_ground_truth_credentials
+        - name: client_id_key
+          default: ${var.m2m_client_id_key}
+        - name: client_secret_key
+          default: ${var.m2m_client_secret_key}
         - name: catalog
           default: ${var.catalog}
         - name: schema_name

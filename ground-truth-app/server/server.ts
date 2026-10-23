@@ -37,22 +37,28 @@ createApp({
     // 3. Services (calls subscribe on campaigns + notifications)
     const services = createServices({ db, config, events });
 
-    // 4. Dev seed
+    // 4. Bootstrap admin group (no-op when admins already has members)
     const settings = await config.get();
+    await services.membership.bootstrap([
+      ...settings.adminEmails,
+      ...settings.bootstrapAdminIds,
+    ]);
+
+    // 5. Dev seed
     await seedSampleAssets(services.assets, db, settings);
 
-    // 5. HTTP surface
+    // 6. HTTP surface
     appkit.server.extend((app) => {
-      registerMiddleware(app, { config });
+      registerMiddleware(app, { config, membership: services.membership });
       registerRoutes(app, services);
       mountMcp(app, services);
     });
 
-    // 6. Startup marker
+    // 7. Startup marker
     const port = process.env.PORT || 8000;
     logger.info(`listening on port ${port}`);
 
-    // 7. Background timers
+    // 8. Background timers
     setInterval(() => {
       services.campaigns.runFreshnessCheck().catch((err) => {
         logger.error('Freshness check failed', { error: (err as Error).message });

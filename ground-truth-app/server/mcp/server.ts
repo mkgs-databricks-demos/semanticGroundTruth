@@ -54,6 +54,8 @@ export function buildMcpServer(
               status: 'PENDING',
               domain: null,
               subdomain: null,
+              sourceId: null,
+              sourceMetadata: null,
               createdAt: '',
               updatedAt: '',
             },

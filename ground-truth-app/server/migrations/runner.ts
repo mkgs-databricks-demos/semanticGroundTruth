@@ -47,5 +47,33 @@ export async function runMigrationsWithList(
     }
   }
 
+  // Ensure every app table has REPLICA IDENTITY FULL for Lakebase CDF
+  await ensureReplicaIdentityFull(db);
+
   return { applied, total: migrations.length };
+}
+
+/**
+ * Idempotently sets REPLICA IDENTITY FULL on every ordinary table in
+ * schema `app` that does not already have it. Run after every migration
+ * pass so newly created tables are covered.
+ */
+export async function ensureReplicaIdentityFull(db: Db): Promise<void> {
+  await db.tx(`
+    DO $$
+    DECLARE
+      tbl RECORD;
+    BEGIN
+      FOR tbl IN
+        SELECT c.relname
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'app'
+          AND c.relkind = 'r'
+          AND c.relreplident <> 'f'
+      LOOP
+        EXECUTE format('ALTER TABLE app.%I REPLICA IDENTITY FULL', tbl.relname);
+      END LOOP;
+    END $$;
+  `);
 }

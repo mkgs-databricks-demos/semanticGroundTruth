@@ -6,6 +6,8 @@ import { migration as m003 } from './003_campaigns';
 import { migration as m004 } from './004_notifications';
 import { migration as m005 } from './005_app_state';
 import { migration as m006 } from './006_indexes';
+import { migration as m007 } from './007_rbac_sources_cdf';
+import { migration as m008 } from './008_votes_version_hash';
 import { runMigrationsWithList } from './runner';
 
 export type { Migration } from './types';
@@ -17,7 +19,11 @@ export const MIGRATIONS: Migration[] = [
   m004,
   m005,
   m006,
+  m007,
+  m008,
 ];
+
+export { ensureReplicaIdentityFull } from './runner';
 
 export async function runMigrations(
   db: Db,

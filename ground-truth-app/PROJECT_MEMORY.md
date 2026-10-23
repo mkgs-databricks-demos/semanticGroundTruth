@@ -1,6 +1,6 @@
 # PROJECT_MEMORY — ground-truth-app
 
-> Last updated: 2026-10-20 — MCP auth **fully resolved**. All SPN grants applied. Connection PATCHed with `all-apis` scope. Unity Gateway delivers to app (404 expected — Phase H not built).
+> Last updated: 2026-10-23 — MCP auth **fully resolved**. All SPN grants applied. Connection PATCHed with `all-apis` scope. Unity Gateway delivers to app (404 expected — Phase H not built).
 
 ## Bundle Identity
 
@@ -284,7 +284,8 @@ OAuth secret scopes are immutable — must generate a new secret.
 | 2026-10-14 | Scaffolded | AppKit init (Node.js + React). MCP service moved from infra. `app_bundle_support_plan.md` written. |
 | 2026-10-19 | Phase A complete | Dev/prod/local targets, OBO scopes, OTel, agents-skills commented out, deprecated infra MCP deleted. |
 | 2026-10-19 | **Phase B — first deploy** ✅ | `dev-semantic-ground-truth` running. All AppKit plugins operational (agents, analytics, jobs, lakebase, server). MCP service pending (expected). 12 commits ahead of main on `mg-genie-app-scaffold`. |
-| 2026-10-20 | **Resource refactor + MCP auth fully resolved** | Extracted resources to `resources/`. Fixed SPN grant bugs (Permissions + UC Grants API need `application_id` UUID). All grants applied. SQL DDL confirmed metastore-only for connections. Root cause: SPN secret scoped to `apps ai-gateway` — sidecar needs `all-apis`. New secret generated, connection PATCHed, 404 on `/mcp` confirmed (auth works, Phase H not built). Branch: `mg-genie-app-resource-refactor`. |
+| 2026-10-20 | **Resource refactor + MCP auth fully resolved** | Extracted resources to `resources/`. Fixed SPN grant bugs. All grants applied. Root cause: SPN secret scoped to `apps ai-gateway` — sidecar needs `all-apis`. New secret generated, connection PATCHed, 404 on `/mcp` confirmed (auth works, Phase H not built). Branch: `mg-genie-app-resource-refactor`. |
+| 2026-10-23 | **Root build waves 0–2 complete** | Migration 007 (app groups, asset sources, REPLICA IDENTITY FULL). RBAC from Lakebase app groups (MembershipService). Asset import (catalog browse, Git folder sources, glossary parser). Client wizard + members page. Demo seed job (10 votes, 71 assets). Deploy verification job (6 M2M checks). App converge: 7 deploys, final stable with all probes passing. Migration 008 (votes version_hash) added during converge. Branch `mg-genie-agent-build`. |
 
 ---
 

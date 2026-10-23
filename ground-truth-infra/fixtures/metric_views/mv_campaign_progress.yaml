@@ -1,0 +1,106 @@
+# Metric View Fixture: mv_campaign_progress
+# Design source: L200-C5, root build plan 04
+# Source: bronze_lakebase_cdf (campaigns)
+# Measures: Campaign Count, Total Assets, Reviewed Assets, Avg Completion
+
+name: mv_campaign_progress
+
+sql: |
+  CREATE OR REPLACE VIEW ${catalog}.${schema}.mv_campaign_progress
+  WITH METRICS
+  LANGUAGE YAML
+  AS $$
+    version: 1.1
+    source: >
+      SELECT
+        data:id::STRING AS campaign_id,
+        data:name::STRING AS campaign_name,
+        data:campaign_type::STRING AS campaign_type,
+        data:status::STRING AS campaign_status,
+        data:completion_rule::STRING AS completion_rule,
+        data:scope_domain::STRING AS scope_domain,
+        data:total_assets::INT AS total_assets,
+        data:reviewed_assets::INT AS reviewed_assets,
+        data:created_by::STRING AS created_by,
+        data:created_at::TIMESTAMP AS created_at,
+        data:completed_at::TIMESTAMP AS completed_at,
+        DATE_TRUNC('MONTH', data:created_at::TIMESTAMP) AS campaign_month,
+        CASE WHEN data:total_assets::INT > 0
+          THEN CAST(data:reviewed_assets::INT AS DOUBLE) / data:total_assets::INT
+          ELSE 0.0 END AS completion_pct
+      FROM (
+        SELECT *
+        FROM ${catalog}.${schema}.bronze_lakebase_cdf
+        WHERE _source_table = 'campaigns'
+          AND _pg_change_type <> 'update_preimage'
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY _record_key ORDER BY _sort_by DESC) = 1
+      ) WHERE _pg_change_type <> 'delete'
+    comment: Campaign progress metrics showing review campaigns by status, type, and completion.
+    dimensions:
+      - name: campaign_type
+        expr: campaign_type
+        display_name: Campaign Type
+        comment: automatic, manual, or freshness
+        synonyms:
+          - type
+          - kind
+      - name: campaign_status
+        expr: campaign_status
+        display_name: Campaign Status
+        comment: active, paused, completed, or archived
+        synonyms:
+          - status
+          - state
+      - name: completion_rule
+        expr: completion_rule
+        display_name: Completion Rule
+        comment: Criteria for completing a campaign (reviewed_once, certified)
+      - name: scope_domain
+        expr: scope_domain
+        display_name: Domain Scope
+        comment: Business domain the campaign is scoped to (nullable)
+        synonyms:
+          - domain
+      - name: campaign_month
+        expr: campaign_month
+        display_name: Campaign Month
+        comment: Month the campaign was created
+        format:
+          type: date
+          date_format: locale_long_month
+    measures:
+      - name: Campaign Count
+        expr: COUNT(DISTINCT campaign_id)
+        display_name: Campaigns
+        comment: Number of distinct campaigns
+        synonyms:
+          - campaigns
+          - total campaigns
+      - name: Total Assets
+        expr: SUM(total_assets)
+        display_name: Total Campaign Assets
+        comment: Sum of assets across campaigns
+        synonyms:
+          - assets
+          - total assets assigned
+      - name: Reviewed Assets
+        expr: SUM(reviewed_assets)
+        display_name: Reviewed Campaign Assets
+        comment: Sum of reviewed assets across campaigns
+        synonyms:
+          - reviewed
+          - completed assets
+      - name: Avg Completion
+        expr: AVG(completion_pct)
+        display_name: Average Completion
+        comment: Average completion percentage across campaigns (0.0 to 1.0)
+        format:
+          type: percentage
+          decimal_places:
+            type: exact
+            places: 1
+        synonyms:
+          - completion
+          - completion rate
+          - average progress
+  $$

@@ -7,6 +7,7 @@ export const ERROR_CODES = [
   'FORBIDDEN',
   'NOT_FOUND',
   'CONFLICT',
+  'SOURCE_ACCESS_DENIED',
   'UPSTREAM_ERROR',
   'INTERNAL',
 ] as const;
@@ -18,6 +19,7 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
   FORBIDDEN: 403,
   NOT_FOUND: 404,
   CONFLICT: 409,
+  SOURCE_ACCESS_DENIED: 403,
   UPSTREAM_ERROR: 502,
   INTERNAL: 500,
 };

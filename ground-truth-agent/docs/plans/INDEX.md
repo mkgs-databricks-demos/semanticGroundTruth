@@ -2,6 +2,8 @@
 
 Manifest: [`waves.json`](waves.json) · Design docs: [L200-C9](../../docs/design/L200-C9_operational_genie_agent.md), [L300-14](../../docs/design/L300-14_genie_agent_creation.md), [L300-15](../../docs/design/L300-15_bundle3_deploy.md)
 
+> **Superseded:** The root manifest (`semanticGroundTruth/docs/plans/waves.json`) drives all three bundles, including this one (sessions 05, 06, 14). This local `waves.json` is kept for reference but is not used by the build system.
+
 **Mode:** git · **Branch:** `mg-genie-agent-build` · **Target:** `dev` · **Planned:** 2026-10-21
 
 Genie Agent over metric views for operational analytics. 3 sessions across 2 waves. Depends on Part A (app deploy, waves 6–8 on `mg-genie-app-first-deploy`) completing first.

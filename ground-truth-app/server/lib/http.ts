@@ -27,11 +27,20 @@ export function sendError(res: Response, err: unknown): void {
   const requestId = (res.req?.headers?.['x-request-id'] as string) ?? '';
 
   if (appErr.status >= 500) {
+    // When toAppError wrapped an unknown error, log the original cause so the
+    // generic client-facing message does not hide the root cause in telemetry.
+    const cause = appErr !== err && err instanceof Error ? err : undefined;
     logger.error(appErr.message, {
       code: appErr.code,
       status: appErr.status,
       'x-request-id': requestId,
-      stack: appErr.stack,
+      stack: cause?.stack ?? appErr.stack,
+      ...(cause
+        ? {
+            cause: cause.message,
+            causeCode: (cause as { code?: unknown }).code,
+          }
+        : {}),
     });
   }
 

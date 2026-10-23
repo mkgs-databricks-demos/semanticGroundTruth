@@ -19,12 +19,20 @@ import type {
   UserStats,
 } from '../../../../shared/contracts';
 import type {
+  AddGroupMemberBody,
+  AdminGroupsResponse,
   AppSettingsDto,
   CampaignListQuery,
+  CatalogMetricViewsQuery,
+  CatalogMetricViewsResponse,
+  CatalogsResponse,
+  CatalogSchemasQuery,
   CreateCampaignBody,
   ExampleBody,
   FreshnessCheckResult,
   GetNextQuery,
+  ImportAssetsBody,
+  ImportAssetsResponse,
   LeaderboardQuery,
   MarkReadBody,
   MarkReadResponse,
@@ -34,8 +42,13 @@ import type {
   Paged,
   RegisterAssetBody,
   RegisterAssetResult,
+  RegisterSourceBody,
+  RegisterSourceResponse,
   ReviewableQuery,
   RunQueryBody,
+  ScanSourceResponse,
+  SchemasResponse,
+  SourcesResponse,
   SynonymBody,
   UnreadCountResponse,
   UpdateCampaignStatusBody,
@@ -47,7 +60,7 @@ import type {
 } from '../../../../shared/contracts';
 import type { ReviewCard } from '../../../../shared/contracts';
 
-import { apiGet, apiSend } from './http';
+import { apiDelete, apiGet, apiSend } from './http';
 
 // ── User ────────────────────────────────────────────────────────────────
 
@@ -246,5 +259,81 @@ export async function validateMetricView(
   return apiSend<ValidateResult>(
     'POST',
     `/api/metric-views/${encodeURIComponent(fullName)}/validate`,
+  );
+}
+
+// ── Catalog browse (conventions §4) ─────────────────────────────────────
+
+export async function getCatalogs(): Promise<CatalogsResponse> {
+  return apiGet<CatalogsResponse>('/api/catalog/catalogs');
+}
+
+export async function getCatalogSchemas(
+  query: CatalogSchemasQuery,
+): Promise<SchemasResponse> {
+  return apiGet<SchemasResponse>('/api/catalog/schemas', query as unknown as Record<string, unknown>);
+}
+
+export async function getCatalogMetricViews(
+  query: CatalogMetricViewsQuery,
+): Promise<CatalogMetricViewsResponse> {
+  return apiGet<CatalogMetricViewsResponse>(
+    '/api/catalog/metric-views',
+    query as unknown as Record<string, unknown>,
+  );
+}
+
+// ── Asset sources (conventions §4) ──────────────────────────────────────
+
+export async function getSources(): Promise<SourcesResponse> {
+  return apiGet<SourcesResponse>('/api/sources');
+}
+
+export async function registerSource(
+  body: RegisterSourceBody,
+): Promise<RegisterSourceResponse> {
+  return apiSend<RegisterSourceResponse>('POST', '/api/sources', body);
+}
+
+export async function scanSource(
+  sourceId: string,
+): Promise<ScanSourceResponse> {
+  return apiSend<ScanSourceResponse>(
+    'POST',
+    `/api/sources/${encodeURIComponent(sourceId)}/scan`,
+  );
+}
+
+// ── Import (conventions §4) ─────────────────────────────────────────────
+
+export async function importAssets(
+  body: ImportAssetsBody,
+): Promise<ImportAssetsResponse> {
+  return apiSend<ImportAssetsResponse>('POST', '/api/assets/import', body);
+}
+
+// ── Admin: app groups (conventions §3) ──────────────────────────────────
+
+export async function getAdminGroups(): Promise<AdminGroupsResponse> {
+  return apiGet<AdminGroupsResponse>('/api/admin/groups');
+}
+
+export async function addGroupMember(
+  groupName: string,
+  body: AddGroupMemberBody,
+): Promise<void> {
+  return apiSend<void>(
+    'POST',
+    `/api/admin/groups/${encodeURIComponent(groupName)}/members`,
+    body,
+  );
+}
+
+export async function removeGroupMember(
+  groupName: string,
+  memberId: string,
+): Promise<void> {
+  return apiDelete<void>(
+    `/api/admin/groups/${encodeURIComponent(groupName)}/members/${encodeURIComponent(memberId)}`,
   );
 }

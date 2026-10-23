@@ -2,6 +2,7 @@
 // Session 01 · Wave 0 · No enum, no namespace, no default export
 
 import type {
+  AppGroupName,
   AssetStatus,
   AssetType,
   CampaignAssetStatus,
@@ -12,6 +13,8 @@ import type {
   NotificationChannel,
   NotificationEventType,
   NotificationStatus,
+  Role,
+  SourceType,
   VoteSource,
   VoteType,
 } from './values';
@@ -35,6 +38,8 @@ export interface Asset {
   status: AssetStatus;
   domain: string | null;
   subdomain: string | null;
+  sourceId: string | null;
+  sourceMetadata: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -228,6 +233,37 @@ export interface MetricViewColumn {
   displayName?: string;
   comment?: string;
   synonyms?: string[];
+}
+
+// ── App Groups (RBAC, conventions §3) ──────────────────────────────────
+
+export interface AppGroup {
+  name: AppGroupName;
+  role: Role;
+  description: string | null;
+  members: AppGroupMember[];
+  createdAt: string;
+}
+
+export interface AppGroupMember {
+  groupName: AppGroupName;
+  memberId: string;
+  addedBy: string;
+  addedAt: string;
+}
+
+// ── Asset Sources (conventions §4) ─────────────────────────────────────
+
+export interface AssetSource {
+  id: string;
+  sourceType: SourceType;
+  workspacePath: string;
+  displayName: string | null;
+  metricViewGlob: string;
+  glossaryGlob: string;
+  createdBy: string;
+  createdAt: string;
+  lastScannedAt: string | null;
 }
 
 // ── Query results ──────────────────────────────────────────────────────

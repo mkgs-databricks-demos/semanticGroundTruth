@@ -10,6 +10,56 @@ export function workspaceHost(): string {
   return host.replace(/\/+$/, '');
 }
 
+// ── App service principal token (OAuth M2M) ─────────────────────────────────
+// Databricks Apps inject DATABRICKS_CLIENT_ID / DATABRICKS_CLIENT_SECRET for the
+// app service principal (no DATABRICKS_TOKEN). Exchange them for a workspace
+// OAuth token and cache it until shortly before expiry. DATABRICKS_TOKEN is
+// honoured as a fallback for local development.
+
+let cachedSpToken: { token: string; expiresAt: number } | null = null;
+const TOKEN_REFRESH_MARGIN_MS = 5 * 60_000;
+
+export async function getAppSpnToken(): Promise<string> {
+  const now = Date.now();
+  if (cachedSpToken && cachedSpToken.expiresAt - TOKEN_REFRESH_MARGIN_MS > now) {
+    return cachedSpToken.token;
+  }
+
+  const clientId = process.env.DATABRICKS_CLIENT_ID;
+  const clientSecret = process.env.DATABRICKS_CLIENT_SECRET;
+  const host = workspaceHost();
+  if (!clientId || !clientSecret || !host) {
+    const pat = process.env.DATABRICKS_TOKEN;
+    if (pat) return pat;
+    throw upstream(
+      'App service principal credentials not configured (DATABRICKS_CLIENT_ID / DATABRICKS_CLIENT_SECRET)',
+    );
+  }
+
+  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  const res = await fetch(`${host}/oidc/v1/token`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${basic}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ grant_type: 'client_credentials', scope: 'all-apis' }).toString(),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw upstream(`App service principal token request returned ${res.status}: ${text.slice(0, 200)}`);
+  }
+  const body = (await res.json()) as { access_token?: string; expires_in?: number };
+  if (!body.access_token) {
+    throw upstream('App service principal token response had no access_token');
+  }
+  cachedSpToken = {
+    token: body.access_token,
+    expiresAt: now + (body.expires_in ?? 3600) * 1000,
+  };
+  return cachedSpToken.token;
+}
+
 interface StatementParameter {
   name: string;
   value: string;

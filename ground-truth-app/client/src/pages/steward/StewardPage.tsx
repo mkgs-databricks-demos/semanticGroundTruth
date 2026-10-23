@@ -14,11 +14,12 @@ import {
   TabsList,
   TabsTrigger,
 } from '@databricks/appkit-ui/react';
-import { ShieldAlert } from 'lucide-react';
+import { Import, ShieldAlert } from 'lucide-react';
 import { useMe } from '../../lib/api';
 import { hasRole } from '../../lib/api/roles';
 import { CampaignList } from '../../components/steward/CampaignList';
 import { CreateCampaignSheet } from '../../components/steward/CreateCampaignSheet';
+import { ImportWizard } from '../../components/steward/ImportWizard';
 import { AssetBrowser } from '../../components/steward/AssetBrowser';
 import { AssetDetailSheet } from '../../components/steward/AssetDetailSheet';
 import { MetricViewPanel } from '../../components/steward/MetricViewPanel';
@@ -26,6 +27,7 @@ import { MetricViewPanel } from '../../components/steward/MetricViewPanel';
 export function StewardPage() {
   const me = useMe();
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
 
   if (me.isLoading) {
@@ -62,7 +64,12 @@ export function StewardPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Steward Console</h2>
-        <Button onClick={() => setCreateOpen(true)}>New Campaign</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Import className="h-4 w-4 mr-1" /> Import Assets
+          </Button>
+          <Button onClick={() => setCreateOpen(true)}>New Campaign</Button>
+        </div>
       </div>
 
       <Tabs defaultValue="campaigns">
@@ -86,6 +93,7 @@ export function StewardPage() {
       </Tabs>
 
       <CreateCampaignSheet open={createOpen} onOpenChange={setCreateOpen} />
+      <ImportWizard open={importOpen} onOpenChange={setImportOpen} />
       <AssetDetailSheet
         assetId={detailId}
         open={detailId !== null}

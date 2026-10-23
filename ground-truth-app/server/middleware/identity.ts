@@ -1,5 +1,6 @@
 import type { RequestHandler } from 'express';
 import type { ConfigStore } from '../lib/config';
+import type { MembershipService } from '../services/membership';
 import type { UserContext, Role } from '../lib/context';
 import { sendError } from '../lib/http';
 import { unauthenticated } from '../lib/errors';
@@ -16,7 +17,10 @@ import { addSpanAttributes } from './otel';
  * - Production `/mcp` without headers: pass through without user
  *   (MCP handlers decide; SPN identity TBD — Decision 4).
  */
-export function identityMiddleware(config: ConfigStore): RequestHandler {
+export function identityMiddleware(
+  config: ConfigStore,
+  membership: MembershipService,
+): RequestHandler {
   return (req, res, next) => {
     void (async () => {
       try {
@@ -64,7 +68,7 @@ export function identityMiddleware(config: ConfigStore): RequestHandler {
 
         const userEmail = email ?? userId ?? '';
         const settings = await config.get();
-        const roles = resolveRoles(userEmail, settings);
+        const roles = await resolveRoles(userEmail, settings, membership);
 
         const user: UserContext = {
           userId: userId ?? userEmail,

@@ -58,4 +58,35 @@ describe('MIGRATIONS', () => {
       expect(m.description.length).toBeGreaterThan(0);
     }
   });
+
+  it('007 is registered after 006', () => {
+    const ids = MIGRATIONS.map((m) => m.id);
+    const idx006 = ids.indexOf('006_indexes');
+    const idx007 = ids.indexOf('007_rbac_sources_cdf');
+    expect(idx006).toBeGreaterThanOrEqual(0);
+    expect(idx007).toBeGreaterThanOrEqual(0);
+    expect(idx007).toBe(idx006 + 1);
+  });
+
+  it('007 contains REPLICA IDENTITY FULL block', () => {
+    const m007 = MIGRATIONS.find((m) => m.id === '007_rbac_sources_cdf');
+    expect(m007).toBeDefined();
+    expect(m007!.sql).toContain('REPLICA IDENTITY FULL');
+  });
+
+  it('007 contains no DROP', () => {
+    const m007 = MIGRATIONS.find((m) => m.id === '007_rbac_sources_cdf');
+    expect(m007).toBeDefined();
+    expect(/\bDROP\s/i.test(m007!.sql)).toBe(false);
+  });
+
+  it('007 uses IF NOT EXISTS for every CREATE TABLE', () => {
+    const m007 = MIGRATIONS.find((m) => m.id === '007_rbac_sources_cdf');
+    expect(m007).toBeDefined();
+    const creates = m007!.sql.match(/CREATE\s+TABLE\b/gi) ?? [];
+    const createsIfNot =
+      m007!.sql.match(/CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\b/gi) ?? [];
+    expect(creates.length).toBeGreaterThan(0);
+    expect(creates.length).toBe(createsIfNot.length);
+  });
 });

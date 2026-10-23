@@ -38,7 +38,7 @@ ground-truth-app/
 ├── server/
 │   ├── server.ts               # AppKit entry (plugins, migrations, services, routes, MCP)
 │   ├── lib/                    # db, errors, http, context, config, events, databricks, logger, deps
-│   ├── migrations/             # Idempotent runner + migrations 001-006
+│   ├── migrations/             # Idempotent runner + migrations 001-008 (007 app groups/sources/CDF, 008 votes.version_hash)
 │   ├── middleware/             # Identity (x-forwarded-*), roles, request logging
 │   ├── services/
 │   │   ├── asset/              # AssetRegistry (Lakebase CRUD)
@@ -46,6 +46,8 @@ ground-truth-app/
 │   │   ├── review/             # ReviewEngine (Wilson score, surfacing, leaderboard)
 │   │   ├── campaign/           # CampaignManager (lifecycle, scope, RBAC)
 │   │   ├── notification/       # NotificationService (inbox, digest, destinations)
+│   │   ├── membership/         # MembershipService (Lakebase app groups → roles, bootstrap admins)
+│   │   ├── sources/            # SourceService, glossary parser, workspace file reader (OBO + M2M)
 │   │   └── index.ts            # createServices / getServices singleton
 │   ├── routes/                 # REST handlers (see Route Table below)
 │   ├── mcp/                    # Streamable HTTP MCP server (12 tools)
@@ -63,8 +65,8 @@ ground-truth-app/
 │       │   ├── layout/         # AppLayout, NavLinks, NotificationBell
 │       │   ├── review/         # CardStack, ReviewCard, SwipeActions, EditSheet, ...
 │       │   ├── leaderboard/    # LeaderboardTable, MyStatsCard, BadgeList
-│       │   ├── steward/        # CampaignList, CreateCampaignSheet, AssetBrowser, ...
-│       │   ├── admin/          # ScoringConfigForm, RoleListsForm, MaintenanceActions, ...
+│       │   ├── steward/        # CampaignList, CreateCampaignSheet, AssetBrowser, ImportWizard, ...
+│       │   ├── admin/          # ScoringConfigForm, RoleListsForm, MaintenanceActions, MembersPanel, ...
 │       │   └── executive/      # KpiCards, DashboardLink
 │       └── pages/              # ReviewPage, LeaderboardPage, StewardPage, AdminPage, ExecutivePage
 ├── shared/
@@ -91,6 +93,13 @@ ground-truth-app/
 | GET | `/api/assets/:assetId` | reviewer | Asset detail |
 | GET | `/api/assets/:assetId/versions` | reviewer | Asset version history |
 | POST | `/api/assets/register` | steward | Register/re-register asset |
+| POST | `/api/assets/import` | steward | Bulk import assets from metric views or a registered source |
+| GET | `/api/sources` | steward | List registered asset sources |
+| POST | `/api/sources` | steward | Register a source (UC schema or workspace glossary path) |
+| POST | `/api/sources/:id/scan` | steward | Scan a source for importable assets |
+| GET | `/api/catalog/catalogs` | steward | Browse UC catalogs (OBO) |
+| GET | `/api/catalog/schemas` | steward | Browse schemas in a catalog (OBO) |
+| GET | `/api/catalog/metric-views` | steward | Browse metric views in a schema (OBO) |
 | GET | `/api/campaigns` | reviewer | List campaigns (RBAC-filtered) |
 | POST | `/api/campaigns` | steward | Create campaign |
 | GET | `/api/campaigns/:campaignId` | reviewer | Campaign detail |
@@ -105,6 +114,9 @@ ground-truth-app/
 | PUT | `/api/admin/config` | admin | Update config |
 | GET | `/api/admin/summary` | steward | Executive coverage summary |
 | POST | `/api/admin/recompute/:assetId` | admin | Recompute confidence score |
+| GET | `/api/admin/groups` | admin | List app groups + members |
+| POST | `/api/admin/groups/:name/members` | admin | Add a member to an app group |
+| DELETE | `/api/admin/groups/:name/members/:memberId` | admin | Remove a member from an app group |
 | GET | `/api/metric-views` | reviewer | List metric views (OBO) |
 | GET | `/api/metric-views/:fullName` | reviewer | Metric view detail (OBO) |
 | POST | `/api/metric-views/:fullName/validate` | reviewer | Validate metric view (OBO) |
@@ -126,11 +138,11 @@ Registered in Unity Gateway as `semantic-ground-truth-mcp`. 12 tools across thre
 
 | Role | Who | How to grant |
 | --- | --- | --- |
-| `reviewer` | All authenticated users | Automatic |
-| `steward` | Data stewards | Add email to `GT_STEWARD_EMAILS` list in Admin config or `app.app_config` |
-| `admin` | App administrators | Add email to `GT_ADMIN_EMAILS` env var or Admin config |
+| `reviewer` | All authenticated users | Automatic (any user with `CAN_USE`) |
+| `steward` | Data stewards | Member of `semantic-ground-truth-stewards` app group |
+| `admin` | App administrators | Member of `semantic-ground-truth-admins` app group |
 
-Role checks use a fail-open pattern: if the role list cannot be loaded, reviewer-level access is granted.
+Roles are stored in Lakebase app groups (`app.app_groups` + `app.app_group_members`), not workspace SCIM groups. `admin` implies `steward`. See [Onboarding Users](../docs/runbooks/onboarding_users.md).
 
 ## Environment Variables
 
@@ -152,7 +164,9 @@ Role checks use a fail-open pattern: if the role list cannot be loaded, reviewer
 | `DATABRICKS_HOST` | Platform-set | Workspace URL |
 | `DEV_USER_EMAIL` | `local-dev@example.com` | Fallback identity in local dev |
 | `SEED_SAMPLE_ASSETS` | `false` | Seed 12 sample assets on startup |
-| `GT_ADMIN_EMAILS` | — | Comma-separated admin email list |
+| `GT_BOOTSTRAP_ADMIN_IDS` | `valueFrom: m2m-client-id` | Principal IDs always granted admin (M2M SPN client ID from the secret resource) |
+| `GT_ADMIN_EMAILS` | — | Legacy comma-separated admin emails, merged with app groups (prefer app groups) |
+| `GT_STEWARD_EMAILS` | — | Legacy comma-separated steward emails, merged with app groups |
 | `GT_METRIC_VIEW_CATALOG` | — | Catalog for metric view reads |
 | `GT_METRIC_VIEW_SCHEMA` | — | Schema for metric view reads |
 | `SLACK_WEBHOOK_URL` | — | Slack notification destination (optional) |
@@ -168,7 +182,7 @@ Role checks use a fail-open pattern: if the role list cannot be loaded, reviewer
 | `prod` | production | `semantic-ground-truth` |
 | `local` | localhost proxy | — (`http://127.0.0.1:7073`) |
 
-Key bundle variables: `app_display_name`, `agents_serving_endpoint_name`, `agents_mlflow_experiment_experimentId`, `sql_warehouse_id`, `job_id`, `postgres_branch`, `postgres_database`, `catalog`, `schema_name`. Values for `dev` are injected from infra via `deploy.sh --var`.
+Key bundle variables: `app_display_name`, `agents_serving_endpoint_name`, `agents_mlflow_experiment_experimentId`, `sql_warehouse_id`, `job_id`, `postgres_branch`, `postgres_database`, `catalog`, `schema_name`, `mcp_execute_principal`, `secret_scope_name` (default `semantic_ground_truth_credentials`; backs the `m2m-client-id` secret resource). Values for `dev` are injected from infra via `deploy.sh --var`.
 
 ## Prerequisites
 
@@ -188,6 +202,15 @@ pnpm run dev
 
 The dev server starts at the port shown in console output. The `local` target in `databricks.yml` has all variables hardcoded for `http://127.0.0.1:7073`.
 
+## Bundle Jobs
+
+| Job | Resource Key | Purpose |
+|---|---|---|
+| Deploy Verification | `deploy_verification` | M2M OAuth probe: `/health`, `/api/me`, `/api/campaigns`, `/mcp` (6 checks) |
+| Demo Campaign Seed | `demo_campaign_seed` | Grants, import from metric views, create campaign, cast votes, verify leaderboard |
+| App Post-Deploy Setup | `app_post_deploy_setup` | `CAN_USE` grants for users group + UC grants for M2M SPN |
+| Create MCP Connection | `create_mcp_connection` | Schema-level HTTP connection for Unity Gateway |
+
 ## Deploy
 
 First deploy requires the infra bundle and a multi-step verification. See [First Deploy Verification Runbook](docs/runbooks/first-deploy-verification.md).
@@ -204,6 +227,10 @@ databricks bundle run app --target dev
 ```
 
 > **Restarting a stopped app:** `databricks apps start <APP_NAME>`.
+
+> **Secret resource before plain `apps deploy`:** `GT_BOOTSTRAP_ADMIN_IDS` reads the `m2m-client-id` app resource. Run `bundle deploy` at least once so the resource is attached before using `databricks apps deploy` directly.
+
+After deploying, run `databricks bundle run deploy_verification --target dev` (6 M2M probes). On a fresh environment, optionally run `demo_campaign_seed`.
 
 ## Code Quality
 

@@ -1,6 +1,6 @@
 # PROJECT_MEMORY — ground-truth-infra
 
-> Last updated: 2026-10-08 — docs/ restructure complete. Bundle 1 fully deployed to dev. Branch ready to merge.
+> Last updated: 2026-10-23 — Root build waves 0–4 complete. CDF configured, bronze pipeline running (21 flows), 7 metric views deployed. Branch `mg-genie-agent-build`.
 
 ## Bundle Identity
 
@@ -60,14 +60,19 @@
 - `app_role.postgres_role.yml` — `ground_truth_app_role`; identity_type added post-Bundle 2
 - `app_db.postgres_database.yml` — `ground_truth_app` on production branch
 
-> CDF tables (`lb_*_history`) configured via Lakebase App UI Lakehouse Sync after Bundle 2 deploys.
+> CDF tables (`lb_*_history`) are now configured and active — 21 history tables feeding `bronze_lakebase_cdf`.
 > `postgres_synced_tables` in DABs = Reverse ETL (Delta→Lakebase), NOT Lakebase→Delta.
 
+**SDP Pipeline**
+- `resources/pipelines/cdf_bronze.pipeline.yml` — metadata-driven bronze pipeline: streams all `lb_*_history` tables into `bronze_lakebase_cdf`
+- `src/lib/cdf_bronze/builder.py` — `CdfBronzeBuilder` class (reads `fixtures/pipelines/cdf_bronze_tables.yaml`, creates one streaming append flow per table)
+- `src/pipelines/cdf_bronze_notebook.py` — SDP pipeline notebook
+- `fixtures/pipelines/cdf_bronze_tables.yaml` — table config listing all `lb_*_history` tables with keys
+
 ### Source Files
-- **6 Python notebooks** (deployed) — `src/notebooks/` — collect_feedback, create_feature_branch, freshness_check, list_fixtures, deploy_metric_view, post_deploy_validation
-- **5 Python notebooks** (planned) — `src/notebooks/` — setup_genie_automation, setup_job_params, setup_gateway_connection, setup_cdf_config, setup_app_role_sp
-- **1 notebook to deprecate** — `create_feature_branch.py` → `_deprecated/` (replaced by `genie_task`)
-- **4 metric view fixtures** — `fixtures/metric_views/` — mv_review_activity, mv_coverage_metrics, mv_user_leaderboard, mv_feedback_pipeline
+- **Python notebooks** (deployed) — `src/notebooks/` — collect_feedback, create_feature_branch, freshness_check, list_fixtures, deploy_metric_view, post_deploy_validation, setup_cdf_config
+- **Python library** — `src/lib/lakebase_cdf.py` — CDF config helpers (create/list configs)
+- **7 metric view fixtures** — `fixtures/metric_views/` — mv_review_activity, mv_coverage_metrics, mv_user_leaderboard, mv_feedback_pipeline, mv_campaign_progress, mv_otel_error_rate, mv_otel_request_latency
 - **1 Genie Code automation prompt** — `fixtures/prompts/feedback_loop_prompt.md` (consumed by `setup_genie_automation.py`)
 
 ### Post-Deploy Automation (replaces prior manual steps)
@@ -161,6 +166,7 @@ Key resolutions:
 | 2026-10-08 | Phases 1–8 complete | All resources declared, deployed, and validated in dev |
 | 2026-10-08 | Post-deploy refactor | Naming cleanup, folder restructure, one-resource-per-YAML split |
 | 2026-10-08 | docs/ restructure | `docs/plans/`, `docs/sessions/` established; fixtures/ is now exclusively deployable config |
+| 2026-10-23 | Root build waves 0–4 complete | CDF setup job, bronze SDP pipeline (21 flows / 281 rows), 7 metric views deployed. Branch `mg-genie-agent-build`. |
 
 ---
 

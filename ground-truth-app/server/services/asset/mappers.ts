@@ -35,6 +35,12 @@ export function rowToAsset(row: Record<string, unknown>): Asset {
     status: row.status as Asset['status'],
     domain: (row.domain as string) ?? null,
     subdomain: (row.subdomain as string) ?? null,
+    sourceId: (row.source_id as string) ?? null,
+    sourceMetadata: row.source_metadata
+      ? (typeof row.source_metadata === 'string'
+        ? JSON.parse(row.source_metadata as string) as Record<string, unknown>
+        : row.source_metadata as Record<string, unknown>)
+      : null,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
   };

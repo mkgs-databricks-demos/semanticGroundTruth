@@ -1,0 +1,22 @@
+# resources/pipelines/cdf_bronze.pipeline.yml
+# Spark Declarative Pipeline: Lakebase CDF → bronze_lakebase_cdf streaming table.
+# Design: build_conventions §7, plan 03.
+
+resources:
+  pipelines:
+    cdf_bronze:
+      name: "Semantic Ground Truth — Lakebase CDF Bronze"
+      serverless: true
+      catalog: ${var.catalog}
+      schema: ${resources.schemas.ground_truth_schema.name}
+      continuous: false
+      libraries:
+        - file:
+            path: ../../src/pipelines/cdf_bronze.py
+      configuration:
+        cdf_bronze.catalog: ${var.catalog}
+        cdf_bronze.schema: ${resources.schemas.ground_truth_schema.name}
+        cdf_bronze.config_path: ${workspace.file_path}/fixtures/pipelines/cdf_bronze_tables.yaml
+        cdf_bronze.lib_path: ${workspace.file_path}/src/lib
+      event_log:
+        name: cdf_bronze_event_log

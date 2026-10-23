@@ -3,24 +3,34 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  AddGroupMemberBody,
   CampaignListQuery,
+  CatalogMetricViewsQuery,
+  CatalogSchemasQuery,
   GetNextQuery,
+  ImportAssetsBody,
   LeaderboardQuery,
   MetricViewListQuery,
   NotificationListQuery,
+  RegisterSourceBody,
   ReviewableQuery,
   UpdateCampaignStatusBody,
 } from '../../../../shared/contracts';
 
 import {
+  addGroupMember,
   createCampaign,
   exampleAction,
   getAdminConfig,
+  getAdminGroups,
   getAsset,
   getAssets,
   getAssetVersions,
   getCampaign,
   getCampaigns,
+  getCatalogMetricViews,
+  getCatalogs,
+  getCatalogSchemas,
   getExecutiveSummary,
   getLeaderboard,
   getMe,
@@ -29,13 +39,18 @@ import {
   getNextCard,
   getNotificationPreferences,
   getNotifications,
+  getSources,
   getUnreadCount,
   getUserStats,
+  importAssets,
   markNotificationsRead,
   recomputeAsset,
   registerAsset,
+  registerSource,
+  removeGroupMember,
   runFreshnessCheck,
   runQuery,
+  scanSource,
   submitVote,
   synonymAction,
   updateAdminConfig,
@@ -294,5 +309,106 @@ export function useRecomputeAsset() {
 export function useValidateMetricView() {
   return useMutation({
     mutationFn: validateMetricView,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Catalog browse
+// ─────────────────────────────────────────────────────────────────────
+
+export function useCatalogs() {
+  return useQuery({
+    queryKey: queryKeys.catalogs,
+    queryFn: getCatalogs,
+  });
+}
+
+export function useCatalogSchemas(query: CatalogSchemasQuery) {
+  return useQuery({
+    queryKey: queryKeys.catalogSchemas(query.catalog),
+    queryFn: () => getCatalogSchemas(query),
+    enabled: !!query.catalog,
+  });
+}
+
+export function useCatalogMetricViews(query: CatalogMetricViewsQuery) {
+  return useQuery({
+    queryKey: queryKeys.catalogMetricViews(query.catalog, query.schema),
+    queryFn: () => getCatalogMetricViews(query),
+    enabled: !!query.catalog && !!query.schema,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Asset sources
+// ─────────────────────────────────────────────────────────────────────
+
+export function useSources() {
+  return useQuery({
+    queryKey: queryKeys.sources,
+    queryFn: getSources,
+  });
+}
+
+export function useRegisterSource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RegisterSourceBody) => registerSource(body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.sources });
+    },
+  });
+}
+
+export function useScanSource() {
+  return useMutation({
+    mutationFn: (sourceId: string) => scanSource(sourceId),
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Import
+// ─────────────────────────────────────────────────────────────────────
+
+export function useImportAssets() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ImportAssetsBody) => importAssets(body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['assets'] });
+    },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Admin groups
+// ─────────────────────────────────────────────────────────────────────
+
+export function useAdminGroups() {
+  return useQuery({
+    queryKey: queryKeys.adminGroups,
+    queryFn: getAdminGroups,
+  });
+}
+
+export function useAddGroupMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { groupName: string; body: AddGroupMemberBody }) =>
+      addGroupMember(vars.groupName, vars.body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.adminGroups });
+    },
+  });
+}
+
+export function useRemoveGroupMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { groupName: string; memberId: string }) =>
+      removeGroupMember(vars.groupName, vars.memberId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.adminGroups });
+    },
   });
 }

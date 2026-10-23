@@ -13,10 +13,10 @@ import type { UserContext } from '../../lib/context';
 import type { Campaign } from '../../../shared/contracts/entities';
 import type { CreateCampaignBody, FreshnessCheckResult } from '../../../shared/contracts/api';
 import type { CampaignStatus, CampaignType, CompletionRule } from '../../../shared/contracts/values';
+import type { MembershipService } from '../membership';
 import { notFound, conflict } from '../../lib/errors';
-import { logger } from '../../lib/logger';
 import { assertTransition } from './lifecycle';
-import { buildScopeFilter } from './scope';
+import { buildScopeFilter, checkCampaignVisibility } from './scope';
 
 // ── Row → domain mapper ──────────────────────────────────────────────
 
@@ -42,46 +42,19 @@ function toCampaign(row: Record<string, unknown>): Campaign {
   };
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────
-
-/**
- * Fetch the current user's group memberships from the Databricks SCIM API.
- * Returns an empty array (fail-open) on any error.
- *
- * Assumption: `currentUserFromToken` is not defined in any cross-module
- * contract (build_conventions §7). Implemented here as a private helper.
- * V1 decision: fail open + warn rather than blocking access.
- */
-async function fetchUserGroups(accessToken: string): Promise<string[]> {
-  try {
-    const host = process.env.DATABRICKS_HOST ?? '';
-    const baseUrl = host.startsWith('https://') ? host : `https://${host}`;
-    const res = await fetch(`${baseUrl}/api/2.0/preview/scim/v2/Me`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!res.ok) {
-      logger.warn('SCIM /Me request failed', { status: res.status });
-      return [];
-    }
-    const data = (await res.json()) as { groups?: Array<{ display?: string }> };
-    return (data.groups ?? []).map((g) => g.display ?? '').filter(Boolean);
-  } catch (err) {
-    logger.warn('Failed to fetch user groups from SCIM', { error: String(err) });
-    return [];
-  }
-}
-
 // ── CampaignManager ─────────────────────────────────────────────────
 
 export class CampaignManager {
   private readonly db: Db;
   private readonly config: ConfigStore;
   private readonly events: EventBus;
+  private readonly membership: MembershipService;
 
-  constructor(deps: ServiceDeps) {
+  constructor(deps: ServiceDeps, membership: MembershipService) {
     this.db = deps.db;
     this.config = deps.config;
     this.events = deps.events;
+    this.membership = membership;
   }
 
   // ── create ──────────────────────────────────────────────────────
@@ -175,7 +148,7 @@ export class CampaignManager {
     // Filter by RBAC visibility
     const visible: Campaign[] = [];
     for (const c of campaigns) {
-      if (await this.isVisibleTo(user, c)) {
+      if (await checkCampaignVisibility(user, c.rbacGroups, this.membership)) {
         visible.push(c);
       }
     }
@@ -201,7 +174,7 @@ export class CampaignManager {
 
     const campaign = toCampaign(row);
 
-    if (!(await this.isVisibleTo(user, campaign))) {
+    if (!(await checkCampaignVisibility(user, campaign.rbacGroups, this.membership))) {
       // Return 404 rather than 403 to avoid leaking campaign existence
       throw notFound(`Campaign ${campaignId} not found`);
     }
@@ -238,39 +211,6 @@ export class CampaignManager {
     );
 
     return toCampaign(row!);
-  }
-
-  // ── isVisibleTo ─────────────────────────────────────────────────
-
-  async isVisibleTo(user: UserContext, campaign: Campaign): Promise<boolean> {
-    // Admins and stewards see all campaigns
-    if (user.roles.includes('admin') || user.roles.includes('steward')) {
-      return true;
-    }
-
-    // No RBAC groups = visible to all (default / open campaign)
-    if (campaign.rbacGroups.length === 0) {
-      return true;
-    }
-
-    // Check user's group membership against campaign's rbac_groups
-    if (!user.accessToken) {
-      logger.warn('No access token for RBAC check; failing open', {
-        userId: user.userId,
-      });
-      return true;
-    }
-
-    const userGroups = await fetchUserGroups(user.accessToken);
-    if (userGroups.length === 0) {
-      // Fail open if group lookup returns nothing (V1 decision)
-      logger.warn('Could not resolve user groups; failing open', {
-        userId: user.userId,
-      });
-      return true;
-    }
-
-    return campaign.rbacGroups.some((g) => userGroups.includes(g));
   }
 
   // ── createAutomaticForAsset ─────────────────────────────────────

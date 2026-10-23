@@ -13,6 +13,7 @@ export interface AppSettings {
   adminEmails: string[];
   stewardEmails: string[];
   seedSampleAssets: boolean;
+  bootstrapAdminIds: string[];
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -27,6 +28,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   adminEmails: [],
   stewardEmails: [],
   seedSampleAssets: false,
+  bootstrapAdminIds: [],
 };
 
 const CACHE_TTL_MS = 60_000;
@@ -43,6 +45,7 @@ const SNAKE_TO_CAMEL: Record<string, keyof AppSettings> = {
   admin_emails: 'adminEmails',
   steward_emails: 'stewardEmails',
   seed_sample_assets: 'seedSampleAssets',
+  bootstrap_admin_ids: 'bootstrapAdminIds',
 };
 
 const CAMEL_TO_SNAKE: Record<string, string> = Object.fromEntries(
@@ -117,6 +120,13 @@ export class ConfigStore {
     if (envStewards.length > 0) {
       settings = { ...settings, stewardEmails: dedup([...settings.stewardEmails, ...envStewards]) };
     }
+    const envBootstrapIds = parseEnvList(process.env.GT_BOOTSTRAP_ADMIN_IDS);
+    if (envBootstrapIds.length > 0) {
+      settings = {
+        ...settings,
+        bootstrapAdminIds: dedup([...settings.bootstrapAdminIds, ...envBootstrapIds]),
+      };
+    }
     if (process.env.SEED_SAMPLE_ASSETS === 'true') {
       settings = { ...settings, seedSampleAssets: true };
     }
@@ -131,14 +141,16 @@ export class ConfigStore {
       ([key]) => key in CAMEL_TO_SNAKE,
     );
 
-    if (entries.length > 0) {
-      const statements = entries.map(([camelKey, value]) => {
-        const snakeKey = CAMEL_TO_SNAKE[camelKey];
-        const jsonValue = JSON.stringify(value);
-        return `INSERT INTO app.app_config (key, value, updated_by, updated_at) VALUES ('${snakeKey}', '${jsonValue}'::jsonb, '${updatedBy}', NOW()) ON CONFLICT (key) DO UPDATE SET value = '${jsonValue}'::jsonb, updated_by = '${updatedBy}', updated_at = NOW()`;
-      });
-
-      await this.db.tx(statements.join(';\n'));
+    for (const [camelKey, value] of entries) {
+      const snakeKey = CAMEL_TO_SNAKE[camelKey];
+      const jsonValue = JSON.stringify(value);
+      await this.db.query(
+        `INSERT INTO app.app_config (key, value, updated_by, updated_at)
+         VALUES ($1, $2::jsonb, $3, NOW())
+         ON CONFLICT (key) DO UPDATE
+         SET value = $2::jsonb, updated_by = $3, updated_at = NOW()`,
+        [snakeKey, jsonValue, updatedBy],
+      );
     }
 
     this.cached = null;

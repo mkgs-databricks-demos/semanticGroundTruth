@@ -1,0 +1,50 @@
+# resources/jobs/setup_lakebase_cdf.job.yml
+# Standalone job to configure Lakebase CDF (Lakehouse Sync) and wait for
+# lb_*_history tables to appear in the destination schema.
+#
+# Idempotent: re-running with an existing config only waits and reports.
+#
+# Design source: docs/plans/02_infra_lakebase_cdf_setup.md
+
+resources:
+  jobs:
+    setup_lakebase_cdf:
+      name: "Semantic Ground Truth \u2014 Setup Lakebase CDF"
+      description: "Configure Lakebase Lakehouse Sync for the app database and wait for history tables."
+
+      parameters:
+        - name: database
+          default: "${resources.postgres_databases.app_db.id}"
+        - name: source_schema
+          default: "app"
+        - name: catalog
+          default: "${var.catalog}"
+        - name: schema
+          default: "${resources.schemas.ground_truth_schema.name}"
+        - name: expected_tables
+          default: "votes,assets,user_activity,campaigns,campaign_assets,app_config,_migrations"
+        - name: wait_timeout_seconds
+          default: "900"
+
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "1"
+
+      tasks:
+        - task_key: setup_cdf
+          description: "Create CDF config (if absent), then wait for expected lb_*_history tables"
+          notebook_task:
+            notebook_path: ../../src/notebooks/setup_cdf_config.py
+            base_parameters:
+              database: "{{job.parameters.database}}"
+              source_schema: "{{job.parameters.source_schema}}"
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+              expected_tables: "{{job.parameters.expected_tables}}"
+              wait_timeout_seconds: "{{job.parameters.wait_timeout_seconds}}"
+          environment_key: serverless
+
+      email_notifications:
+        on_failure:
+          - matthew.giglia@databricks.com

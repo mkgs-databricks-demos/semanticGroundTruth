@@ -1,41 +1,51 @@
 # Metric View Fixture: mv_feedback_pipeline
 # Design source: L200-C9, L300-05
-# Source CDF table: lb_feedback_batches_history
+# Source: bronze_lakebase_cdf (feedback_batches)
 # Measures: Total Batches, Success Rate, Avg Processing Time
 
 name: mv_feedback_pipeline
 
 sql: |
-  CREATE VIEW IF NOT EXISTS ${catalog}.${schema}.mv_feedback_pipeline
+  CREATE OR REPLACE VIEW ${catalog}.${schema}.mv_feedback_pipeline
   WITH METRICS
   LANGUAGE YAML
   AS $$
     version: 1.1
     source: >
       SELECT
-        batch_id,
-        status,
-        asset_count,
-        processing_time_seconds,
-        error_message,
-        created_at,
-        completed_at,
-        DATE_TRUNC('DAY', created_at) AS batch_date,
-        DATE_TRUNC('WEEK', created_at) AS batch_week,
-        CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END AS is_success,
-        CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END AS is_failed
-      FROM ${catalog}.${schema}.lb_feedback_batches_history
-      WHERE _change_type != 'DELETE'
+        data:id::STRING AS id,
+        data:status::STRING AS status,
+        data:asset_count::INT AS asset_count,
+        data:processing_time_seconds::DOUBLE AS processing_time_seconds,
+        data:triggered_by::STRING AS triggered_by,
+        data:branch_name::STRING AS branch_name,
+        data:created_at::TIMESTAMP AS created_at,
+        data:completed_at::TIMESTAMP AS completed_at,
+        DATE_TRUNC('DAY', data:created_at::TIMESTAMP) AS batch_date,
+        DATE_TRUNC('WEEK', data:created_at::TIMESTAMP) AS batch_week,
+        CASE WHEN data:status::STRING = 'completed' THEN 1 ELSE 0 END AS is_success,
+        CASE WHEN data:status::STRING = 'failed' THEN 1 ELSE 0 END AS is_failed
+      FROM (
+        SELECT *
+        FROM ${catalog}.${schema}.bronze_lakebase_cdf
+        WHERE _source_table = 'feedback_batches'
+          AND _pg_change_type <> 'update_preimage'
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY _record_key ORDER BY _sort_by DESC) = 1
+      ) WHERE _pg_change_type <> 'delete'
     comment: Operational metrics for the feedback pipeline job runs.
     dimensions:
       - name: status
         expr: status
         display_name: Batch Status
-        comment: Pipeline run status (SUCCESS, FAILED, RUNNING)
+        comment: Pipeline run status (pending, completed, failed)
         synonyms:
           - batch status
           - run status
           - pipeline status
+      - name: triggered_by
+        expr: triggered_by
+        display_name: Triggered By
+        comment: What initiated the batch (user, scheduler, etc.)
       - name: batch_date
         expr: batch_date
         display_name: Batch Date
@@ -50,16 +60,17 @@ sql: |
           date_format: year_month_day
     measures:
       - name: Total Batches
-        expr: COUNT(batch_id)
+        expr: COUNT(id)
         display_name: Total Batches
+        comment: Number of feedback pipeline runs
         synonyms:
           - batches
           - pipeline runs
           - runs
       - name: Success Rate
-        expr: SUM(is_success) / COUNT(batch_id)
+        expr: SUM(is_success) / NULLIF(COUNT(id), 0)
         display_name: Success Rate
-        comment: Fraction of pipeline runs that succeeded (0.0 to 1.0)
+        comment: Fraction of pipeline runs that completed (0.0 to 1.0)
         format:
           type: percentage
           decimal_places:
@@ -71,6 +82,7 @@ sql: |
       - name: Failed Batches
         expr: SUM(is_failed)
         display_name: Failed Batches
+        comment: Number of failed pipeline runs
         synonyms:
           - failures
           - failed runs
@@ -90,6 +102,7 @@ sql: |
       - name: Total Assets Processed
         expr: SUM(asset_count)
         display_name: Total Assets Processed
+        comment: Total number of assets processed across all batches
         synonyms:
           - assets processed
           - total processed

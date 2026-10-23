@@ -1,0 +1,170 @@
+{
+  "version": 2,
+  "config": {
+    "sample_questions": [
+      {
+        "id": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
+        "question": [
+          "How many total votes have been cast?"
+        ]
+      },
+      {
+        "id": "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d601",
+        "question": [
+          "What is the current review coverage percentage?"
+        ]
+      },
+      {
+        "id": "c3d4e5f6a7b8c9d0e1f2a3b4c5d60102",
+        "question": [
+          "Who are the top 10 reviewers by total reviews?"
+        ]
+      },
+      {
+        "id": "d4e5f6a7b8c9d0e1f2a3b4c5d6010203",
+        "question": [
+          "Show the approval rate trend over the last 30 days"
+        ]
+      },
+      {
+        "id": "e5f6a7b8c9d0e1f2a3b4c5d601020304",
+        "question": [
+          "What is the feedback pipeline success rate this week?"
+        ]
+      },
+      {
+        "id": "f6a7b8c9d0e1f2a3b4c5d60102030405",
+        "question": [
+          "How many assets are in each review status?"
+        ]
+      },
+      {
+        "id": "01a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6",
+        "question": [
+          "Which asset types have the lowest certification rate?"
+        ]
+      },
+      {
+        "id": "02b3c4d5e6f7a8b9c0d1e2f3a4b5c601",
+        "question": [
+          "What is the app error rate in the last 24 hours?"
+        ]
+      }
+    ]
+  },
+  "instructions": {
+      "text_instructions": [
+        {
+          "id": "10a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5",
+          "content": ["You are the Ground Truth Operations analytics agent. You answer questions about the Semantic Ground Truth App's usage, reviewer participation, coverage progress, certification rates, campaign health, and operational observability.\n\nKey concepts:\n- Coverage % = assets with at least 1 vote / total assets\n- Certification % = assets above the Wilson score confidence threshold / total assets\n- Wilson score = a confidence metric that penalizes small sample sizes; higher is better\n- Freshness = how recently a production asset was re-validated\n- Approval Rate = approvals / total votes (0.0 to 1.0)\n\nAsset review statuses: PENDING (no votes yet), REVIEWED (has votes but not certified), CERTIFIED (confidence above threshold).\n\nData sources:\n- mv_review_activity: vote counts, unique reviewers, approval rates by date, vote type, and user\n- mv_coverage_metrics: coverage %, certification %, asset counts by asset type and review status\n- mv_user_leaderboard: top reviewers by total votes, current and longest voting streaks\n- mv_feedback_pipeline: feedback batch success rates, processing times, and failure counts\n- mv_campaign_progress: campaign status, assets per campaign, and completion percentages\n- mv_otel_error_rate: application error counts and error rates from OpenTelemetry logs\n- mv_otel_request_latency: request latency percentiles (p50/p95/p99) from OpenTelemetry spans\n- semantic_ground_truth_otel_logs: raw OpenTelemetry log records for detailed troubleshooting\n- semantic_ground_truth_otel_spans: raw OpenTelemetry trace spans for request-level analysis\n\nQuery guidance:\n- All metric views use MEASURE() syntax. Always wrap measure names in MEASURE() when querying metric views.\n- Example: SELECT MEASURE(`Total Votes`) FROM mv_review_activity\n- Dimensions can be used directly in SELECT, WHERE, and GROUP BY without MEASURE().\n- When asked about ROI, frame answers as: time saved vs manual review, coverage velocity (how fast assets are validated), and quality improvement (rejection rate trends, confidence trends)."]
+        }
+      ],
+      "example_question_sqls": [
+        {
+          "id": "20a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5",
+          "question": ["How many total votes have been cast?"],
+          "sql": ["SELECT MEASURE(`Total Votes`) AS total_votes FROM hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_review_activity"]
+        },
+        {
+          "id": "21b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
+          "question": ["What is the approval rate by vote type?"],
+          "sql": ["SELECT vote_type, MEASURE(`Total Votes`) AS total_votes, MEASURE(`Approval Rate`) AS approval_rate FROM hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_review_activity GROUP BY vote_type"]
+        },
+        {
+          "id": "22c3d4e5f6a7b8c9d0e1f2a3b4c5d601",
+          "question": ["What is the current coverage and certification percentage?"],
+          "sql": ["SELECT MEASURE(`Total Assets`) AS total_assets, MEASURE(`Coverage Pct`) AS coverage_pct, MEASURE(`Certification Pct`) AS certification_pct FROM hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_coverage_metrics"]
+        },
+        {
+          "id": "23d4e5f6a7b8c9d0e1f2a3b4c5d60102",
+          "question": ["How many assets are in each review status?"],
+          "sql": ["SELECT status, MEASURE(`Total Assets`) AS total_assets FROM hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_coverage_metrics GROUP BY status"]
+        },
+        {
+          "id": "24e5f6a7b8c9d0e1f2a3b4c5d6010203",
+          "question": ["Who are the top reviewers by total reviews?"],
+          "sql": ["SELECT user_id, email, MEASURE(`Total Votes`) AS total_votes, MEASURE(`Current Streak`) AS current_streak FROM hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_user_leaderboard GROUP BY user_id, email ORDER BY total_votes DESC LIMIT 10"]
+        },
+        {
+          "id": "25f6a7b8c9d0e1f2a3b4c5d601020304",
+          "question": ["What is the feedback pipeline success rate?"],
+          "sql": ["SELECT MEASURE(`Total Batches`) AS total_batches, MEASURE(`Success Rate`) AS success_rate, MEASURE(`Avg Processing Time`) AS avg_processing_time FROM hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_feedback_pipeline"]
+        },
+        {
+          "id": "26a7b8c9d0e1f2a3b4c5d60102030405",
+          "question": ["How many campaigns are active and what is the average completion?"],
+          "sql": ["SELECT campaign_status, MEASURE(`Campaign Count`) AS campaigns, MEASURE(`Avg Completion`) AS avg_completion FROM hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_campaign_progress GROUP BY campaign_status"]
+        },
+        {
+          "id": "27b8c9d0e1f2a3b4c5d6010203040506",
+          "question": ["What is the app error rate today?"],
+          "sql": ["SELECT log_date, MEASURE(`Total Logs`) AS total_logs, MEASURE(`Error Count`) AS errors, MEASURE(`Error Rate`) AS error_rate FROM hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_otel_error_rate GROUP BY log_date ORDER BY log_date DESC LIMIT 1"]
+        },
+        {
+          "id": "28c9d0e1f2a3b4c5d601020304050607",
+          "question": ["What is the P95 request latency by route?"],
+          "sql": ["SELECT http_route, MEASURE(`Request Count`) AS requests, MEASURE(`P95 Latency`) AS p95_ms FROM hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_otel_request_latency GROUP BY http_route ORDER BY p95_ms DESC"]
+        }
+      ]
+  },
+  "data_sources": {
+    "tables": [
+      {
+        "identifier": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_logs",
+        "description": [
+          "Raw OpenTelemetry log records for the Semantic Ground Truth App. Use for detailed error investigation and troubleshooting."
+        ]
+      },
+      {
+        "identifier": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_spans",
+        "description": [
+          "Raw OpenTelemetry trace spans for the Semantic Ground Truth App. Use for request-level performance analysis and distributed tracing."
+        ]
+      }
+    ],
+    "metric_views": [
+      {
+        "identifier": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_campaign_progress",
+        "description": [
+          "Campaign progress metrics: campaigns by status and type, assets per campaign, and completion percentages."
+        ]
+      },
+      {
+        "identifier": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_coverage_metrics",
+        "description": [
+          "Coverage and certification metrics: total assets, reviewed assets, certified assets, coverage %, and certification % by asset type and status."
+        ]
+      },
+      {
+        "identifier": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_feedback_pipeline",
+        "description": [
+          "Feedback pipeline operations: batch counts, success rates, failure counts, and average processing time."
+        ]
+      },
+      {
+        "identifier": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_otel_error_rate",
+        "description": [
+          "Application error rate from OpenTelemetry logs: error counts, total log entries, and error rate by severity and time."
+        ]
+      },
+      {
+        "identifier": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_otel_request_latency",
+        "description": [
+          "Request latency from OpenTelemetry spans: p50, p95, and p99 latency percentiles by operation and time."
+        ]
+      },
+      {
+        "identifier": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_review_activity",
+        "description": [
+          "Review activity metrics: vote counts, unique reviewers, and approval rates by date, vote type, and user."
+        ]
+      },
+      {
+        "identifier": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_user_leaderboard",
+        "description": [
+          "User leaderboard metrics: reviewer engagement, total votes, current and longest voting streaks by user."
+        ]
+      }
+    ]
+  }
+}

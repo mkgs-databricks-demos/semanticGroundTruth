@@ -1,0 +1,47 @@
+# resources/jobs/demo_campaign_seed.job.yml
+# Demo data: grants access, imports real assets from wanderBricks, creates
+# a campaign, and casts votes. Idempotent — safe to re-run.
+
+resources:
+  jobs:
+    demo_campaign_seed:
+      name: ${var.app_display_name}-demo-campaign-seed
+      parameters:
+        - name: app_name
+          default: ${var.app_display_name}
+        - name: scope_name
+          default: semantic_ground_truth_credentials
+        - name: client_id_key
+          default: ${var.m2m_client_id_key}
+        - name: client_secret_key
+          default: ${var.m2m_client_secret_key}
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema_name
+          default: ${var.schema_name}
+        - name: warehouse_id
+          default: ${var.sql_warehouse_id}
+        - name: git_folder_path
+          default: /Workspace/Users/matthew.giglia@databricks.com/wanderBricksSemantics-care
+        - name: metric_view_schema
+          default: ${var.catalog}.dev_matthew_giglia_wb_metric_views_care
+      tasks:
+        - task_key: grant_demo_access
+          notebook_task:
+            notebook_path: ../../src/notebooks/demo_campaign_seed.ipynb
+            base_parameters:
+              task: grant_demo_access
+        - task_key: seed
+          depends_on:
+            - task_key: grant_demo_access
+          notebook_task:
+            notebook_path: ../../src/notebooks/demo_campaign_seed.ipynb
+            base_parameters:
+              task: seed
+        - task_key: verify
+          depends_on:
+            - task_key: seed
+          notebook_task:
+            notebook_path: ../../src/notebooks/demo_campaign_seed.ipynb
+            base_parameters:
+              task: verify

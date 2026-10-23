@@ -1,0 +1,157 @@
+# Metric View Fixture: mv_otel_request_latency
+# Design source: L200-C9 (operational), root build plan 04
+# Source: semantic_ground_truth_otel_spans (SERVER spans)
+# Measures: Request Count, Avg Latency, P50/P95/P99, Error Count, Error Rate
+
+name: mv_otel_request_latency
+
+sql: |
+  CREATE OR REPLACE VIEW ${catalog}.${schema}.mv_otel_request_latency
+  WITH METRICS
+  LANGUAGE YAML
+  AS $$
+    version: 1.1
+    source: >
+      SELECT
+        record_id,
+        time,
+        date,
+        service_name,
+        name AS span_name,
+        status.code AS status_code,
+        status.message AS status_message,
+        attributes:['http.method']::STRING AS http_method,
+        attributes:['http.route']::STRING AS http_route,
+        attributes:['http.status_code']::STRING AS http_status_code,
+        (end_time_unix_nano - start_time_unix_nano) / 1000000.0 AS duration_ms,
+        CASE WHEN status.code = 'STATUS_CODE_ERROR' THEN 1 ELSE 0 END AS is_error,
+        DATE_TRUNC('HOUR', time) AS span_hour,
+        DATE_TRUNC('DAY', time) AS span_date
+      FROM ${catalog}.${schema}.semantic_ground_truth_otel_spans
+      WHERE kind = 'SPAN_KIND_SERVER'
+    comment: Request latency and error metrics from OpenTelemetry server spans.
+    dimensions:
+      - name: span_name
+        expr: span_name
+        display_name: Operation
+        comment: Span name, typically the HTTP route or RPC method
+        synonyms:
+          - operation
+          - endpoint
+          - route
+      - name: http_method
+        expr: http_method
+        display_name: HTTP Method
+        comment: HTTP method (GET, POST, etc.)
+        synonyms:
+          - method
+      - name: http_route
+        expr: http_route
+        display_name: HTTP Route
+        comment: HTTP route pattern
+        synonyms:
+          - route
+          - path
+      - name: status_code
+        expr: status_code
+        display_name: Status Code
+        comment: OTel status code (STATUS_CODE_OK, STATUS_CODE_ERROR, STATUS_CODE_UNSET)
+        synonyms:
+          - status
+          - result
+      - name: service_name
+        expr: service_name
+        display_name: Service
+        comment: Name of the service
+        synonyms:
+          - service
+          - app
+      - name: span_date
+        expr: span_date
+        display_name: Date
+        format:
+          type: date
+          date_format: year_month_day
+      - name: span_hour
+        expr: span_hour
+        display_name: Hour
+        format:
+          type: date
+          date_format: year_month_day
+    measures:
+      - name: Request Count
+        expr: COUNT(record_id)
+        display_name: Requests
+        comment: Number of server-side requests
+        synonyms:
+          - requests
+          - total requests
+          - traffic
+      - name: Avg Latency
+        expr: AVG(duration_ms)
+        display_name: Avg Latency (ms)
+        comment: Average request duration in milliseconds
+        format:
+          type: number
+          decimal_places:
+            type: exact
+            places: 1
+        synonyms:
+          - latency
+          - response time
+          - average duration
+      - name: P50 Latency
+        expr: PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration_ms)
+        display_name: P50 Latency (ms)
+        comment: Median request duration in milliseconds
+        format:
+          type: number
+          decimal_places:
+            type: exact
+            places: 1
+        synonyms:
+          - median latency
+          - p50
+      - name: P95 Latency
+        expr: PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)
+        display_name: P95 Latency (ms)
+        comment: 95th percentile request duration in milliseconds
+        format:
+          type: number
+          decimal_places:
+            type: exact
+            places: 1
+        synonyms:
+          - p95
+          - tail latency
+      - name: P99 Latency
+        expr: PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY duration_ms)
+        display_name: P99 Latency (ms)
+        comment: 99th percentile request duration in milliseconds
+        format:
+          type: number
+          decimal_places:
+            type: exact
+            places: 1
+        synonyms:
+          - p99
+      - name: Error Count
+        expr: SUM(is_error)
+        display_name: Errors
+        comment: Number of requests with STATUS_CODE_ERROR
+        synonyms:
+          - errors
+          - failed requests
+      - name: Error Rate
+        expr: SUM(is_error) / NULLIF(COUNT(record_id), 0)
+        display_name: Error Rate
+        comment: Fraction of requests that errored (0.0 to 1.0)
+        format:
+          type: percentage
+          decimal_places:
+            type: exact
+            places: 2
+        synonyms:
+          - error rate
+          - failure rate
+  $$

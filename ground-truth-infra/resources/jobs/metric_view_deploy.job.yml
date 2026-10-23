@@ -6,7 +6,11 @@ resources:
   jobs:
     metric_view_deploy:
       name: "Semantic Ground Truth — Deploy Metric Views"
-      description: "Deploys metric view fixtures from fixtures/metric_views/. Run on-demand after fixture changes."
+      description: "Deploys metric view fixtures from fixtures/metric_views/. Run on-demand after fixture changes. Pass validate_only=true to EXPLAIN each source query without creating views."
+
+      parameters:
+        - name: validate_only
+          default: "false"
 
       environments:
         - environment_key: serverless
@@ -19,11 +23,11 @@ resources:
           notebook_task:
             notebook_path: ../../src/notebooks/list_fixtures.py
             base_parameters:
-              fixtures_path: ""
+              fixtures_path: "${workspace.file_path}/fixtures/metric_views"
           environment_key: serverless
 
         - task_key: deploy_metric_views
-          description: "For each fixture YAML: read, resolve env refs, execute CREATE VIEW SQL"
+          description: "For each fixture YAML: read, resolve env refs, execute CREATE VIEW SQL on the warehouse"
           depends_on:
             - task_key: list_fixtures
           for_each_task:
@@ -38,4 +42,5 @@ resources:
                   catalog: "${var.catalog}"
                   schema: "${resources.schemas.ground_truth_schema.name}"
                   warehouse_id: "${resources.sql_warehouses.infra_warehouse.id}"
+                  validate_only: "{{job.parameters.validate_only}}"
               environment_key: serverless
