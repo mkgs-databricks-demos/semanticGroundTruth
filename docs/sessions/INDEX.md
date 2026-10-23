@@ -5,6 +5,11 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-23 | 0 | 21 | [Infra: executive AI/BI dashboard over the metric views](2026-10-23_w0-21-executive-dashboard.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 0 | 20 | [App runtime config, ACL safety net, verification checks](2026-10-23_w0-20-app-runtime-config-verification.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 0 | 19 | [App MCP card brand (light + dark)](2026-10-23_w0-19-mcp-card-brand.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 0 | 18 | [Infra: app SPN secret-scope READ + scheduled bronze refresh](2026-10-23_w0-18-infra-secret-acl-bronze-refresh.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 0 | 16 | [App brand foundation: tokens, theme, fonts, assets, shell](2026-10-23_w0-16-app-brand-foundation.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-23 | — | — | [**Post-build review: SIGTERM + gate fixes, gap analysis, brand UI plan, next build draft**](2026-10-23_post-build-review-brand-plan.md) | interactive | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-23 | all | — | [**Root build summary: waves 0–5 across infra, app, agent**](2026-10-23_root-build-waves-summary.md) | orchestration | pass | `mg-genie-agent-build` |
 | 2026-10-23 | 5 | 15 | [Project memory, runbooks, READMEs](2026-10-23_w5-15-docs-project-memory.md) | edit | pass | `mg-genie-agent-build` |

@@ -1,6 +1,6 @@
 // server/mcp/views/cardHtml.ts — self-contained HTML card for MCP Apps rendering
-// Session 11 · Wave 4 · No enum, no namespace, no default export
-// Databricks brand: Lava 600 #FF3621, Navy 800 #1B3139
+// Session 11 · Wave 4 · Updated session 19 · Wave 0 (brand tokens, dark mode, DM Sans/DM Mono)
+// Databricks brand: semantic tokens from ui_brand_plan §3.1/§3.2; light + dark via prefers-color-scheme
 
 import type { ReviewCard } from '../../../shared/contracts/review';
 
@@ -45,23 +45,55 @@ export function renderCardHtml(card: ReviewCard): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${name}</title>
 <style>
+  :root {
+    --page-bg: #F9F7F4;
+    --text: #1B3139;
+    --text-secondary: #5A6F77;
+    --surface: #FFFFFF;
+    --header-bg: #1B3139;
+    --header-text: #FFFFFF;
+    --brand-accent: #FF3621;
+    --primary: #BD2B26;
+    --primary-fg: #FFFFFF;
+    --border: #DCE0E2;
+    --shadow: rgba(27, 49, 57, 0.12);
+    --ring: #2272B4;
+    --font-sans: "DM Sans", system-ui, sans-serif;
+    --font-mono: "DM Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page-bg: #0B2026;
+      --text: #FFFFFF;
+      --text-secondary: #90A5B1;
+      --surface: #1B3139;
+      --header-bg: #0B2026;
+      --header-text: #FFFFFF;
+      --brand-accent: #FF5F46;
+      --primary: #FF5F46;
+      --primary-fg: #0B2026;
+      --border: #1B5162;
+      --shadow: rgba(0, 0, 0, 0.3);
+      --ring: #8ACAFF;
+    }
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #f8f9fa;
-    color: #1B3139;
+    font-family: var(--font-sans);
+    background: var(--page-bg);
+    color: var(--text);
     padding: 16px;
   }
   .card {
     max-width: 480px;
-    background: #fff;
+    background: var(--surface);
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(27, 49, 57, 0.12);
+    box-shadow: 0 2px 8px var(--shadow);
     overflow: hidden;
   }
   .card-header {
-    background: #1B3139;
-    color: #fff;
+    background: var(--header-bg);
+    color: var(--header-text);
     padding: 16px 20px;
   }
   .card-header h2 {
@@ -82,17 +114,18 @@ export function renderCardHtml(card: ReviewCard): string {
     line-height: 1.5;
   }
   .description {
-    color: #555;
-    border-left: 3px solid #FF3621;
+    color: var(--text-secondary);
+    border-left: 3px solid var(--brand-accent);
     padding-left: 12px;
     font-style: italic;
   }
   .logic {
-    color: #333;
+    color: var(--text);
+    font-family: var(--font-mono);
   }
   .synonyms, .confidence, .campaign {
     font-size: 13px;
-    color: #666;
+    color: var(--text-secondary);
   }
   .examples ul {
     margin-top: 4px;
@@ -100,27 +133,31 @@ export function renderCardHtml(card: ReviewCard): string {
   }
   .examples li {
     font-size: 13px;
-    color: #555;
+    color: var(--text-secondary);
     margin-bottom: 2px;
   }
   .card-footer {
     padding: 12px 20px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border);
     font-size: 12px;
-    color: #999;
+    color: var(--text-secondary);
     display: flex;
     justify-content: space-between;
   }
   .badge {
     display: inline-block;
-    background: #FF3621;
-    color: #fff;
+    background: var(--primary);
+    color: var(--primary-fg);
     font-size: 11px;
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 10px;
     margin-left: 8px;
     vertical-align: middle;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 </style>
 </head>

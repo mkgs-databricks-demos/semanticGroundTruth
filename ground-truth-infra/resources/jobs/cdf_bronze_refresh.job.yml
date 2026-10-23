@@ -1,0 +1,36 @@
+# resources/jobs/cdf_bronze_refresh.job.yml
+# Hourly trigger for the cdf_bronze SDP pipeline (Lakebase CDF → bronze Delta).
+# Keeps metric views and the Genie agent current without running continuously.
+# Design source: gap_analysis_2026-10.md G2, plan 18.
+#
+# Dev mode pauses schedules automatically (development mode preset).
+# This is expected — the pipeline is manually triggered during dev.
+# Converge session 22a (wave 2) runs this job to validate the full path.
+
+resources:
+  jobs:
+    cdf_bronze_refresh:
+      name: "Semantic Ground Truth — Bronze Refresh"
+      description: "Hourly refresh of the Lakebase CDF → bronze_lakebase_cdf streaming table via the cdf_bronze pipeline."
+
+      schedule:
+        quartz_cron_expression: "0 0 * * * ?"  # Every hour, on the hour (UTC)
+        timezone_id: UTC
+
+      max_concurrent_runs: 1
+
+      tasks:
+        - task_key: refresh_bronze
+          description: "Run the cdf_bronze SDP pipeline (incremental refresh)"
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.cdf_bronze.id}
+            full_refresh: false
+
+      email_notifications:
+        on_failure:
+          - matthew.giglia@databricks.com
+
+      tags:
+        project: semantic-ground-truth
+        component: data-plane
+        gap: G2

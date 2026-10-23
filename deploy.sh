@@ -108,6 +108,9 @@ LAKEBASE_DATABASE=""
 APP_URL=""
 APP_DISPLAY_NAME=""
 
+# App SPN — resolved from `apps get` in Phase 1; used for secret scope READ ACL
+APP_SPN_CLIENT_ID=""
+
 # Set just before the infra deploy; used to pick this deploy's job run
 DEPLOY_START_MS=""
 
@@ -891,6 +894,64 @@ if [[ "${DEPLOY_INFRA}" == true ]]; then
   # Step 1a: Resolve variables from bundle summary (works pre-deploy too)
   resolve_infra_vars
 
+  # Step 1a': Resolve the app SPN client ID from the running app.
+  # The infra secret scope permissions block is authoritative. Without the
+  # app SPN listed as READ, every infra deploy removes the ACL and the app
+  # starts logging "[ERROR] error resolving resource m2m-client-id".
+  # On first deploy (no app yet), fall back to the target default in
+  # databricks.yml and, after Phase 2, re-deploy infra if the ID differs.
+  if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
+    log "Resolving app service principal for secret scope ACL"
+    # Resolve app display name from the app bundle (same as Phase 2, Step 2a')
+    if [[ -z "${APP_DISPLAY_NAME}" ]]; then
+      # Build minimal --var list so app bundle summary works
+      _app_vars=(
+        "--var" "catalog=$(safe "${CATALOG}")"
+        "--var" "schema_name=$(safe "${SCHEMA}")"
+        "--var" "sql_warehouse_id=$(safe "${SQL_WAREHOUSE_ID}")"
+        "--var" "agents_mlflow_experiment_experimentId=$(safe "${MLFLOW_EXPERIMENT_ID}")"
+        "--var" "job_id=$(safe "${FRESHNESS_JOB_ID}")"
+        "--var" "postgres_branch=$(safe_url "${LAKEBASE_BRANCH}")"
+        "--var" "postgres_database=$(safe_url "${LAKEBASE_DATABASE}")"
+      )
+      APP_DISPLAY_NAME=$(
+        cd_bundle "${SCRIPT_DIR}/${APP_BUNDLE}" && \
+        databricks bundle summary --target "${TARGET}" "${_app_vars[@]}" --output json 2>/dev/null | \
+        sed -n '/^{/,$p' | \
+        python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+print(data.get("variables", {}).get("app_display_name", {}).get("value", ""))
+' 2>/dev/null) || APP_DISPLAY_NAME=""
+      APP_DISPLAY_NAME=$(safe "${APP_DISPLAY_NAME}")
+    fi
+
+    if [[ -n "${APP_DISPLAY_NAME}" ]]; then
+      APP_SPN_CLIENT_ID=$(
+        databricks apps get "${APP_DISPLAY_NAME}" --output json 2>/dev/null | \
+        python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+print(data.get("service_principal_client_id", ""))
+' 2>/dev/null) || APP_SPN_CLIENT_ID=""
+      APP_SPN_CLIENT_ID=$(safe "${APP_SPN_CLIENT_ID}")
+    fi
+
+    if [[ -n "${APP_SPN_CLIENT_ID}" ]]; then
+      ok "App SPN resolved: ${APP_SPN_CLIENT_ID}"
+      INFRA_EXTRA_ARGS+=("--var" "app_service_principal_id=$(safe "${APP_SPN_CLIENT_ID}")")
+    else
+      warn "App not found or SPN not resolved — using target default for app_service_principal_id."
+      warn "After Phase 2 (app deploy), re-run --infra to update the scope ACL."
+    fi
+  fi
+
   # Step 1b: Check MCP connection status (informational only).
   # Connection is created by Phase 2 (app deploy) via the
   # create_mcp_connection job. This is just a status check.
@@ -1064,6 +1125,32 @@ print(data.get("url", ""))
     echo "  MCP connection: ${CATALOG}.${SCHEMA}.${MCP_CONNECTION_NAME}"
     echo "  Note: app_role update is NOT needed — AppKit CAN_CONNECT_AND_CREATE"
     echo "  auto-provisions a Lakebase role for the app SPN."
+
+    # Step 2i: Re-deploy infra if the app SPN was not available in Phase 1.
+    # On first deploy the app doesn't exist during Phase 1, so the scope ACL
+    # uses the target default. After Phase 2 creates the app, check whether
+    # the live SPN differs and, if so, re-deploy infra to fix the ACL.
+    if [[ "${DEPLOY_INFRA}" == true ]] && [[ -z "${APP_SPN_CLIENT_ID}" ]]; then
+      live_spn=$(
+        # Resolve the live app SPN after Phase 2 created the app
+        databricks apps get "${APP_DISPLAY_NAME}" --output json 2>/dev/null | \
+        python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+print(data.get("service_principal_client_id", ""))
+' 2>/dev/null) || live_spn=""
+      live_spn=$(safe "${live_spn}")
+      if [[ -n "${live_spn}" ]]; then
+        log "Updating infra secret scope ACL with live app SPN: ${live_spn}"
+        deploy_bundle "${INFRA_BUNDLE}" \
+          ${INFRA_EXTRA_ARGS[@]+"${INFRA_EXTRA_ARGS[@]}"} \
+          "--var" "app_service_principal_id=$(safe "${live_spn}")"
+        APP_SPN_CLIENT_ID="${live_spn}"
+      fi
+    fi
   fi
 fi
 

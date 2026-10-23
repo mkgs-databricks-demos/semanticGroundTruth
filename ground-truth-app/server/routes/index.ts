@@ -12,6 +12,7 @@ import { registerCampaignRoutes } from './campaigns';
 import { registerNotificationRoutes } from './notifications';
 import { registerAdminRoutes } from './admin';
 import { registerMetricViewRoutes } from './metricViews';
+import { registerConfigRoutes } from './config';
 
 export function registerRoutes(app: Application, services: Services): void {
   registerHealthRoutes(app, services);
@@ -23,4 +24,5 @@ export function registerRoutes(app: Application, services: Services): void {
   registerNotificationRoutes(app, services);
   registerAdminRoutes(app, services);
   registerMetricViewRoutes(app, services);
+  registerConfigRoutes(app, services);
 }

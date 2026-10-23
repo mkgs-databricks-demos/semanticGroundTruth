@@ -1,5 +1,5 @@
 // client/src/components/layout/NavLinks.tsx — role-filtered navigation links
-// Session 12 · Wave 4 · No enum, no namespace, no default export
+// Session 16 · Wave 0 · Active link = 2 px brand-accent underline + medium weight
 
 import { NavLink } from 'react-router';
 import {
@@ -14,15 +14,17 @@ import { useMe } from '../../lib/api/hooks';
 import { hasRole } from '../../lib/api/roles';
 
 const desktopLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+  `px-3 py-1.5 text-sm transition-colors ${
     isActive
-      ? 'bg-primary text-primary-foreground'
-      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+      ? 'font-medium text-foreground border-b-2 border-brand-accent'
+      : 'font-normal text-muted-foreground hover:text-foreground'
   }`;
 
 const bottomLinkClass = ({ isActive }: { isActive: boolean }) =>
   `flex flex-col items-center gap-0.5 px-2 py-1 text-[10px] font-medium transition-colors ${
-    isActive ? 'text-primary' : 'text-muted-foreground'
+    isActive
+      ? 'text-foreground border-t-2 border-brand-accent'
+      : 'text-muted-foreground'
   }`;
 
 interface NavLinksProps {
@@ -46,7 +48,7 @@ export function NavLinks({
   const iconSize = variant === 'bottom' ? 'h-5 w-5' : 'h-4 w-4 mr-1.5 inline-block';
 
   return (
-    <nav className={className}>
+    <nav className={className} aria-label="Main navigation">
       <NavLink to="/" end className={cls} onClick={onClick}>
         {variant === 'bottom' && <ClipboardCheck className={iconSize} />}
         Review

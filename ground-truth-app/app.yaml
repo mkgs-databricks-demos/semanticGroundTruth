@@ -26,6 +26,10 @@ env:
   - name: GT_ADMIN_EMAILS
     value: matthew.giglia@databricks.com
 
+  # ── Runtime config (set by deploy.sh --var exec_dashboard_url=<url>) ──
+  - name: GT_EXEC_DASHBOARD_URL
+    value: ""
+
   # ── OpenTelemetry ──
   # Record every trace unconditionally. Without this, the default parent-based
   # sampler follows the platform proxy's sampling decision and drops most spans,

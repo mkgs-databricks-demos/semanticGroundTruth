@@ -30,6 +30,13 @@ variables:
   secret_scope_name:
     description: "Workspace secret scope name for Ground Truth app runtime secrets"
     default: semantic_ground_truth_credentials
+  # App service principal identity — READ on the secret scope.
+  # deploy.sh resolves this from `databricks apps get <app-name>` when the app
+  # exists; prod has no default (deploy.sh supplies it). The infra secret scope
+  # permissions block is authoritative, so this must be set to keep the app's
+  # READ ACL across infra deploys.
+  app_service_principal_id:
+    description: "Application (client) ID of the app service principal that needs READ on the secret scope"
   # M2M service principal (OAuth M2M identity for API testing + MCP connection)
   m2m_spn_prefix:
     description: "Display-name prefix for the bundle-owned OAuth M2M service principal"
@@ -68,6 +75,9 @@ targets:
       run_setup: "true"  # Run post-deploy setup on dev deploys; override with --var run_setup=false to skip
       # M2M SPN secret keys — target-qualified (m2m_client_*_${bundle.target}) to avoid
       # dev/prod collisions in the shared workspace scope; matches the SPN naming.
+      # App SPN application (client) ID — resolved from `databricks apps get` by deploy.sh.
+      # This is the current dev app SPN; deploy.sh overrides it dynamically.
+      app_service_principal_id: "55882972-924d-42cd-ab3d-d10c730629c2"
       m2m_client_id_dbs_key: m2m_client_id_dev
       m2m_client_secret_dbs_key: m2m_client_secret_dev
 
