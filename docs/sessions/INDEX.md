@@ -5,6 +5,19 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-24 | all | — | [**Brand + gaps build summary: run 745271774924215, wave 5 repair, real brand assets, history squash**](2026-10-24_brand-gaps-build-summary.md) | orchestration + interactive | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-24 | 6 | 24 | [Project memory, READMEs, gap status, brand runbook](2026-10-24_w6-24-docs-project-memory.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 5 | 23 | [Converge app: branded UI, runtime config, clean runtime gate](2026-10-23_w5-23-converge-app.md) | converge | pass (repair: status file reconciled, fixes in 6771630) | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 4 | 22c | [Converge agent regression: agent_verification after infra changes](2026-10-23_w4-22c-converge-agent-regression.md) | converge | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 3 | 22b | [Converge infra: executive dashboard publishes with every dataset executing](2026-10-23_w3-22b-converge-executive-dashboard.md) | converge | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 2 | 22a | [Converge infra: secret ACL + bronze refresh job](2026-10-23_w2-22a-converge-infra-secret-acl-bronze.md) | converge | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 1 | 17 | [App branded components, accessibility, Logic View](2026-10-23_w1-17-app-brand-components-a11y.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 0 | 21 | [Infra: executive AI/BI dashboard over the metric views](2026-10-23_w0-21-executive-dashboard.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 0 | 20 | [App runtime config, ACL safety net, verification checks](2026-10-23_w0-20-app-runtime-config-verification.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 0 | 19 | [App MCP card brand (light + dark)](2026-10-23_w0-19-mcp-card-brand.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 0 | 18 | [Infra: app SPN secret-scope READ + scheduled bronze refresh](2026-10-23_w0-18-infra-secret-acl-bronze-refresh.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | 0 | 16 | [App brand foundation: tokens, theme, fonts, assets, shell](2026-10-23_w0-16-app-brand-foundation.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
+| 2026-10-23 | — | — | [**Post-build review: SIGTERM + gate fixes, gap analysis, brand UI plan, next build draft**](2026-10-23_post-build-review-brand-plan.md) | interactive | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-23 | all | — | [**Root build summary: waves 0–5 across infra, app, agent**](2026-10-23_root-build-waves-summary.md) | orchestration | pass | `mg-genie-agent-build` |
 | 2026-10-23 | 5 | 15 | [Project memory, runbooks, READMEs](2026-10-23_w5-15-docs-project-memory.md) | edit | pass | `mg-genie-agent-build` |
 | 2026-10-23 | 4 | 14 | [Converge Genie agent + verification](2026-10-23_w4-14-converge-agent.md) | converge | pass | `mg-genie-agent-build` |

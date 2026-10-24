@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "description": "Semantic Ground Truth — solution-root build across infra, app and agent bundles: Lakebase-backed RBAC, asset import from UC metric views + Git folders + glossary markdown, Lakebase CDF to a variant bronze table (SDP), metric views over bronze, and the Ground Truth Operations Genie agent. Bundle-only, git-editor build; no masking. The app bundle's own manifest (ground-truth-app/docs/plans/waves.json) is left untouched.",
+  "description": "Semantic Ground Truth — next build (2026-10, DRAFT, not yet run; converge waves split to one runtime target each on 2026-10-23): Databricks-branded UI (tokens, light/dark, DM Sans/Mono, assets, WCAG 2.1 AA), MCP card brand, runtime config for the executive dashboard, app secret-scope ACL fix, scheduled bronze refresh, executive AI/BI dashboard. Scoped from docs/plans/gap_analysis_2026-10.md and docs/plans/ui_brand_plan.md. Bundle-only, git-editor build; no masking. The root build (waves 0-5, sessions 01-15) shipped in PR #6 (main fbc552b); its manifest is in git history. The app bundle's own manifest (ground-truth-app/docs/plans/waves.json) is left untouched.",
   "workflow": {"mode": "git"},
   "repo_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth",
   "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth",
-  "branch": "mg-genie-agent-build",
+  "branch": "mg-genie-ui-brand-and-gaps",
   "bundle_target": "dev",
   "status_dir": ".build-status",
   "plans_dir": "docs/plans",
@@ -16,10 +16,11 @@
     "ground-truth-app/PROJECT_MEMORY.md",
     "ground-truth-infra/PROJECT_MEMORY.md",
     "ground-truth-agent/PROJECT_MEMORY.md",
-    "docs/design/L200-C1_asset_registry.md",
-    "docs/design/L200-C5_campaign_manager.md",
-    "docs/design/L300-05_metric_views_cdf.md",
-    "docs/design/L200-C9_operational_genie_agent.md"
+    "docs/plans/gap_analysis_2026-10.md",
+    "docs/plans/ui_brand_plan.md",
+    "docs/design/L200-C3_card_ui.md",
+    "docs/design/L200-C8_executive_dashboard.md",
+    "docs/design/L300-05_metric_views_cdf.md"
   ],
   "task_retries": {"max_retries": 2, "min_retry_interval_seconds": 60},
 
@@ -40,7 +41,7 @@
         "logs_table": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_logs",
         "traces_table": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_spans",
         "trace_service_name": "dev-semantic-ground-truth",
-        "error_patterns": ["error TS\\d+", "Error building app", "Unhandled", "UnhandledPromiseRejection", "FATAL", "Cannot find module"],
+        "error_patterns": ["error TS\\d+", "Error building app", "Unhandled", "UnhandledPromiseRejection", "FATAL", "Cannot find module", "\"level\"\\s*:\\s*\"(error|fatal)\""],
         "ignore_patterns": ["Updated file:", "Skipping query type generation", "App did not respect SIGTERM timeout", "\\[ELIFECYCLE\\] Command failed"],
         "required_markers": ["listening on"]
       },
@@ -49,6 +50,8 @@
         {"path": "/health", "expect_status": 200, "response_regex": "\"status\":\"ok\""},
         {"path": "/api/me", "expect_status": 200, "response_regex": "\"roles\":\\[[^\\]]*\"admin\""},
         {"path": "/api/campaigns", "expect_status": 200},
+        {"path": "/api/config", "expect_status": 200, "response_regex": "\"executive_dashboard_url\":\"https://"},
+        {"path": "/fonts/dm-sans-regular.ttf", "expect_status": 200},
         {"path": "/mcp", "method": "POST", "mcp_initialize": true}
       ]
     },
@@ -66,13 +69,6 @@
       "resource_key": "demo_campaign_seed",
       "deploy_commands": ["bundle deploy --target dev", "bundle run demo_campaign_seed --target dev"]
     },
-    "infra_setup_cdf": {
-      "type": "job",
-      "name": "[dev matthew_giglia] Semantic Ground Truth — Setup Lakebase CDF",
-      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-infra",
-      "resource_key": "setup_lakebase_cdf",
-      "deploy_commands": ["bundle deploy --target dev --var=run_setup=false", "bundle run setup_lakebase_cdf --target dev"]
-    },
     "cdf_bronze_pipeline": {
       "type": "pipeline",
       "name": "[dev matthew_giglia] Semantic Ground Truth — Lakebase CDF Bronze",
@@ -81,42 +77,34 @@
       "deploy_commands": ["bundle deploy --target dev --var=run_setup=false", "bundle run cdf_bronze --target dev"],
       "stability": {"max_failed_records": 0, "max_dropped_records": 0}
     },
-    "infra_metric_view_deploy": {
+    "cdf_bronze_refresh": {
       "type": "job",
-      "name": "[dev matthew_giglia] Semantic Ground Truth — Deploy Metric Views",
+      "name": "[dev matthew_giglia] Semantic Ground Truth — Bronze Refresh",
       "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-infra",
-      "resource_key": "metric_view_deploy",
-      "deploy_commands": ["bundle deploy --target dev --var=run_setup=false", "bundle run metric_view_deploy --target dev"]
-    },
-    "lb_votes_history": {
-      "type": "table",
-      "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.lb_votes_history",
-      "required_columns": ["_pg_change_type", "_pg_lsn", "_pg_xid", "_timestamp", "_sort_by", "id", "asset_id", "user_id", "vote_type"],
-      "min_rows": 1,
-      "require_fresh_deployment": false
-    },
-    "lb_assets_history": {
-      "type": "table",
-      "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.lb_assets_history",
-      "required_columns": ["_pg_change_type", "_sort_by", "id", "asset_type", "name", "status"],
-      "min_rows": 1,
-      "require_fresh_deployment": false
+      "resource_key": "cdf_bronze_refresh",
+      "deploy_commands": ["bundle deploy --target dev --var=run_setup=false", "bundle run cdf_bronze_refresh --target dev"]
     },
     "bronze_lakebase_cdf": {
       "type": "table",
       "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.bronze_lakebase_cdf",
       "required_columns": ["_source_table", "_source_history_table", "_record_key", "_pg_change_type", "_pg_lsn", "_pg_xid", "_timestamp", "_sort_by", "_ingested_at", "data"],
-      "min_rows": 1
+      "min_rows": 1,
+      "require_fresh_deployment": false
     },
-    "mv_review_activity": {
-      "type": "table",
-      "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_review_activity"
+    "executive_dashboard": {
+      "type": "dashboard",
+      "name": "[dev matthew_giglia] Semantic Ground Truth — Executive",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-infra",
+      "deploy_commands": ["bundle deploy --target dev --var=run_setup=false"],
+      "warehouse_id": "0ea84986a23a47c3",
+      "execute_datasets": true
     },
     "agent_space": {
       "type": "genie_space",
       "name": "[dev matthew_giglia] Ground Truth Operations",
       "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-agent",
       "resource_key": "ground_truth_ops",
+      "require_fresh_deployment": false,
       "deploy_commands": ["bundle deploy --target dev"],
       "warehouse_id": "0ea84986a23a47c3",
       "check_example_sql": true,
@@ -136,88 +124,81 @@
   "waves": [
     {
       "wave_id": "0",
-      "name": "Contracts, infra data plane, agent bundle",
-      "concurrency": 6,
+      "name": "Edit: brand foundation, MCP card, runtime config, infra fixes, executive dashboard",
+      "concurrency": 5,
       "gate": [
         "All wave 0 sessions have status done",
-        "ground-truth-app/shared/contracts/values.ts defines APP_GROUP_NAMES with exactly semantic-ground-truth-admins, semantic-ground-truth-stewards, semantic-ground-truth-users",
-        "No file under ground-truth-app/shared/ contains the keyword 'enum ' or 'namespace '",
-        "ground-truth-infra/src/notebooks/setup_cdf_config.py contains no NotImplementedError",
-        "ground-truth-infra/fixtures/pipelines/cdf_bronze_tables.yaml lists every app table from migrations 001-006 plus app_groups, app_group_members, asset_sources, each with keys",
-        "No file under ground-truth-infra/src contains 'import dlt'",
-        "ground-truth-infra/fixtures/metric_views/ contains 7 fixture files and none references vote_id, reviewer_id, display_name, batch_id, error_message or an lb_*_history table",
-        "ground-truth-agent/ground_truth_ops.geniespace.json parses as JSON",
-        "Every notebook_path in YAML changed this wave resolves to an existing file with the same extension"
+        "ground-truth-app/client/src/main.tsx renders ThemeProvider from next-themes with attribute='class' and MotionConfig with reducedMotion='user' around App",
+        "ground-truth-app/client/src/index.css has no commented-out token block and defines --background, --foreground, --primary, --input and --ring both under :root and under .dark",
+        "ground-truth-app/client/public/fonts/ contains dm-sans-regular.ttf, dm-sans-medium.ttf, dm-sans-bold.ttf, dm-mono-regular.ttf and ofl.txt",
+        "ground-truth-app/client/index.html has title 'Semantic Ground Truth' and site.webmanifest has theme_color #1B3139",
+        "ground-truth-app/client/src/theme/tokens.ts and ground-truth-app/client/src/theme/contrast.test.ts exist",
+        "ground-truth-app/server/mcp/views/cardHtml.ts contains no '#f8f9fa' and contains 'prefers-color-scheme: dark'",
+        "ground-truth-app/server/routes/config.ts exists and ground-truth-app/server/routes/index.ts registers it",
+        "ground-truth-app/src/notebooks/grant_app_permissions.ipynb grants the app service principal READ on the secret scope",
+        "ground-truth-infra/resources/secrets/ground_truth_scope.secret_scope.yml dev permissions include a service_principal_name entry with level READ",
+        "ground-truth-infra/resources/jobs/cdf_bronze_refresh.job.yml has a pipeline_task referencing resources.pipelines.cdf_bronze.id and a schedule",
+        "ground-truth-infra/resources/dashboards/executive.dashboard.yml exists and its file_path resolves to an existing .lvdash.json file",
+        "Every notebook_path and file_path in YAML changed this wave resolves to an existing file with the same extension",
+        "Every relative import in files changed this wave resolves to an existing file"
       ],
       "validate_bundles": [
         {"root": "ground-truth-infra", "target": "dev"},
-        {"root": "ground-truth-app", "target": "dev"},
-        {"root": "ground-truth-agent", "target": "dev"}
+        {"root": "ground-truth-app", "target": "dev"}
       ],
       "sessions": [
         {
-          "session_id": "01",
-          "title": "App shared contracts: RBAC groups, sources, import",
-          "plan_file": "01_app_contracts_rbac_sources.md",
+          "session_id": "16",
+          "title": "App brand foundation: tokens, theme, fonts, assets, shell",
+          "plan_file": "16_app_brand_foundation.md",
           "mode": "edit",
-          "scope": "Add app-group, asset-source and import DTOs + zod schemas to ground-truth-app/shared/contracts per build_conventions sections 3-5. Types only.",
-          "owned_paths": ["ground-truth-app/shared/contracts/**"]
+          "scope": "ui_brand_plan sections 3-5 and 8: brand + semantic tokens in index.css (light + .dark), ThemeProvider and MotionConfig in main.tsx, self-hosted DM Sans/DM Mono, Databricks favicons/symbol, title + manifest, header/nav restyle, tokens.ts + contrast test, global focus and reduced-motion rules. No new npm dependencies.",
+          "owned_paths": ["ground-truth-app/client/src/index.css", "ground-truth-app/client/src/main.tsx", "ground-truth-app/client/src/App.tsx", "ground-truth-app/client/src/theme/**", "ground-truth-app/client/src/components/layout/**", "ground-truth-app/client/index.html", "ground-truth-app/client/public/**"]
         },
         {
-          "session_id": "02",
-          "title": "Infra: Lakebase CDF setup job",
-          "plan_file": "02_infra_lakebase_cdf_setup.md",
+          "session_id": "18",
+          "title": "Infra: app SPN secret-scope READ + scheduled bronze refresh",
+          "plan_file": "18_infra_secret_acl_bronze_refresh.md",
           "mode": "edit",
-          "scope": "Implement setup_cdf_config.py (database-level parent, idempotent create, wait for lb_*_history tables), src/lib/lakebase_cdf.py, and the setup_lakebase_cdf job YAML.",
-          "owned_paths": ["ground-truth-infra/src/notebooks/setup_cdf_config.py", "ground-truth-infra/src/lib/lakebase_cdf.py", "ground-truth-infra/resources/jobs/setup_lakebase_cdf.job.yml"]
+          "scope": "Gap G1: grant the app service principal READ in the infra secret scope permissions via a variable (dev default = current app SPN, deploy.sh resolves it from apps get). Gap G2: hourly cdf_bronze_refresh job with a pipeline_task on the cdf_bronze pipeline (PAUSED outside prod is acceptable only if dev mode forces it; document it).",
+          "owned_paths": ["ground-truth-infra/resources/secrets/ground_truth_scope.secret_scope.yml", "ground-truth-infra/resources/jobs/cdf_bronze_refresh.job.yml", "ground-truth-infra/databricks.yml", "deploy.sh"]
         },
         {
-          "session_id": "03",
-          "title": "Infra: CDF to bronze Spark Declarative Pipeline",
-          "plan_file": "03_infra_cdf_bronze_pipeline.md",
+          "session_id": "19",
+          "title": "App MCP card brand (light + dark)",
+          "plan_file": "19_app_mcp_card_brand.md",
           "mode": "edit",
-          "scope": "Metadata-driven SDP pipeline streaming every existing lb_*_history table into bronze_lakebase_cdf with the confirmed 10-column schema (metadata columns + data VARIANT). No silver, no masks.",
-          "owned_paths": ["ground-truth-infra/fixtures/pipelines/**", "ground-truth-infra/src/lib/cdf_bronze/**", "ground-truth-infra/src/pipelines/**", "ground-truth-infra/resources/pipelines/**"]
+          "scope": "Gap G9: replace inline hex in the MCP App card with CSS variables holding the ui_brand_plan semantic values, add a prefers-color-scheme dark variant, DM Sans/DM Mono font stacks, and a cardHtml unit test.",
+          "owned_paths": ["ground-truth-app/server/mcp/views/**"]
         },
         {
-          "session_id": "04",
-          "title": "Infra: metric views over bronze",
-          "plan_file": "04_infra_metric_views_over_bronze.md",
+          "session_id": "20",
+          "title": "App runtime config, ACL safety net, verification checks",
+          "plan_file": "20_app_runtime_config_verification.md",
           "mode": "edit",
-          "scope": "Rewrite the 4 metric view fixtures over bronze_lakebase_cdf with real column names, add mv_campaign_progress, mv_otel_error_rate, mv_otel_request_latency; adjust deploy notebook/job.",
-          "owned_paths": ["ground-truth-infra/fixtures/metric_views/**", "ground-truth-infra/src/notebooks/deploy_metric_view.py", "ground-truth-infra/src/notebooks/list_fixtures.py", "ground-truth-infra/resources/jobs/metric_view_deploy.job.yml"]
+          "scope": "GET /api/config (authenticated) returning executive_dashboard_url from env GT_EXEC_DASHBOARD_URL; app bundle variable exec_dashboard_url wired to that env; grant_app_permissions also grants the app SPN READ on the secret scope (idempotent); deploy_verification checks the scope ACL and /api/config; package.json prebuild runs vitest (gap G17).",
+          "owned_paths": ["ground-truth-app/server/routes/config.ts", "ground-truth-app/server/routes/config.test.ts", "ground-truth-app/server/routes/index.ts", "ground-truth-app/shared/contracts/**", "ground-truth-app/resources/**", "ground-truth-app/src/notebooks/**", "ground-truth-app/app.yaml", "ground-truth-app/databricks.yml", "ground-truth-app/package.json"]
         },
         {
-          "session_id": "05",
-          "title": "Agent bundle config + Genie space resource",
-          "plan_file": "05_agent_genie_space.md",
+          "session_id": "21",
+          "title": "Infra: executive AI/BI dashboard over the metric views",
+          "plan_file": "21_infra_executive_dashboard.md",
           "mode": "edit",
-          "scope": "Agent databricks.yml variables/targets, genie_spaces resource and ground_truth_ops.geniespace.json over the 7 metric views + 2 OTel tables.",
-          "owned_paths": ["ground-truth-agent/databricks.yml", "ground-truth-agent/ground_truth_ops.geniespace.json", "ground-truth-agent/resources/ground_truth_ops.genie_space.yml"]
-        },
-        {
-          "session_id": "06",
-          "title": "Agent verification job",
-          "plan_file": "06_agent_verification_job.md",
-          "mode": "edit",
-          "scope": "agent_verification.ipynb and its job YAML in the agent bundle. No metric view deployment in this bundle.",
-          "owned_paths": ["ground-truth-agent/src/**", "ground-truth-agent/resources/jobs/**"]
+          "scope": "Gap G3: dashboards resource in the infra bundle with a .lvdash.json over the 7 metric views (KPI counters, review activity trend, campaign progress, asset status mix, app error rate/latency), Databricks brand palette, infra warehouse.",
+          "owned_paths": ["ground-truth-infra/resources/dashboards/**", "ground-truth-infra/src/dashboards/**"]
         }
       ]
     },
     {
       "wave_id": "1",
-      "name": "App features: migration, RBAC, import, client, bundle jobs",
-      "concurrency": 5,
+      "name": "Edit: branded components, accessibility, Logic View",
+      "concurrency": 1,
       "gate": [
         "All wave 1 sessions have status done",
-        "ground-truth-app/server/migrations/ contains 007_rbac_sources_cdf.ts registered after 006 and no migration contains DROP",
-        "ground-truth-app/server/services/membership/membershipService.ts exports class MembershipService and server/services/index.ts constructs it",
-        "ground-truth-app/server/lib/config.ts builds no SQL with template-literal values",
-        "No file under ground-truth-app/server/services/campaign references SCIM or /Me",
-        "ground-truth-app/server/services/sources/glossaryParser.ts exists with a test covering both glossary formats",
-        "ground-truth-app/resources/jobs/demo_campaign_seed.job.yml exists and every notebook_path in ground-truth-app/resources resolves to an existing file with the same extension",
-        "pnpm typecheck (server, client, shared) and vitest pass in ground-truth-app",
+        "No file under ground-truth-app/client/src matches the regex (bg|text|border|ring|from|to)-(red|green|blue|yellow|amber|emerald|orange|slate|gray|zinc|rose|sky)-[0-9]{2,3}",
+        "ground-truth-app/client/src/components/review/LogicView.tsx exists and ReviewCard.tsx renders it",
+        "ground-truth-app/client/src/components/executive/DashboardLink.tsx reads the URL from /api/config and no file under ground-truth-app/client/src references VITE_EXEC_DASHBOARD_URL",
+        "ground-truth-app/client/src/theme/a11y-static.test.ts exists",
         "Every relative import in files changed this wave resolves to an existing file"
       ],
       "validate_bundles": [
@@ -225,148 +206,138 @@
       ],
       "sessions": [
         {
-          "session_id": "07",
-          "title": "App migration 007: CDF readiness, app groups, asset sources",
-          "plan_file": "07_app_migration_007.md",
+          "session_id": "17",
+          "title": "App branded components, accessibility, Logic View",
+          "plan_file": "17_app_brand_components_a11y.md",
           "mode": "edit",
-          "scope": "Migration 007 (app_groups, app_group_members, asset_sources, assets.source_id/source_metadata, REPLICA IDENTITY FULL on all app tables) and an always-run replica-identity step in the runner.",
-          "owned_paths": ["ground-truth-app/server/migrations/**"],
-          "depends_on": ["01"]
-        },
-        {
-          "session_id": "08",
-          "title": "App RBAC from Lakebase app groups + member admin API",
-          "plan_file": "08_app_rbac_membership.md",
-          "mode": "edit",
-          "scope": "MembershipService, role resolution from app groups with bootstrap admins, admin member routes, campaign RBAC against app groups, parameterised ConfigStore.update.",
-          "owned_paths": ["ground-truth-app/server/middleware/**", "ground-truth-app/server/services/membership/**", "ground-truth-app/server/services/index.ts", "ground-truth-app/server/server.ts", "ground-truth-app/server/routes/admin.ts", "ground-truth-app/server/lib/config.ts", "ground-truth-app/server/services/campaign/scope.ts", "ground-truth-app/server/services/campaign/scope.test.ts"],
-          "depends_on": ["01"]
-        },
-        {
-          "session_id": "09",
-          "title": "App catalog browsing, source registration, import",
-          "plan_file": "09_app_asset_import_sources.md",
-          "mode": "edit",
-          "scope": "OBO catalog/schema/metric-view listing, Git folder sources with scan, glossary markdown parser, import to measure/dimension/page assets, steward routes.",
-          "owned_paths": ["ground-truth-app/server/services/sources/**", "ground-truth-app/server/services/asset/**", "ground-truth-app/server/services/metricView/**", "ground-truth-app/server/routes/assets.ts", "ground-truth-app/server/routes/metricViews.ts", "ground-truth-app/server/seed/**"],
-          "depends_on": ["01"]
-        },
-        {
-          "session_id": "10",
-          "title": "App client: import wizard + members page",
-          "plan_file": "10_app_client_import_members.md",
-          "mode": "edit",
-          "scope": "Steward campaign-from-assets wizard (metric views, Git folder source, glossary terms) and admin Members page using shared contracts.",
-          "owned_paths": ["ground-truth-app/client/**"],
-          "depends_on": ["01"]
-        },
-        {
-          "session_id": "11",
-          "title": "App bundle: permissions, bootstrap env, M2M verification, demo seed job",
-          "plan_file": "11_app_bundle_jobs_demo_seed.md",
-          "mode": "edit",
-          "scope": "CAN_USE for users, m2m-client-id secret resource + GT_BOOTSTRAP_ADMIN_IDS env, deploy_verification via M2M OAuth, demo_campaign_seed job (grants, import, campaign, votes, verify).",
-          "owned_paths": ["ground-truth-app/resources/**", "ground-truth-app/src/**", "ground-truth-app/app.yaml", "ground-truth-app/databricks.yml"]
+          "scope": "ui_brand_plan sections 6-7 (gaps G6, G7, G8): migrate every component to semantic tokens, vote tokens + icons + keyboard shortcuts + live region in the review flow, LogicView (plain English + SQL/YAML in DM Mono) on ReviewCard, DashboardLink from /api/config, static a11y test.",
+          "owned_paths": ["ground-truth-app/client/src/components/**", "ground-truth-app/client/src/pages/**", "ground-truth-app/client/src/lib/**", "ground-truth-app/client/src/theme/a11y-static.test.ts"],
+          "exclude_paths": ["ground-truth-app/client/src/components/layout/**"],
+          "depends_on": ["16", "20"]
         }
       ]
     },
     {
       "wave_id": "2",
-      "name": "Converge: app",
+      "name": "Converge: infra secret ACL + scheduled bronze refresh",
       "gate": [
-        "Session 12 status is pass with a final attempt classified stable"
+        "Session 22a status is pass with a final attempt classified stable",
+        "databricks secrets list-acls semantic_ground_truth_credentials lists the app service principal with READ"
       ],
       "validate_bundles": [
-        {"root": "ground-truth-app", "target": "dev"}
+        {"root": "ground-truth-infra", "target": "dev"}
       ],
-      "runtime_gate": ["app", "app_deploy_verification", "demo_campaign_seed"],
+      "runtime_gate": ["cdf_bronze_refresh", "cdf_bronze_pipeline", "bronze_lakebase_cdf"],
       "sessions": [
         {
-          "session_id": "12",
-          "title": "Converge app: deploy, RBAC bootstrap, demo campaign",
-          "plan_file": "12_converge_app.md",
+          "session_id": "22a",
+          "title": "Converge infra: secret ACL + bronze refresh job",
+          "plan_file": "22_converge_infra.md",
           "mode": "converge",
-          "scope": "Deploy the app with wave 1 changes, apply migration 007, make deploy_verification and demo_campaign_seed succeed, keep the app stable with probes passing.",
-          "runtime_targets": ["app", "app_deploy_verification", "demo_campaign_seed"],
-          "owned_paths": ["ground-truth-app/**"],
-          "exclude_paths": ["ground-truth-app/docs/plans/**", "ground-truth-app/.build-status/**"],
-          "max_attempts": 6,
-          "timeout_minutes": 180,
-          "depends_on": ["07", "08", "09", "10", "11"],
-          "context_notes": "Verified 2026-10-22 with the M2M SPN (OAuth, all-apis): GET /health 200, GET /api/me 200 (roles [reviewer] before bootstrap), GET /api/campaigns 200 [], POST /mcp initialize 200. The SPN already has CAN_USE on the app. OTel spans service_name = dev-semantic-ground-truth."
+          "scope": "Deploy infra (run_setup=false) with the app SPN variable, confirm the scope ACL keeps app READ after deploy, and run cdf_bronze_refresh (which runs the cdf_bronze pipeline) cleanly with 0 failed/dropped records. Single runtime target: cdf_bronze_refresh; the gate also checks the pipeline update and the bronze table this produces. Do not work on the executive dashboard (session 22b) or the agent (session 22c).",
+          "runtime_targets": ["cdf_bronze_refresh"],
+          "owned_paths": ["ground-truth-infra/**", "deploy.sh"],
+          "exclude_paths": ["ground-truth-infra/docs/plans/**", "ground-truth-infra/.databricks/**", "ground-truth-infra/resources/dashboards/**", "ground-truth-infra/src/dashboards/**"],
+          "max_attempts": 5,
+          "timeout_minutes": 120,
+          "depends_on": ["18"],
+          "context_notes": "2026-10-23: secrets list-acls on semantic_ground_truth_credentials showed only matthew.giglia MANAGE; app SPN 55882972-924d-42cd-ab3d-d10c730629c2 lost READ because the infra secret_scope permissions block is authoritative. Every app start logs '[ERROR] error resolving resource m2m-client-id'. bronze_lakebase_cdf last change 06:23 UTC on 2026-10-23 (manual pipeline run only)."
         }
       ]
     },
     {
       "wave_id": "3",
-      "name": "Converge: Lakebase CDF, bronze, metric views",
+      "name": "Converge: executive AI/BI dashboard",
       "gate": [
-        "Session 13 status is pass with a final attempt classified stable"
+        "Session 22b status is pass with a final attempt classified stable",
+        "Session 22b summary records the executive dashboard id and published URL"
       ],
       "validate_bundles": [
         {"root": "ground-truth-infra", "target": "dev"}
       ],
-      "runtime_gate": ["infra_setup_cdf", "cdf_bronze_pipeline", "infra_metric_view_deploy", "lb_votes_history", "lb_assets_history", "bronze_lakebase_cdf", "mv_review_activity"],
+      "runtime_gate": ["executive_dashboard"],
       "sessions": [
         {
-          "session_id": "13",
-          "title": "Converge infra data plane: CDF, bronze, metric views",
-          "plan_file": "13_converge_infra_data_plane.md",
+          "session_id": "22b",
+          "title": "Converge infra: executive dashboard publishes with every dataset executing",
+          "plan_file": "22b_converge_executive_dashboard.md",
           "mode": "converge",
-          "scope": "Deploy infra (run_setup=false), configure Lakebase CDF at the database level, run the bronze pipeline cleanly, deploy the 7 metric views over bronze.",
-          "runtime_targets": ["infra_setup_cdf", "cdf_bronze_pipeline", "infra_metric_view_deploy"],
-          "owned_paths": ["ground-truth-infra/**"],
-          "exclude_paths": ["ground-truth-infra/docs/plans/**", "ground-truth-infra/.databricks/**"],
-          "max_attempts": 6,
-          "timeout_minutes": 180,
-          "depends_on": ["02", "03", "04", "12"],
-          "context_notes": "CDF preview enabled by a workspace admin. list_cdf_configs(parent=database) returned [] on 2026-10-22; list_cdf_statuses returned 'No API found'. Catalog hls_fde_dev uses external storage (CDF requirement met). Wave 2 wrote assets, votes, campaigns, app_groups rows before this wave."
+          "scope": "Deploy infra (run_setup=false, same app SPN variable as 22a so the scope ACL is preserved), publish the executive dashboard, and fix any dataset that fails LIMIT 1 execution. Record the dashboard id and published URL in the session summary for session 23.",
+          "runtime_targets": ["executive_dashboard"],
+          "owned_paths": ["ground-truth-infra/resources/dashboards/**", "ground-truth-infra/src/dashboards/**"],
+          "max_attempts": 4,
+          "timeout_minutes": 90,
+          "depends_on": ["21", "22a"]
         }
       ]
     },
     {
       "wave_id": "4",
-      "name": "Converge: Genie agent",
+      "name": "Converge: agent regression",
       "gate": [
-        "Session 14 status is pass with a final attempt classified stable"
+        "Session 22c status is pass with a final attempt classified stable"
       ],
-      "validate_bundles": [
-        {"root": "ground-truth-agent", "target": "dev"}
-      ],
-      "runtime_gate": ["agent_space", "agent_verification"],
+      "runtime_gate": ["agent_verification", "agent_space"],
       "sessions": [
         {
-          "session_id": "14",
-          "title": "Converge Genie agent + verification",
-          "plan_file": "14_converge_agent.md",
+          "session_id": "22c",
+          "title": "Converge agent regression: agent_verification after infra changes",
+          "plan_file": "22c_converge_agent_regression.md",
           "mode": "converge",
-          "scope": "Deploy the Ground Truth Operations Genie space from the agent bundle and make agent_verification succeed.",
-          "runtime_targets": ["agent_space", "agent_verification"],
-          "owned_paths": ["ground-truth-agent/**"],
-          "exclude_paths": ["ground-truth-agent/docs/plans/**"],
-          "max_attempts": 5,
-          "timeout_minutes": 120,
-          "depends_on": ["05", "06", "13"]
+          "scope": "Regression only: run agent_verification after the infra changes in waves 2-3. This build does not change the agent bundle. If a check fails because of an infra change, fix it in ground-truth-infra; if it would need an agent edit, stop as blocked with the failing check.",
+          "runtime_targets": ["agent_verification"],
+          "owned_paths": ["ground-truth-infra/**"],
+          "exclude_paths": ["ground-truth-infra/docs/plans/**", "ground-truth-infra/.databricks/**"],
+          "max_attempts": 3,
+          "timeout_minutes": 60,
+          "depends_on": ["22a", "22b"]
         }
       ]
     },
     {
       "wave_id": "5",
+      "name": "Converge: app (brand, Logic View, runtime config)",
+      "gate": [
+        "Session 23 status is pass with a final attempt classified stable"
+      ],
+      "validate_bundles": [
+        {"root": "ground-truth-app", "target": "dev"}
+      ],
+      "runtime_gate": ["app", "app_deploy_verification"],
+      "sessions": [
+        {
+          "session_id": "23",
+          "title": "Converge app: branded UI, runtime config, clean runtime gate",
+          "plan_file": "23_converge_app.md",
+          "mode": "converge",
+          "scope": "Deploy the app with waves 0-1 changes and exec_dashboard_url from session 22b's summary, make the Apps build (tsc + vitest prebuild) pass, and keep the runtime gate clean: zero ERROR/FATAL or level=error/fatal lines, all probes passing. Single runtime target: app. After the final stable deploy, run deploy_verification once (bundle run deploy_verification) because the wave gate also checks app_deploy_verification for a successful run started during this build.",
+          "runtime_targets": ["app"],
+          "owned_paths": ["ground-truth-app/**"],
+          "exclude_paths": ["ground-truth-app/docs/plans/**", "ground-truth-app/.build-status/**"],
+          "max_attempts": 6,
+          "timeout_minutes": 180,
+          "depends_on": ["16", "17", "19", "20", "22a", "22b"],
+          "context_notes": "2026-10-23 baseline: deploy_verification 6/6 (run 92578084705794); graceful shutdown logs 'Shutdown complete' in 5 ms; app.yaml runs node directly. The m2m-client-id ERROR at start must be gone once wave 2 restores the scope ACL; if it is not, stop as blocked rather than suppressing the log."
+        }
+      ]
+    },
+    {
+      "wave_id": "6",
       "name": "Docs and project memory",
       "gate": [
-        "All wave 5 sessions have status done",
-        "docs/runbooks/onboarding_users.md and docs/runbooks/cdf_bronze_operations.md exist",
+        "All wave 6 sessions have status done",
+        "docs/plans/gap_analysis_2026-10.md marks G1, G2, G3, G6, G7, G8, G9 and G17 with their new status",
         "PROJECT_MEMORY.md has a status log entry dated in this build"
       ],
       "sessions": [
         {
-          "session_id": "15",
-          "title": "Project memory, runbooks, READMEs",
-          "plan_file": "15_docs_project_memory.md",
+          "session_id": "24",
+          "title": "Project memory, READMEs, gap status, brand runbook",
+          "plan_file": "24_docs_project_memory.md",
           "mode": "edit",
-          "scope": "Update root and bundle PROJECT_MEMORY/README files and add two runbooks describing what waves 0-4 built.",
-          "owned_paths": ["PROJECT_MEMORY.md", "README.md", "docs/runbooks/**", "ground-truth-infra/PROJECT_MEMORY.md", "ground-truth-infra/README.md", "ground-truth-agent/PROJECT_MEMORY.md", "ground-truth-agent/README.md", "ground-truth-agent/docs/plans/INDEX.md", "ground-truth-app/README.md", "ground-truth-app/PROJECT_MEMORY.md"],
-          "depends_on": ["12", "13", "14"]
+          "scope": "Update root and bundle PROJECT_MEMORY/README files, mark gap statuses in gap_analysis_2026-10.md, add docs/runbooks/ui_theming.md (token table, how to add a component, contrast test).",
+          "owned_paths": ["PROJECT_MEMORY.md", "README.md", "docs/runbooks/**", "docs/plans/gap_analysis_2026-10.md", "ground-truth-infra/PROJECT_MEMORY.md", "ground-truth-infra/README.md", "ground-truth-app/README.md", "ground-truth-app/PROJECT_MEMORY.md"],
+          "depends_on": ["22a", "22b", "22c", "23"]
         }
       ]
     }

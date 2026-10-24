@@ -38,6 +38,7 @@ export interface Asset {
   status: AssetStatus;
   domain: string | null;
   subdomain: string | null;
+  synonyms?: string[];
   sourceId: string | null;
   sourceMetadata: Record<string, unknown> | null;
   createdAt: string;

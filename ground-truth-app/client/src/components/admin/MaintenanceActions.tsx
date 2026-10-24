@@ -1,5 +1,5 @@
 // client/src/components/admin/MaintenanceActions.tsx — freshness check + recompute
-// Session 13 · Wave 4 · No enum, no namespace, no default export
+// Session 17 · Wave 1 · brand: destructive confirm dialog, semantic tokens
 
 import { useState } from 'react';
 import {
@@ -10,12 +10,24 @@ import {
   CardTitle,
   Input,
 } from '@databricks/appkit-ui/react';
+import { AlertTriangle } from 'lucide-react';
 import { useRecomputeAsset, useRunFreshnessCheck } from '../../lib/api';
 
 export function MaintenanceActions() {
   const freshness = useRunFreshnessCheck();
   const recompute = useRecomputeAsset();
   const [assetId, setAssetId] = useState('');
+  const [confirmRecompute, setConfirmRecompute] = useState(false);
+
+  const handleRecompute = () => {
+    if (!confirmRecompute) {
+      setConfirmRecompute(true);
+      return;
+    }
+    recompute.mutate(assetId.trim(), {
+      onSettled: () => setConfirmRecompute(false),
+    });
+  };
 
   return (
     <Card>
@@ -55,15 +67,20 @@ export function MaintenanceActions() {
             <Input
               placeholder="Asset UUID"
               value={assetId}
-              onChange={(e) => setAssetId(e.target.value)}
-              className="max-w-xs"
+              onChange={(e) => { setAssetId(e.target.value); setConfirmRecompute(false); }}
+              className="max-w-xs border-input"
+              aria-label="Asset UUID for recompute"
             />
             <Button
-              variant="outline"
+              variant={confirmRecompute ? 'destructive' : 'outline'}
               disabled={!assetId.trim() || recompute.isPending}
-              onClick={() => recompute.mutate(assetId.trim())}
+              onClick={handleRecompute}
             >
-              {recompute.isPending ? 'Computing…' : 'Recompute'}
+              {recompute.isPending
+                ? 'Computing…'
+                : confirmRecompute
+                  ? <><AlertTriangle className="mr-1 h-3 w-3" /> Confirm recompute</>
+                  : 'Recompute'}
             </Button>
           </div>
           {recompute.data && (

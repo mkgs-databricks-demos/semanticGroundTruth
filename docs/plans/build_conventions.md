@@ -4,6 +4,17 @@ Read this before every session in `docs/plans/waves.json`. If a plan file and th
 
 Decisions below were made by the project owner on 2026-10-22 and are not open for redesign inside a session.
 
+## 0. Next build overrides (brand UI + gaps, sessions 16–24)
+
+Where this section and later sections disagree, this section wins for sessions 16–24.
+
+* **Branch:** `mg-genie-ui-brand-and-gaps` (not `mg-genie-agent-build`, which is merged and deleted).
+* **Deploy order:** infra converge (wave 2) → app converge (wave 3). Infra goes first because it restores the app SPN's READ on `semantic_ground_truth_credentials`; the app runtime gate fails on the `m2m-client-id` resolve ERROR until then. The agent bundle is not edited; wave 2 re-runs `agent_verification` as a regression check.
+* **UI source of truth:** `docs/plans/ui_brand_plan.md`. Hex values and contrast ratios there are final; sessions do not re-pick colors. Components reference semantic tokens only (no Tailwind palette classes, no inline hex outside `client/src/theme/tokens.ts`, `client/src/index.css`, `server/mcp/views/cardHtml.ts`).
+* **No new npm dependencies** and no `pnpm-lock.yaml` edits (no Node toolchain in build sessions).
+* **Brand assets** are copied from `/Workspace/Shared/brandfolder/` or downloaded once from the CDN URLs in `assets.csv` and committed under `ground-truth-app/client/public/`. No runtime CDN or Google Fonts requests.
+* **Runtime gate:** structured `"level":"error"` lines now count as errors. Fix the cause; never add an `ignore_patterns` entry to pass a gate.
+
 ---
 
 ## 1. Build rules

@@ -1,13 +1,12 @@
 // client/src/components/review/ReviewCard.tsx
-// Session 12 · Wave 4
+// Session 17 · Wave 1 · brand tokens, LogicView replaces old YAML section
 
-import { useState } from 'react';
-import { Badge, Button, Card, CardContent, CardHeader } from '@databricks/appkit-ui/react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Badge, Card, CardContent, CardHeader } from '@databricks/appkit-ui/react';
 import type { ReviewCard as ReviewCardType, VoteBody } from '../../../../shared/contracts';
 import { AssetTypeBadge } from './AssetTypeBadge';
 import { ConfidenceMeter } from './ConfidenceMeter';
 import { ExampleQuestions } from './ExampleQuestions';
+import { LogicView } from './LogicView';
 import { ProgressBar } from './ProgressBar';
 import { QueryPreview } from './QueryPreview';
 import { SynonymChips } from './SynonymChips';
@@ -20,7 +19,6 @@ interface ReviewCardProps {
 }
 
 export function ReviewCard({ card, onVote, disabled }: ReviewCardProps) {
-  const [yamlOpen, setYamlOpen] = useState(false);
   const { asset } = card;
 
   const submit = (body: VoteBody) => {
@@ -28,7 +26,7 @@ export function ReviewCard({ card, onVote, disabled }: ReviewCardProps) {
   };
 
   return (
-    <Card className="w-full max-w-lg mx-auto shadow-lg">
+    <Card className="w-full max-w-lg mx-auto shadow-sm rounded-xl border">
       <CardHeader className="space-y-2 pb-3">
         <div className="flex items-center gap-2 flex-wrap">
           <AssetTypeBadge type={asset.assetType} />
@@ -39,7 +37,7 @@ export function ReviewCard({ card, onVote, disabled }: ReviewCardProps) {
             </span>
           )}
         </div>
-        <h3 className="text-lg font-semibold leading-tight">
+        <h3 className="text-xl font-bold leading-tight">
           {asset.displayName || asset.name}
         </h3>
         {card.campaign && (
@@ -53,12 +51,6 @@ export function ReviewCard({ card, onVote, disabled }: ReviewCardProps) {
         {asset.description && (
           <p className="text-sm text-muted-foreground">{asset.description}</p>
         )}
-        {asset.plainEnglishLogic && (
-          <div className="text-sm">
-            <p className="font-medium text-xs text-muted-foreground mb-1">Plain-English logic</p>
-            <p>{asset.plainEnglishLogic}</p>
-          </div>
-        )}
 
         <ConfidenceMeter confidence={card.confidence} status={asset.status} />
         <ProgressBar reviewed={card.progress.reviewed} total={card.progress.total} />
@@ -66,27 +58,8 @@ export function ReviewCard({ card, onVote, disabled }: ReviewCardProps) {
         <SynonymChips assetId={asset.id} synonyms={card.synonyms} />
         <ExampleQuestions assetId={asset.id} examples={card.examples} />
 
-        {/* Collapsible YAML */}
-        {asset.yamlContent && (
-          <div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1 text-xs"
-              onClick={() => setYamlOpen(!yamlOpen)}
-              aria-expanded={yamlOpen}
-              aria-label="Toggle YAML preview"
-            >
-              {yamlOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              YAML
-            </Button>
-            {yamlOpen && (
-              <pre className="mt-1 rounded-md bg-muted p-3 text-xs overflow-x-auto max-h-48">
-                {asset.yamlContent}
-              </pre>
-            )}
-          </div>
-        )}
+        {/* Logic view: plain English + SQL/YAML definition behind disclosure */}
+        <LogicView asset={asset} />
 
         <QueryPreview assetId={asset.id} />
 

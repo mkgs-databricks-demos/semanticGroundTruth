@@ -1,6 +1,6 @@
 {
-  "name": "ground-truth-app",
-  "short_name": "ground-truth-app",
+  "name": "Semantic Ground Truth",
+  "short_name": "Ground Truth",
   "icons": [
     {
       "src": "/favicon-192x192.png",
@@ -13,7 +13,7 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#1B3139",
+  "background_color": "#F9F7F4",
   "display": "standalone"
 }

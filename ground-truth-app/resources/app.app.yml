@@ -8,6 +8,13 @@ resources:
       description: "A Databricks App powered by AppKit"
       source_code_path: ../
 
+      # Override app.yaml env vars with bundle-variable values at deploy time.
+      # deploy.sh passes --var exec_dashboard_url=<url> from the infra dashboard resource.
+      config:
+        env:
+          - name: GT_EXEC_DASHBOARD_URL
+            value: "${var.exec_dashboard_url}"
+
       # Start the app automatically on deploy.
       lifecycle:
         started: true

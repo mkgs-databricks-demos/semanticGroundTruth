@@ -1,0 +1,549 @@
+{
+  "datasets": [
+    {
+      "name": "ds_total_votes",
+      "displayName": "KPI: Total Votes",
+      "queryLines": [
+        "SELECT MEASURE(`Total Votes`) AS total_votes FROM mv_review_activity"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_approval_rate",
+      "displayName": "KPI: Approval Rate",
+      "queryLines": [
+        "SELECT MEASURE(`Approval Rate`) AS approval_rate FROM mv_review_activity"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_certified_assets",
+      "displayName": "KPI: Certified Assets",
+      "queryLines": [
+        "SELECT MEASURE(`Certified Assets`) AS certified_assets, MEASURE(`Total Assets`) AS total_assets FROM mv_coverage_metrics"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_active_reviewers",
+      "displayName": "KPI: Active Reviewers",
+      "queryLines": [
+        "SELECT MEASURE(`Active Reviewers`) AS active_reviewers FROM mv_user_leaderboard"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_review_trend",
+      "displayName": "Review Activity by Day",
+      "queryLines": [
+        "SELECT vote_date, MEASURE(`Total Votes`) AS total_votes, MEASURE(`Unique Reviewers`) AS unique_reviewers FROM mv_review_activity GROUP BY vote_date ORDER BY vote_date"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_campaign_progress",
+      "displayName": "Campaign Progress",
+      "queryLines": [
+        "SELECT campaign_type, campaign_status, MEASURE(`Total Assets`) AS total_assets, MEASURE(`Reviewed Assets`) AS reviewed_assets, MEASURE(`Avg Completion`) AS avg_completion FROM mv_campaign_progress GROUP BY campaign_type, campaign_status ORDER BY campaign_type"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_asset_status",
+      "displayName": "Asset Status Mix",
+      "queryLines": [
+        "SELECT status, MEASURE(`Total Assets`) AS total_assets FROM mv_coverage_metrics GROUP BY status ORDER BY status"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_error_rate",
+      "displayName": "App Error Rate",
+      "queryLines": [
+        "SELECT log_date, MEASURE(`Error Rate`) AS error_rate, MEASURE(`Error Count`) AS error_count, MEASURE(`Total Logs`) AS total_logs FROM mv_otel_error_rate GROUP BY log_date ORDER BY log_date"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_latency",
+      "displayName": "App Request Latency",
+      "queryLines": [
+        "SELECT span_date, MEASURE(`P95 Latency`) AS p95_latency_ms, MEASURE(`Avg Latency`) AS avg_latency_ms, MEASURE(`Request Count`) AS request_count FROM mv_otel_request_latency GROUP BY span_date ORDER BY span_date"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    }
+  ],
+  "pages": [
+    {
+      "name": "executive_summary",
+      "displayName": "Executive Summary",
+      "layout": [
+        {
+          "widget": {
+            "name": "w_total_votes",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_total_votes",
+                  "fields": [
+                    {
+                      "name": "total_votes",
+                      "expression": "`total_votes`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "total_votes",
+                  "displayName": "Total Votes"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_approval_rate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_approval_rate",
+                  "fields": [
+                    {
+                      "name": "approval_rate",
+                      "expression": "`approval_rate`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "approval_rate",
+                  "displayName": "Approval Rate"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_certified_assets",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_certified_assets",
+                  "fields": [
+                    {
+                      "name": "certified_assets",
+                      "expression": "`certified_assets`"
+                    },
+                    {
+                      "name": "total_assets",
+                      "expression": "`total_assets`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "certified_assets",
+                  "displayName": "Certified Assets"
+                },
+                "comparison": {
+                  "fieldName": "total_assets"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_active_reviewers",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_active_reviewers",
+                  "fields": [
+                    {
+                      "name": "active_reviewers",
+                      "expression": "`active_reviewers`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "active_reviewers",
+                  "displayName": "Active Reviewers"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_review_trend",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_review_trend",
+                  "fields": [
+                    {
+                      "name": "vote_date",
+                      "expression": "`vote_date`"
+                    },
+                    {
+                      "name": "total_votes",
+                      "expression": "`total_votes`"
+                    },
+                    {
+                      "name": "unique_reviewers",
+                      "expression": "`unique_reviewers`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "vote_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Date"
+                },
+                "y": {
+                  "fieldName": "total_votes",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Total Votes"
+                },
+                "color": {
+                  "value": "#FF3621"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "w_campaign_progress",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_campaign_progress",
+                  "fields": [
+                    {
+                      "name": "campaign_type",
+                      "expression": "`campaign_type`"
+                    },
+                    {
+                      "name": "campaign_status",
+                      "expression": "`campaign_status`"
+                    },
+                    {
+                      "name": "total_assets",
+                      "expression": "`total_assets`"
+                    },
+                    {
+                      "name": "reviewed_assets",
+                      "expression": "`reviewed_assets`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "campaign_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Campaign"
+                },
+                "y": {
+                  "fieldName": "total_assets",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Assets"
+                },
+                "color": {
+                  "fieldName": "campaign_status",
+                  "scale": {
+                    "type": "categorical",
+                    "mapping": {
+                      "active": "#2272B4",
+                      "paused": "#FFAB00",
+                      "completed": "#00A972",
+                      "archived": "#AB4057"
+                    }
+                  },
+                  "displayName": "Status"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "w_asset_status",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_asset_status",
+                  "fields": [
+                    {
+                      "name": "status",
+                      "expression": "`status`"
+                    },
+                    {
+                      "name": "total_assets",
+                      "expression": "`total_assets`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "status",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Review Status"
+                },
+                "y": {
+                  "fieldName": "total_assets",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Assets"
+                },
+                "color": {
+                  "fieldName": "status",
+                  "scale": {
+                    "type": "categorical",
+                    "mapping": {
+                      "PENDING": "#FFAB00",
+                      "REVIEWED": "#2272B4",
+                      "CERTIFIED": "#00A972"
+                    }
+                  },
+                  "displayName": "Status"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "w_error_rate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_error_rate",
+                  "fields": [
+                    {
+                      "name": "log_date",
+                      "expression": "`log_date`"
+                    },
+                    {
+                      "name": "error_rate",
+                      "expression": "`error_rate`"
+                    },
+                    {
+                      "name": "error_count",
+                      "expression": "`error_count`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "log_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Date"
+                },
+                "y": {
+                  "fieldName": "error_rate",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Error Rate"
+                },
+                "color": {
+                  "value": "#BD2B26"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 7,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "w_latency",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_latency",
+                  "fields": [
+                    {
+                      "name": "span_date",
+                      "expression": "`span_date`"
+                    },
+                    {
+                      "name": "p95_latency_ms",
+                      "expression": "`p95_latency_ms`"
+                    },
+                    {
+                      "name": "avg_latency_ms",
+                      "expression": "`avg_latency_ms`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "span_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Date"
+                },
+                "y": {
+                  "fieldName": "p95_latency_ms",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "P95 Latency (ms)"
+                },
+                "color": {
+                  "value": "#2272B4"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 7,
+            "width": 4,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ]
+}

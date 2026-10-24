@@ -39,6 +39,7 @@
 #   ./deploy.sh --target dev --infra --run-setup         # deploy infra + force post-deploy setup
 #   ./deploy.sh --target dev --app                       # deploy only app bundle
 #   ./deploy.sh --target dev --agent                     # deploy only agent bundle
+#   ./deploy.sh --target dev --agent --verify            # deploy agent + run agent_verification
 #   ./deploy.sh --target dev --validate                  # validate only, no deploy
 #   ./deploy.sh --target dev --destroy                   # destroy deployed resources
 #
@@ -104,8 +105,13 @@ MLFLOW_EXPERIMENT_NAME=""
 FRESHNESS_JOB_ID=""
 LAKEBASE_BRANCH=""
 LAKEBASE_DATABASE=""
+EXEC_DASHBOARD_ID=""
+EXEC_DASHBOARD_URL=""
 APP_URL=""
 APP_DISPLAY_NAME=""
+
+# App SPN — resolved from `apps get` in Phase 1; used for secret scope READ ACL
+APP_SPN_CLIENT_ID=""
 
 # Set just before the infra deploy; used to pick this deploy's job run
 DEPLOY_START_MS=""
@@ -120,6 +126,7 @@ DEPLOY_AGENT=true
 VALIDATE_ONLY=false
 DESTROY=false
 RUN_SETUP=false
+RUN_VERIFY=false
 
 # --------------------------------------------------------------------------- #
 # Usage
@@ -134,6 +141,8 @@ Options:
   --app              Deploy only the application bundle.
   --agent            Deploy only the agent bundle.
   --run-setup        Force post-deploy setup tasks (overrides run_setup=false in dev).
+  --verify           After deploy, run the verification job of each deployed bundle
+                     (app: deploy_verification, agent: agent_verification).
   --validate         Validate bundles without deploying.
   --destroy          Destroy deployed resources for the target.
   -h, --help         Show this help message.
@@ -171,6 +180,7 @@ while [[ $# -gt 0 ]]; do
     --app)         DEPLOY_INFRA=false; DEPLOY_APP=true;  DEPLOY_AGENT=false; shift ;;
     --agent)       DEPLOY_INFRA=false; DEPLOY_APP=false; DEPLOY_AGENT=true;  shift ;;
     --run-setup)   RUN_SETUP=true; shift ;;
+    --verify)      RUN_VERIFY=true; shift ;;
     --validate)    VALIDATE_ONLY=true; shift ;;
     --destroy)     DESTROY=true; shift ;;
     -h|--help)     usage ;;
@@ -306,6 +316,29 @@ deploy_bundle() {
 }
 
 # --------------------------------------------------------------------------- #
+# run_bundle_job — `bundle run <job>` inside a bundle (non-fatal)
+#   $1 = bundle dir name, $2 = resource key, rest = extra args (e.g. --var)
+#   Sets LAST_RUN_RC. Never exits the script.
+# --------------------------------------------------------------------------- #
+run_bundle_job() {
+  local bundle_name="$1"
+  local job_key="$2"
+  shift 2
+  local extra_args=("$@")
+  local bundle_dir="${SCRIPT_DIR}/${bundle_name}"
+
+  log "Running ${job_key} (${bundle_name}, target: ${TARGET})"
+  LAST_RUN_RC=0
+  (cd_bundle "${bundle_dir}" && \
+    databricks bundle run "${job_key}" --target "${TARGET}" ${extra_args[@]+"${extra_args[@]}"}) || LAST_RUN_RC=$?
+  if [[ ${LAST_RUN_RC} -eq 0 ]]; then
+    ok "${job_key} succeeded"
+  else
+    warn "${job_key} failed (exit ${LAST_RUN_RC}) — see the run output above."
+  fi
+}
+
+# --------------------------------------------------------------------------- #
 # resolve_infra_vars — extract resolved values from the infra bundle summary
 # --------------------------------------------------------------------------- #
 resolve_infra_vars() {
@@ -398,6 +431,9 @@ freshness_job_id = resources.get('jobs', {}).get('freshness_resurfacing', {}).ge
 lakebase_branch = resources.get('postgres_branches', {}).get('production', {}).get('id', '')
 lakebase_database = resources.get('postgres_databases', {}).get('app_db', {}).get('id', '')
 
+# --- executive dashboard ID (published URL resolved in bash from WORKSPACE_HOST) ---
+exec_dashboard_id = resources.get('dashboards', {}).get('executive', {}).get('id', '')
+
 # --- workspace host ---
 workspace_host = ''
 workspace_block = data.get('workspace', {})
@@ -433,6 +469,7 @@ print(f'FRESHNESS_JOB_ID=\"{safe(freshness_job_id)}\"')
 # slashes; safe_url() preserves ':/' which covers path separators.
 print(f'LAKEBASE_BRANCH=\"{safe_url(lakebase_branch)}\"')
 print(f'LAKEBASE_DATABASE=\"{safe_url(lakebase_database)}\"')
+print(f'EXEC_DASHBOARD_ID=\"{safe(exec_dashboard_id)}\"')
 # Scopes are space-separated and may contain ':' (e.g. catalog.tables:read)
 scopes_clean = re.sub(r'[^a-zA-Z0-9_.: -]', '', str(m2m_scopes)).strip()
 print(f'M2M_OAUTH_SCOPES=\"{scopes_clean}\"')
@@ -476,6 +513,14 @@ print(exp.get("experiment_id", ""))
   ok "  freshness_job=${FRESHNESS_JOB_ID}"
   ok "  lakebase_branch=${LAKEBASE_BRANCH}"
   ok "  lakebase_database=${LAKEBASE_DATABASE}"
+  if [[ -n "${EXEC_DASHBOARD_ID}" ]]; then
+    # Build the published dashboard URL from the workspace host and dashboard ID.
+    EXEC_DASHBOARD_URL="${WORKSPACE_HOST}/dashboardsv3/${EXEC_DASHBOARD_ID}/published"
+    ok "  exec_dashboard_url=${EXEC_DASHBOARD_URL}"
+  else
+    EXEC_DASHBOARD_URL=""
+    warn "  executive dashboard not yet deployed — exec_dashboard_url will be empty."
+  fi
 }
 
 # --------------------------------------------------------------------------- #
@@ -863,6 +908,64 @@ if [[ "${DEPLOY_INFRA}" == true ]]; then
   # Step 1a: Resolve variables from bundle summary (works pre-deploy too)
   resolve_infra_vars
 
+  # Step 1a': Resolve the app SPN client ID from the running app.
+  # The infra secret scope permissions block is authoritative. Without the
+  # app SPN listed as READ, every infra deploy removes the ACL and the app
+  # starts logging "[ERROR] error resolving resource m2m-client-id".
+  # On first deploy (no app yet), fall back to the target default in
+  # databricks.yml and, after Phase 2, re-deploy infra if the ID differs.
+  if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
+    log "Resolving app service principal for secret scope ACL"
+    # Resolve app display name from the app bundle (same as Phase 2, Step 2a')
+    if [[ -z "${APP_DISPLAY_NAME}" ]]; then
+      # Build minimal --var list so app bundle summary works
+      _app_vars=(
+        "--var" "catalog=$(safe "${CATALOG}")"
+        "--var" "schema_name=$(safe "${SCHEMA}")"
+        "--var" "sql_warehouse_id=$(safe "${SQL_WAREHOUSE_ID}")"
+        "--var" "agents_mlflow_experiment_experimentId=$(safe "${MLFLOW_EXPERIMENT_ID}")"
+        "--var" "job_id=$(safe "${FRESHNESS_JOB_ID}")"
+        "--var" "postgres_branch=$(safe_url "${LAKEBASE_BRANCH}")"
+        "--var" "postgres_database=$(safe_url "${LAKEBASE_DATABASE}")"
+      )
+      APP_DISPLAY_NAME=$(
+        cd_bundle "${SCRIPT_DIR}/${APP_BUNDLE}" && \
+        databricks bundle summary --target "${TARGET}" "${_app_vars[@]}" --output json 2>/dev/null | \
+        sed -n '/^{/,$p' | \
+        python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+print(data.get("variables", {}).get("app_display_name", {}).get("value", ""))
+' 2>/dev/null) || APP_DISPLAY_NAME=""
+      APP_DISPLAY_NAME=$(safe "${APP_DISPLAY_NAME}")
+    fi
+
+    if [[ -n "${APP_DISPLAY_NAME}" ]]; then
+      APP_SPN_CLIENT_ID=$(
+        databricks apps get "${APP_DISPLAY_NAME}" --output json 2>/dev/null | \
+        python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+print(data.get("service_principal_client_id", ""))
+' 2>/dev/null) || APP_SPN_CLIENT_ID=""
+      APP_SPN_CLIENT_ID=$(safe "${APP_SPN_CLIENT_ID}")
+    fi
+
+    if [[ -n "${APP_SPN_CLIENT_ID}" ]]; then
+      ok "App SPN resolved: ${APP_SPN_CLIENT_ID}"
+      INFRA_EXTRA_ARGS+=("--var" "app_service_principal_id=$(safe "${APP_SPN_CLIENT_ID}")")
+    else
+      warn "App not found or SPN not resolved — using target default for app_service_principal_id."
+      warn "After Phase 2 (app deploy), re-run --infra to update the scope ACL."
+    fi
+  fi
+
   # Step 1b: Check MCP connection status (informational only).
   # Connection is created by Phase 2 (app deploy) via the
   # create_mcp_connection job. This is just a status check.
@@ -913,6 +1016,7 @@ if [[ "${DEPLOY_APP}" == true ]]; then
     "--var" "job_id=${FRESHNESS_JOB_ID}"
     "--var" "postgres_branch=${LAKEBASE_BRANCH}"
     "--var" "postgres_database=${LAKEBASE_DATABASE}"
+    "--var" "exec_dashboard_url=$(safe_url "${EXEC_DASHBOARD_URL}")"  # from infra bundle's executive dashboard
   )
 
   # Step 2a': Resolve the app display name from the app bundle's target variables.
@@ -1025,12 +1129,43 @@ print(data.get("url", ""))
       warn "  databricks apps get ${APP_DISPLAY_NAME}"
     fi
 
-    # Step 2g: Summary.
+    # Step 2g: Optional deploy_verification (M2M probes of /health, /api/*, /mcp)
+    if [[ "${RUN_VERIFY}" == true ]]; then
+      run_bundle_job "${APP_BUNDLE}" deploy_verification "${APP_EXTRA_ARGS[@]}"
+    fi
+
+    # Step 2h: Summary.
     log "App deploy complete: ${APP_DISPLAY_NAME}"
     echo "  App URL:        ${APP_URL:-UNKNOWN}"
     echo "  MCP connection: ${CATALOG}.${SCHEMA}.${MCP_CONNECTION_NAME}"
     echo "  Note: app_role update is NOT needed — AppKit CAN_CONNECT_AND_CREATE"
     echo "  auto-provisions a Lakebase role for the app SPN."
+
+    # Step 2i: Re-deploy infra if the app SPN was not available in Phase 1.
+    # On first deploy the app doesn't exist during Phase 1, so the scope ACL
+    # uses the target default. After Phase 2 creates the app, check whether
+    # the live SPN differs and, if so, re-deploy infra to fix the ACL.
+    if [[ "${DEPLOY_INFRA}" == true ]] && [[ -z "${APP_SPN_CLIENT_ID}" ]]; then
+      live_spn=$(
+        # Resolve the live app SPN after Phase 2 created the app
+        databricks apps get "${APP_DISPLAY_NAME}" --output json 2>/dev/null | \
+        python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+print(data.get("service_principal_client_id", ""))
+' 2>/dev/null) || live_spn=""
+      live_spn=$(safe "${live_spn}")
+      if [[ -n "${live_spn}" ]]; then
+        log "Updating infra secret scope ACL with live app SPN: ${live_spn}"
+        deploy_bundle "${INFRA_BUNDLE}" \
+          ${INFRA_EXTRA_ARGS[@]+"${INFRA_EXTRA_ARGS[@]}"} \
+          "--var" "app_service_principal_id=$(safe "${live_spn}")"
+        APP_SPN_CLIENT_ID="${live_spn}"
+      fi
+    fi
   fi
 fi
 
@@ -1038,9 +1173,41 @@ fi
 # Phase 3: Agent bundle (Bundle 3)
 # --------------------------------------------------------------------------- #
 if [[ "${DEPLOY_AGENT}" == true ]]; then
-  # TODO: After Bundle 3 is scaffolded:
-  # 1. deploy_bundle "${AGENT_BUNDLE}"
-  warn "Bundle 3 (${AGENT_BUNDLE}) not yet implemented — skipping."
+
+  # Step 3a: Ensure infra vars are resolved (--agent only runs skip Phase 1)
+  if [[ -z "${CATALOG}" ]]; then
+    log "Resolving infra vars for agent deploy (--agent only)"
+    resolve_infra_vars
+  fi
+
+  # Step 3b: The agent bundle reads metric views + OTel tables from the infra
+  # schema and runs the Genie space on the infra warehouse. space_title stays
+  # in the agent's databricks.yml (static per target).
+  AGENT_EXTRA_ARGS=(
+    "--var" "catalog=${CATALOG}"
+    "--var" "schema_name=${SCHEMA}"
+    "--var" "warehouse_id=${SQL_WAREHOUSE_ID}"
+  )
+
+  log "Deploying agent bundle with infra-resolved variables"
+  ok "  catalog=${CATALOG}"
+  ok "  schema_name=${SCHEMA}"
+  ok "  warehouse_id=${SQL_WAREHOUSE_ID}"
+
+  # Step 3c: Deploy (Genie space + agent_verification job)
+  deploy_bundle "${AGENT_BUNDLE}" "${AGENT_EXTRA_ARGS[@]}"
+
+  # Step 3d: Optional verification (11 checks: space config, data sources,
+  # example SQL EXPLAIN, probe questions)
+  if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
+    if [[ "${LAST_DEPLOY_RC:-1}" -ne 0 ]]; then
+      warn "Agent deploy reported errors — skipping agent_verification."
+    elif [[ "${RUN_VERIFY}" == true ]]; then
+      run_bundle_job "${AGENT_BUNDLE}" agent_verification "${AGENT_EXTRA_ARGS[@]}"
+    else
+      ok "Skipped agent_verification (pass --verify to run it)."
+    fi
+  fi
 fi
 
 # --------------------------------------------------------------------------- #

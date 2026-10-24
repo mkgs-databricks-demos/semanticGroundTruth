@@ -15,7 +15,10 @@ export function requestLogMiddleware(): RequestHandler {
       const user = res.locals.user;
       const otelAttributes = res.locals.otelAttributes ?? {};
 
-      logger.info('request', {
+      // 5xx responses log at level "error" so the build-waves runtime gate's
+      // `"level":"error"` error_pattern counts them (docs/plans/waves.json).
+      const log = res.statusCode >= 500 ? logger.error : logger.info;
+      log('request', {
         method: req.method,
         path: req.originalUrl,
         status: res.statusCode,

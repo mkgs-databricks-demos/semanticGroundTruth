@@ -74,8 +74,8 @@ All design artifacts are in `docs/`:
 | Semantics | `docs/semantics/` | Core terminology definitions |
 | Pitch | `docs/pitch/` | Customer pitch, SOW timing estimates, HIPAA compliance matrix |
 | Diagrams | `docs/diagrams/` | 13 diagrams (Mermaid source + SVG + interactive HTML) |
-| Build plans | `docs/plans/` | `waves.json` manifest, 15 session plans, `build_conventions.md` |
-| Runbooks | `docs/runbooks/` | [Onboarding users](docs/runbooks/onboarding_users.md), [CDF → bronze operations](docs/runbooks/cdf_bronze_operations.md) |
+| Build plans | `docs/plans/` | `waves.json` manifest, session plans (01–15 root build, 16–24 brand + gaps build), `build_conventions.md`, [gap analysis](docs/plans/gap_analysis_2026-10.md), [UI brand plan](docs/plans/ui_brand_plan.md) |
+| Runbooks | `docs/runbooks/` | [Onboarding users](docs/runbooks/onboarding_users.md), [CDF → bronze operations](docs/runbooks/cdf_bronze_operations.md), [UI theming](docs/runbooks/ui_theming.md) |
 | Sessions | `docs/sessions/` | Session summaries — see [INDEX](docs/sessions/INDEX.md) |
 
 ## Getting Started
@@ -107,12 +107,21 @@ databricks bundle run metric_view_deploy --target dev
 databricks bundle run deploy_verification --target dev
 databricks bundle run demo_campaign_seed --target dev
 
-# 5. Agent (from ground-truth-agent/). deploy.sh --agent is still a stub, so deploy directly
-databricks bundle deploy --target dev
-databricks bundle run agent_verification --target dev
+# 5. Agent: deploys ground-truth-agent with infra-resolved vars and runs agent_verification
+./deploy.sh --target dev --agent --verify
 ```
 
-Other `deploy.sh` modes: `--validate` (validate only), `--destroy`. Run `bundle validate --strict` in any bundle after changing YAML.
+Other `deploy.sh` modes: `--validate` (validate only), `--verify` (run each deployed bundle's verification job), `--destroy`. Run `bundle validate --strict` in any bundle after changing YAML.
+
+### What deploy.sh wires between bundles
+
+* **App SPN → secret scope ACL.** The infra secret scope's `permissions` block is authoritative, so it must list the app service principal or every infra deploy removes the app's READ. `deploy.sh` resolves the live app SPN with `databricks apps get` and passes `--var app_service_principal_id=<id>` to the infra deploy. On a first deploy (no app yet) it uses the target default, then re-deploys infra after the app exists.
+* **Executive dashboard URL → app.** `deploy.sh` reads the `executive` dashboard ID from the infra bundle summary, builds `<workspace>/dashboardsv3/<id>/published` and passes `--var exec_dashboard_url=<url>` to the app. `resources/app.app.yml` `config.env` sets `GT_EXEC_DASHBOARD_URL`, and the app serves it at `GET /api/config`.
+* **Bronze refresh.** Infra job `cdf_bronze_refresh` runs the `cdf_bronze` pipeline every hour (UTC). Development mode pauses the schedule in `dev`, so run it there with `databricks bundle run cdf_bronze_refresh --target dev` (from `ground-truth-infra/`).
+
+### UI theme
+
+The app uses the Databricks brand: Lava/Navy/Oat tokens in light and dark mode (`next-themes`, class-based), self-hosted DM Sans and DM Mono, and WCAG 2.1 AA contrast checked by a unit test. See the [UI theming runbook](docs/runbooks/ui_theming.md).
 
 > **Adding new Lakebase tables:** they must have `REPLICA IDENTITY FULL` and an entry in `ground-truth-infra/fixtures/pipelines/cdf_bronze_tables.yaml`. See the [CDF → bronze runbook](docs/runbooks/cdf_bronze_operations.md).
 
@@ -126,11 +135,11 @@ This solution was built and converged with the `genie-build-waves` framework: pa
 
 | Item | Location |
 | --- | --- |
-| Manifest | [`docs/plans/waves.json`](docs/plans/waves.json) — 6 waves / 15 sessions across all three bundles |
+| Manifest | [`docs/plans/waves.json`](docs/plans/waves.json) — current: brand + gaps build, 7 waves / sessions 16–24 (the root build's 6 waves / 15 sessions are in git history) |
 | Session plans | `docs/plans/NN_*.md` + [`INDEX.md`](docs/plans/INDEX.md) |
 | Conventions | [`docs/plans/build_conventions.md`](docs/plans/build_conventions.md) |
 | Status files | `.build-status/<run_id>/<session>.json` |
-| Build summary | [`docs/sessions/2026-10-23_root-build-waves-summary.md`](docs/sessions/2026-10-23_root-build-waves-summary.md) |
+| Build summary | [`docs/sessions/2026-10-23_root-build-waves-summary.md`](docs/sessions/2026-10-23_root-build-waves-summary.md) (root build); brand + gaps build run `745271774924215` in [`docs/sessions/INDEX.md`](docs/sessions/INDEX.md) |
 
 Runtime gates scan the app's OTel logs. Lines that every redeploy prints (`App did not respect SIGTERM timeout`, `[ELIFECYCLE] Command failed`) are listed in `ignore_patterns` so they don't count as errors.
 
@@ -147,18 +156,20 @@ Runtime gates scan the app's OTel logs. Lines that every redeploy prints (`App d
 
 | Bundle | Status | Branch |
 |--------|--------|--------|
-| **Infra** (Bundle 1) | ✅ **Deployed to dev** — CDF configured, bronze pipeline running (21 flows), 7 metric views deployed | `mg-genie-agent-build` |
-| **App** (Bundle 2) | ✅ **Deployed to dev** — RBAC, asset import, MCP server, demo campaign seeded | `mg-genie-agent-build` |
-| **Agent** (Bundle 3) | ✅ **Deployed to dev** — Genie space with 9 data sources, verification passing | `mg-genie-agent-build` |
+| **Infra** (Bundle 1) | ✅ **Deployed to dev** — CDF configured, bronze pipeline (21 flows) + hourly `cdf_bronze_refresh` job, 7 metric views, executive AI/BI dashboard, app SPN READ on the secret scope | `mg-genie-ui-brand-and-gaps` |
+| **App** (Bundle 2) | ✅ **Deployed to dev** — RBAC, asset import, MCP server, Databricks-branded UI (light/dark), Logic View, `/api/config` | `mg-genie-ui-brand-and-gaps` |
+| **Agent** (Bundle 3) | ✅ **Deployed to dev** — Genie space with 9 data sources, verification passing (unchanged in the brand build) | `mg-genie-ui-brand-and-gaps` |
 
 All bundles deployed and converged in `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth` (as of 2026-10-23, build run `713417549836954`, 6/6 waves passed). Key resources:
 
 * **App:** `dev-semantic-ground-truth` (Node.js AppKit + React + MCP Server). Migrations 001–008 applied. `/health`, `/api/me`, `/api/campaigns` and `/mcp` probes pass. Runtime gate passed a 10-minute soak with 0 errors.
 * **Data plane:** Lakebase CDF (21 `lb_*_history` tables) → `bronze_lakebase_cdf` (281 rows, 13 sources at converge time) → 7 metric views
 * **Agent:** `[dev matthew_giglia] Ground Truth Operations` Genie space (9 data sources, 9/9 example SQLs pass EXPLAIN, verification 11/11)
-* **Jobs / pipeline:** infra `setup_lakebase_cdf`, `cdf_bronze` (SDP), `metric_view_deploy`, `post_deploy_validation`, `feedback_pipeline`, `freshness_resurfacing`; app `deploy_verification`, `demo_campaign_seed`, `app_post_deploy_setup`, `create_mcp_connection`; agent `agent_verification`
+* **Jobs / pipeline:** infra `setup_lakebase_cdf`, `cdf_bronze` (SDP), `cdf_bronze_refresh` (hourly; paused in dev), `metric_view_deploy`, `post_deploy_validation`, `feedback_pipeline`, `freshness_resurfacing`; app `deploy_verification`, `demo_campaign_seed`, `app_post_deploy_setup`, `create_mcp_connection`; agent `agent_verification`
 
-**Known follow-ups:** wire Phase 3 (`--agent`) in `deploy.sh`, graceful SIGTERM shutdown in `ground-truth-app/server/server.ts`, and a gate `error_pattern` for structured `"level":"error"` request logs. `prod` targets are scaffolded but not deployed.
+**Brand + gaps build (run `745271774924215`, 2026-10-23/24):** gaps G1, G2, G3, G7, G8, G9, G17 Done (G7 after post-build brand-asset commits); G6 Partial. Executive dashboard `01f1cf0b38d31b7cbac5bdac6cafe3eb` (9/9 datasets execute). App stable on deployment `01f1cf13577d1d66a5fb26679855e41d` with all 6 probes (`/health`, `/api/me`, `/api/campaigns`, `/api/config`, `/fonts/dm-sans-regular.ttf`, `/mcp`). Details: [gap analysis §5](docs/plans/gap_analysis_2026-10.md).
+
+**Known follow-ups:** re-check `/api/config` through `./deploy.sh --target dev --app` (the 2026-10-24 redeploy used a bare `bundle deploy` with the dev default); manual Lighthouse / keyboard / theme-toggle checks; a migration if `skip` votes should be stored; steward triage views (G6); deferred G4, G5, G10–G12. `prod` targets are scaffolded but not deployed.
 
 ## License
 

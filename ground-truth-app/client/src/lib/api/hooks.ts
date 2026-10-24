@@ -39,6 +39,7 @@ import {
   getNextCard,
   getNotificationPreferences,
   getNotifications,
+  getRuntimeConfig,
   getSources,
   getUnreadCount,
   getUserStats,
@@ -410,5 +411,17 @@ export function useRemoveGroupMember() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.adminGroups });
     },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Runtime config
+// ─────────────────────────────────────────────────────────────────────
+
+export function useRuntimeConfig() {
+  return useQuery({
+    queryKey: queryKeys.runtimeConfig,
+    queryFn: getRuntimeConfig,
+    staleTime: 5 * 60_000, // 5 min — rarely changes
   });
 }

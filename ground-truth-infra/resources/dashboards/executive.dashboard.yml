@@ -1,0 +1,15 @@
+# resources/dashboards/executive.dashboard.yml
+# Executive AI/BI dashboard over the 7 metric views.
+# Design source: L200-C8, gap G3 (gap_analysis_2026-10.md)
+# Session 21, wave 0
+#
+# file_path resolves relative to this YAML file's directory:
+#   resources/dashboards/ + ../../src/dashboards/executive.lvdash.json
+#   = src/dashboards/executive.lvdash.json
+
+resources:
+  dashboards:
+    executive:
+      display_name: "Semantic Ground Truth — Executive"
+      file_path: ../../src/dashboards/executive.lvdash.json
+      warehouse_id: ${resources.sql_warehouses.infra_warehouse.id}

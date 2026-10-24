@@ -42,8 +42,18 @@
 - `freshness_resurfacing.job.yml` — ID `1103481179431341` — daily 6 AM UTC
 - `metric_view_deploy.job.yml` — ID `423348439302077` — on-demand
 - `post_deploy_validation.job.yml` — ID `123170360460207` — on-demand
+- `cdf_bronze_refresh.job.yml` — ID `703274109872341` (dev) — hourly `0 0 * * * ?` UTC `pipeline_task` on `cdf_bronze` (`full_refresh: false`, `max_concurrent_runs: 1`). Development mode pauses the schedule in `dev`; it runs hourly only in `prod`. Gap G2, added 2026-10-23.
 - `post_deploy_setup.job.yml` — (planned) — auto-triggered by `job_run` on every deploy
 - `run_post_deploy.job_run.yml` — (planned) — deploy hook, fires post_deploy_setup
+
+**Secret scope** (`resources/secrets/ground_truth_scope.secret_scope.yml`) — `semantic_ground_truth_credentials`
+- The `permissions` block is **authoritative**: every infra deploy removes ACLs that are not listed. It lists the owner (MANAGE) and the app SPN (`service_principal_name: ${var.app_service_principal_id}`, READ) in both targets. Without the app SPN entry, the app logs `error resolving resource m2m-client-id` on every start (gap G1, fixed 2026-10-23).
+
+**Executive dashboard** (`resources/dashboards/executive.dashboard.yml` → `src/dashboards/executive.lvdash.json`)
+- `Semantic Ground Truth — Executive`, dev ID `01f1cf0b38d31b7cbac5bdac6cafe3eb`, warehouse `${resources.sql_warehouses.infra_warehouse.id}`.
+- 9 datasets (`MEASURE()` over 6 of the 7 metric views; `mv_feedback_pipeline` has no widget yet), 1 page: 4 KPI counters, review trend, campaign progress, asset status mix, error rate, P95 latency. Brand chart palette.
+- Datasets use `catalog`/`schema` fields, not 3-part names. `mv_campaign_progress` has no `campaign_name` column; use `campaign_type` (fixed in session 22b).
+- The app gets the published URL from `deploy.sh` (`--var exec_dashboard_url`). Gap G3, added 2026-10-23.
 
 **UC Secrets** (`resources/secrets/`) — planned
 - `slack_webhook.secret.yml` — `catalog.schema.slack_webhook_url`
@@ -120,6 +130,7 @@ All at `../docs/design/` (solution root).
 | `lakebase_project_id` | ~~Replaced by DAB substitution~~ `${resources.postgres_projects.ground_truth_project.id}` | N/A |
 | `notification_slack_webhook` | Slack webhook URL | Not yet |
 | `notification_teams_webhook` | Teams webhook URL | Not yet |
+| `app_service_principal_id` | Application (client) ID of the app SPN that gets READ on the secret scope | dev default `9f3db838-9415-46fe-9722-9654a6856ecc`; no global default (prod must pass it). `deploy.sh` overrides it with the live SPN from `databricks apps get`. The app SPN changes on every app destroy/recreate, so update the dev default then. |
 
 ---
 
@@ -167,6 +178,7 @@ Key resolutions:
 | 2026-10-08 | Post-deploy refactor | Naming cleanup, folder restructure, one-resource-per-YAML split |
 | 2026-10-08 | docs/ restructure | `docs/plans/`, `docs/sessions/` established; fixtures/ is now exclusively deployable config |
 | 2026-10-23 | Root build waves 0–4 complete | CDF setup job, bronze SDP pipeline (21 flows / 281 rows), 7 metric views deployed. Branch `mg-genie-agent-build`. |
+| 2026-10-24 | **Brand + gaps build (run `745271774924215`)** ✅ | Branch `mg-genie-ui-brand-and-gaps`. G1: `app_service_principal_id` var + app SPN READ in the scope `permissions` (sessions 18, 22a; stale dev default `55882972-…` corrected to `9f3db838-…`); `secrets list-acls` verified after the 22a and 22b deploys. G2: `cdf_bronze_refresh` job; run `950875080561148` SUCCESS, pipeline update `800a3ae5-…` COMPLETED with 0 issues, bronze 774 rows. G3: executive dashboard `01f1cf0b38d31b7cbac5bdac6cafe3eb`, 9/9 datasets pass EXPLAIN and LIMIT 1 (session 22b). `agent_verification` regression run `149451153256513` SUCCESS (session 22c). |
 
 ---
 

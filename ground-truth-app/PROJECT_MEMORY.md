@@ -76,6 +76,7 @@
 | `postgres_database` | Lakebase database resource name | From infra via deploy.sh | `projects/.../databases/ground-truth-app` |
 | `catalog` | UC catalog name | From infra via deploy.sh | `hls_fde_dev` |
 | `schema_name` | UC schema name (includes dev prefix) | From infra via deploy.sh | `dev_matthew_giglia_semantic_ground_truth` |
+| `exec_dashboard_url` | Executive AI/BI dashboard published URL → `GT_EXEC_DASHBOARD_URL` (via `resources/app.app.yml` `config.env`) | deploy.sh builds it from the infra `executive` dashboard ID | `""` default; deploy.sh passes `https://fevm-hls-fde.cloud.databricks.com/dashboardsv3/01f1cf0b38d31b7cbac5bdac6cafe3eb/published` |
 
 > **Removed:** `agents_skills_path` — optional resource commented out. Revisit when UC-sourced skills needed.
 
@@ -274,6 +275,9 @@ OAuth secret scopes are immutable — must generate a new secret.
 6. **`deploy_bundle()` must pass `extra_args` to both validate AND deploy.** Fixed in deploy.sh.
 7. **OTel prefix: `semantic_ground_truth_`** (not `ground_truth_app_`). Matches app display name pattern.
 8. **`OTEL_TRACES_SAMPLER=always_on` required in `app.yaml`.** Without it, default parent-based sampler drops most spans.
+9. **`app.yaml` does not interpolate `${var.*}`.** Pass bundle variables to the runtime through `resources/app.app.yml` `config.env` (overrides `app.yaml` env), as done for `GT_EXEC_DASHBOARD_URL`.
+10. **The Apps build runs vitest (`prebuild`).** vitest's default include also matches `.test.ts` files inside the container's Python `.venv/` (gradio), so `vitest.config.ts` must exclude `**/.venv/**`.
+11. **Secret scope READ for the app SPN is owned by the infra bundle.** The infra scope `permissions` block is authoritative and removes the READ that the app's `m2m-client-id` secret resource grants. The app bundle state still reports "unchanged". `grant_app_permissions` re-grants READ after every app deploy.
 
 ---
 
@@ -286,6 +290,7 @@ OAuth secret scopes are immutable — must generate a new secret.
 | 2026-10-19 | **Phase B — first deploy** ✅ | `dev-semantic-ground-truth` running. All AppKit plugins operational (agents, analytics, jobs, lakebase, server). MCP service pending (expected). 12 commits ahead of main on `mg-genie-app-scaffold`. |
 | 2026-10-20 | **Resource refactor + MCP auth fully resolved** | Extracted resources to `resources/`. Fixed SPN grant bugs. All grants applied. Root cause: SPN secret scoped to `apps ai-gateway` — sidecar needs `all-apis`. New secret generated, connection PATCHed, 404 on `/mcp` confirmed (auth works, Phase H not built). Branch: `mg-genie-app-resource-refactor`. |
 | 2026-10-23 | **Root build waves 0–2 complete** | Migration 007 (app groups, asset sources, REPLICA IDENTITY FULL). RBAC from Lakebase app groups (MembershipService). Asset import (catalog browse, Git folder sources, glossary parser). Client wizard + members page. Demo seed job (10 votes, 71 assets). Deploy verification job (6 M2M checks). App converge: 7 deploys, final stable with all probes passing. Migration 008 (votes version_hash) added during converge. Branch `mg-genie-agent-build`. |
+| 2026-10-24 | **Brand + gaps build (run `745271774924215`)** ✅ | Branch `mg-genie-ui-brand-and-gaps`. Session 16: Databricks brand tokens (`client/src/theme/tokens.ts` + `index.css` `:root`/`.dark`), `ThemeProvider` (class, system default, `sgt-theme`) + `MotionConfig reducedMotion="user"`, self-hosted DM Sans/DM Mono, title/manifest, header symbol + 3-state toggle, `contrast.test.ts`; D1 = Lava 700 primary. Session 17: 0 hard-coded palette classes, vote tokens/icons/shortcuts (←/→/↑/S) + live region, `LogicView`, `DashboardLink` from `/api/config`, `a11y-static.test.ts`. Session 19: MCP card light/dark CSS variables + test. Session 20: `GET /api/config`, `exec_dashboard_url` var, `grant_app_permissions` re-grants scope READ, `deploy_verification` checks ACL + `/api/config`, `prebuild` runs vitest. Session 23 (converge, 3 attempts): vitest `.venv` exclude, glossaryParser subdomain flush, `'skip'` in `VOTE_TYPES`, optional `Asset.synonyms`, strict `useRef`; stable deployment `01f1cf13577d1d66a5fb26679855e41d`, 21 vitest files + `tsc -b` green, all 6 probes pass, `deploy_verification` run `4617382917183` pass. `6771630`: dashboard URL moved from hard-coded `app.yaml` to deploy.sh → `--var` → `config.env`. Post-build: real brandfolder symbol SVGs + favicons via `src/notebooks/download_brand_assets` (`05e8c1a`, `d3aefe3`); dev `exec_dashboard_url` default because the Apps API rejects an empty `config.env` value (`bd45836`); redeployed `01f1cf6c934d17048daca183beca9788`. Open: re-check `/api/config` via `deploy.sh --app`; `EmptyState.tsx` still uses a lucide icon (plan §5 wants Databricks primary icons); Lakebase `votes.vote_type` CHECK lacks `skip`; manual Lighthouse/keyboard/toggle checks. Runbook: `../docs/runbooks/ui_theming.md`. |
 
 ---
 

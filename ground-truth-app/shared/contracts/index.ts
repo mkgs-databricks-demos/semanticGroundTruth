@@ -8,3 +8,4 @@ export type * from './entities';
 export * from './review';
 export * from './api';
 export * from './mcp';
+export * from './config';

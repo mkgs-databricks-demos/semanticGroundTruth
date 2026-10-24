@@ -10,7 +10,7 @@ export type AssetStatus = (typeof ASSET_STATUSES)[number];
 export const ENVIRONMENTS = ['dev', 'staging', 'production'] as const;
 export type Environment = (typeof ENVIRONMENTS)[number];
 
-export const VOTE_TYPES = ['approve', 'reject', 'edit'] as const;
+export const VOTE_TYPES = ['approve', 'reject', 'edit', 'skip'] as const;
 export type VoteType = (typeof VOTE_TYPES)[number];
 
 export const VOTE_SOURCES = ['web', 'mcp', 'agent'] as const;

@@ -102,9 +102,10 @@ export function parseGlossaryMarkdown(content: string, _filePath: string): Gloss
       }
     }
 
-    // Subdomain
+    // Subdomain — flush any open term first so it keeps the previous subdomain
     const subdomainMatch = SUBDOMAIN_RE.exec(trimmed);
     if (subdomainMatch) {
+      flushTerm();
       subdomain = subdomainMatch[1].trim();
       continue;
     }

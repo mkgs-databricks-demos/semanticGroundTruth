@@ -1,5 +1,5 @@
 // client/src/components/leaderboard/LeaderboardTable.tsx — ranked reviewer table
-// Session 13 · Wave 4 · No enum, no namespace, no default export
+// Session 17 · Wave 1 · brand: muted uppercase header, accent current-user row, medals
 
 import {
   Table,
@@ -9,8 +9,22 @@ import {
   TableHeader,
   TableRow,
 } from '@databricks/appkit-ui/react';
+import { Medal } from 'lucide-react';
 import type { LeaderboardEntry } from '../../../../shared/contracts';
 import { cn } from '../../lib/utils';
+
+function RankCell({ rank }: { rank: number }) {
+  if (rank <= 3) {
+    const label = rank === 1 ? 'Gold' : rank === 2 ? 'Silver' : 'Bronze';
+    return (
+      <span className="inline-flex items-center gap-1" aria-label={`${label} medal, rank ${rank}`}>
+        <Medal className="h-4 w-4 text-[var(--warning)]" />
+        {rank}
+      </span>
+    );
+  }
+  return <span className="font-mono text-muted-foreground">#{rank}</span>;
+}
 
 export function LeaderboardTable({
   entries,
@@ -31,10 +45,10 @@ export function LeaderboardTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-16">Rank</TableHead>
-          <TableHead>Name</TableHead>
-          <TableHead className="text-right">Votes</TableHead>
-          <TableHead className="text-right">Streak</TableHead>
+          <TableHead className="w-16 text-xs font-medium uppercase tracking-wider text-muted-foreground">Rank</TableHead>
+          <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Name</TableHead>
+          <TableHead className="text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Votes</TableHead>
+          <TableHead className="text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Streak</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -43,10 +57,10 @@ export function LeaderboardTable({
           return (
             <TableRow
               key={entry.userId}
-              className={cn(isMe && 'bg-primary/5 font-medium')}
+              className={cn(isMe && 'bg-accent font-medium')}
             >
-              <TableCell className="font-mono text-muted-foreground">
-                #{entry.rank}
+              <TableCell>
+                <RankCell rank={entry.rank} />
               </TableCell>
               <TableCell>
                 <span className={cn(isMe && 'text-primary')}>

@@ -1,7 +1,12 @@
 // client/src/App.tsx — router + shell
-// Session 12 · Wave 4 · No enum, no namespace, no default export
+// Session 16 · Wave 0 · Per-route document.title via loader
 
-import { createBrowserRouter, RouterProvider } from 'react-router';
+import { useEffect } from 'react';
+import {
+  createBrowserRouter,
+  RouterProvider,
+  useMatches,
+} from 'react-router';
 import { AppLayout } from './components/layout/AppLayout';
 import { ReviewPage } from './pages/review/ReviewPage';
 import { LeaderboardPage } from './pages/leaderboard/LeaderboardPage';
@@ -9,6 +14,21 @@ import { StewardPage } from './pages/steward/StewardPage';
 import { AdminPage } from './pages/admin/AdminPage';
 import { ExecutivePage } from './pages/executive/ExecutivePage';
 import { AgentChat } from './pages/agents/AgentChat';
+
+const APP_TITLE = 'Semantic Ground Truth';
+
+/** Sets document.title based on the deepest matched route's handle.title. */
+function PageTitle() {
+  const matches = useMatches();
+  useEffect(() => {
+    const last = [...matches].reverse().find(
+      (m) => (m.handle as { title?: string } | undefined)?.title,
+    );
+    const page = (last?.handle as { title?: string } | undefined)?.title;
+    document.title = page ? `${page} \u00b7 ${APP_TITLE}` : APP_TITLE;
+  }, [matches]);
+  return null;
+}
 
 function NotFound() {
   return (
@@ -21,15 +41,20 @@ function NotFound() {
 
 const router = createBrowserRouter([
   {
-    element: <AppLayout />,
+    element: (
+      <>
+        <PageTitle />
+        <AppLayout />
+      </>
+    ),
     children: [
-      { path: '/', element: <ReviewPage /> },
-      { path: '/leaderboard', element: <LeaderboardPage /> },
-      { path: '/steward', element: <StewardPage /> },
-      { path: '/admin', element: <AdminPage /> },
-      { path: '/executive', element: <ExecutivePage /> },
-      { path: '/assistant', element: <AgentChat /> },
-      { path: '*', element: <NotFound /> },
+      { path: '/', element: <ReviewPage />, handle: { title: 'Review' } },
+      { path: '/leaderboard', element: <LeaderboardPage />, handle: { title: 'Leaderboard' } },
+      { path: '/steward', element: <StewardPage />, handle: { title: 'Steward' } },
+      { path: '/admin', element: <AdminPage />, handle: { title: 'Admin' } },
+      { path: '/executive', element: <ExecutivePage />, handle: { title: 'Executive' } },
+      { path: '/assistant', element: <AgentChat />, handle: { title: 'Assistant' } },
+      { path: '*', element: <NotFound />, handle: { title: '404' } },
     ],
   },
 ]);
