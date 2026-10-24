@@ -82,6 +82,7 @@ ground-truth-app/
 | --- | --- | --- | --- |
 | GET | `/health` | — | Health check (DB + migration count) |
 | GET | `/api/me` | reviewer | Current user context |
+| GET | `/api/config` | reviewer | Runtime config: `executive_dashboard_url` (from `GT_EXEC_DASHBOARD_URL`) |
 | GET | `/api/review/next` | reviewer | Next review card (campaign/type filter) |
 | POST | `/api/review/vote` | reviewer | Submit vote (approve/reject/edit/skip) |
 | POST | `/api/review/synonym` | reviewer | Add/vote/remove synonym |
@@ -172,7 +173,7 @@ Roles are stored in Lakebase app groups (`app.app_groups` + `app.app_group_membe
 | `SLACK_WEBHOOK_URL` | — | Slack notification destination (optional) |
 | `TEAMS_WEBHOOK_URL` | — | Teams notification destination (optional) |
 | `GENERIC_WEBHOOK_URL` | — | Generic webhook destination (optional) |
-| `VITE_EXEC_DASHBOARD_URL` | — | Link to external AI/BI executive dashboard |
+| `GT_EXEC_DASHBOARD_URL` | `""` | Published URL of the executive AI/BI dashboard, served at runtime by `GET /api/config` (`executive_dashboard_url`; `null` unless it is an `https://` URL). Set by `resources/app.app.yml` `config.env` from the bundle variable `exec_dashboard_url`; `app.yaml` keeps an empty fallback. Replaces the build-time `VITE_EXEC_DASHBOARD_URL`. |
 
 ## Bundle Variables and Targets
 
@@ -182,7 +183,9 @@ Roles are stored in Lakebase app groups (`app.app_groups` + `app.app_group_membe
 | `prod` | production | `semantic-ground-truth` |
 | `local` | localhost proxy | — (`http://127.0.0.1:7073`) |
 
-Key bundle variables: `app_display_name`, `agents_serving_endpoint_name`, `agents_mlflow_experiment_experimentId`, `sql_warehouse_id`, `job_id`, `postgres_branch`, `postgres_database`, `catalog`, `schema_name`, `mcp_execute_principal`, `secret_scope_name` (default `semantic_ground_truth_credentials`; backs the `m2m-client-id` secret resource). Values for `dev` are injected from infra via `deploy.sh --var`.
+Key bundle variables: `app_display_name`, `agents_serving_endpoint_name`, `agents_mlflow_experiment_experimentId`, `sql_warehouse_id`, `job_id`, `postgres_branch`, `postgres_database`, `catalog`, `schema_name`, `mcp_execute_principal`, `secret_scope_name` (default `semantic_ground_truth_credentials`; backs the `m2m-client-id` secret resource), `exec_dashboard_url` (default `""`). Values for `dev` are injected from infra via `deploy.sh --var`; `deploy.sh` builds `exec_dashboard_url` from the infra `executive` dashboard ID.
+
+> **Secret scope READ for the app SPN** is declared in the infra bundle (`app_service_principal_id`), because the infra scope `permissions` block is authoritative. `app_post_deploy_setup` (`grant_app_permissions`) also re-grants READ as a safety net, and `deploy_verification` fails if the ACL is missing.
 
 ## Prerequisites
 
@@ -206,9 +209,9 @@ The dev server starts at the port shown in console output. The `local` target in
 
 | Job | Resource Key | Purpose |
 |---|---|---|
-| Deploy Verification | `deploy_verification` | M2M OAuth probe: `/health`, `/api/me`, `/api/campaigns`, `/mcp` (6 checks) |
+| Deploy Verification | `deploy_verification` | M2M OAuth probe: `/health`, `/api/me`, `/api/campaigns`, `/mcp`, secret scope ACL lists the app SPN, `/api/config` returns `null` or an `https://` URL |
 | Demo Campaign Seed | `demo_campaign_seed` | Grants, import from metric views, create campaign, cast votes, verify leaderboard |
-| App Post-Deploy Setup | `app_post_deploy_setup` | `CAN_USE` grants for users group + UC grants for M2M SPN |
+| App Post-Deploy Setup | `app_post_deploy_setup` | `CAN_USE` grants for users group + UC grants for M2M SPN + app SPN READ on the secret scope (idempotent) |
 | Create MCP Connection | `create_mcp_connection` | Schema-level HTTP connection for Unity Gateway |
 
 ## Deploy
@@ -230,7 +233,9 @@ databricks bundle run app --target dev
 
 > **Secret resource before plain `apps deploy`:** `GT_BOOTSTRAP_ADMIN_IDS` reads the `m2m-client-id` app resource. Run `bundle deploy` at least once so the resource is attached before using `databricks apps deploy` directly.
 
-After deploying, run `databricks bundle run deploy_verification --target dev` (6 M2M probes). On a fresh environment, optionally run `demo_campaign_seed`.
+After deploying, run `databricks bundle run deploy_verification --target dev`. On a fresh environment, optionally run `demo_campaign_seed`.
+
+> **Executive dashboard link:** deploy with `./deploy.sh --target dev --app` so `exec_dashboard_url` is filled in. A direct `bundle deploy` without `--var exec_dashboard_url=<url>` leaves it empty, and the Executive page shows "Executive dashboard URL not configured" with an admin hint.
 
 ## Code Quality
 
@@ -242,6 +247,18 @@ pnpm run format       # Prettier
 pnpm run format:fix
 pnpm test             # vitest
 ```
+
+The Apps build runs the tests too: `prebuild` ends with `vitest run`, so a failing test fails the deploy. `vitest.config.ts` excludes `**/.venv/**` (the Apps container has a Python venv with unrelated tests).
+
+## UI Theme and Accessibility
+
+Databricks brand tokens (Lava, Navy, Oat) in light and dark mode. `next-themes` puts a `.dark` class on `<html>`, and the header toggle cycles light / dark / system. DM Sans and DM Mono are self-hosted in `client/public/fonts/`. The light primary is Lava 700 (decision D1, for WCAG contrast); Lava 600 is the brand accent.
+
+* Hex values: `client/src/theme/tokens.ts`. CSS variables: `client/src/index.css` (`:root` and `.dark`).
+* Tests: `client/src/theme/contrast.test.ts` (WCAG contrast pairings), `client/src/theme/a11y-static.test.ts` (no Tailwind palette classes, labelled buttons, focus rings), `server/mcp/views/cardHtml.test.ts` (MCP card light/dark).
+* Review flow: ← reject, → approve, ↑ edit, S skip, with a live region. `LogicView` shows plain English and the definition (DM Mono) on each card.
+
+How to add a component with tokens: [UI theming runbook](../docs/runbooks/ui_theming.md).
 
 ## Tech Stack
 

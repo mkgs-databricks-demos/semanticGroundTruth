@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-24 | 6 | 24 | [Project memory, READMEs, gap status, brand runbook](2026-10-24_w6-24-docs-project-memory.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-23 | 5 | 23 | [Converge app: branded UI, runtime config, clean runtime gate](2026-10-23_w5-23-converge-app.md) | converge | pass (repair: status file reconciled, fixes in fa6d9d2) | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-23 | 4 | 22c | [Converge agent regression: agent_verification after infra changes](2026-10-23_w4-22c-converge-agent-regression.md) | converge | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-23 | 3 | 22b | [Converge infra: executive dashboard publishes with every dataset executing](2026-10-23_w3-22b-converge-executive-dashboard.md) | converge | pass | `mg-genie-ui-brand-and-gaps` |
