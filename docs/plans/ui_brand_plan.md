@@ -90,14 +90,14 @@ Each vote also carries an icon (`Check`, `X`, `Pencil`, `SkipForward`) and a tex
 
 | Item | Change | Source |
 | --- | --- | --- |
-| Favicons | Replace 16/32/48/512 PNG with `databricks-favicon-*-orange.png`; regenerate 192 and apple-touch from 512 | `/Shared/brandfolder/assets.csv` (Symbols & Favicons) |
+| Favicons | Replace 16/32/48/512 PNG with official `databricks-favicon-*-orange.png` (hand-tuned); derive 192 and apple-touch from 512 | brandfolder CDN; URLs looked up by filename in `/Shared/brandfolder/assets.csv` |
 | `favicon.svg` | `databricks-symbol-color.svg` | brandfolder CDN, downloaded once and committed |
 | Header mark | `databricks-symbol-color.svg` (light) / `databricks-symbol-light.svg` (dark), 24 px, followed by "Semantic Ground Truth" in DM Sans Bold | Do not recreate or recolor the lockup; product name is plain text beside the symbol |
 | Title | `<title>Semantic Ground Truth</title>`; per-route `document.title` = `"<Page> · Semantic Ground Truth"` | `client/index.html`, `App.tsx` |
 | Manifest | `name` "Semantic Ground Truth", `short_name` "Ground Truth", `theme_color` `#1B3139`, `background_color` `#F9F7F4` | `client/public/site.webmanifest` |
 | Empty states | Navy primary icons (light) / white (dark) from `databricks-primary-icons-collection.csv` — `unity-catalog`, `genie`, `ai-bi` — 64 px in a `--muted` tile | `components/review/EmptyState.tsx` |
 
-All assets are committed into `client/public/` (no runtime CDN calls). A small one-off notebook or the session agent downloads them from the CDN URLs in `assets.csv`.
+All assets are committed into `client/public/` (no runtime CDN calls). `src/notebooks/download_brand_assets` downloads SVGs and PNGs from the brandfolder CDN (URLs looked up by filename in `assets.csv`, query string stripped so SVGs arrive as SVGs). The notebook derives its output path from its own location and accepts widget overrides — no hard-coded paths. A verification cell rejects placeholders (`Placeholder` text, scaffold colour `#FABFBA`, missing `#FF3621`, wrong PNG sizes).
 
 ## 6. Component plan
 
