@@ -28,7 +28,7 @@ env:
 
   # ── Runtime config (set by deploy.sh --var exec_dashboard_url=<url>) ──
   - name: GT_EXEC_DASHBOARD_URL
-    value: ""
+    value: "https://fevm-hls-fde.cloud.databricks.com/dashboardsv3/01f1cf0b38d31b7cbac5bdac6cafe3eb/published"
 
   # ── OpenTelemetry ──
   # Record every trace unconditionally. Without this, the default parent-based

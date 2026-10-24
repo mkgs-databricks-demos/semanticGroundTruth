@@ -42,7 +42,7 @@ export function CardStack({ card, onVote, disabled }: CardStackProps) {
   );
 
   const [announcement, setAnnouncement] = useState('');
-  const announcementTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const announcementTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const announce = useCallback((text: string) => {
     setAnnouncement(text);

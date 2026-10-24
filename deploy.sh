@@ -105,6 +105,8 @@ MLFLOW_EXPERIMENT_NAME=""
 FRESHNESS_JOB_ID=""
 LAKEBASE_BRANCH=""
 LAKEBASE_DATABASE=""
+EXEC_DASHBOARD_ID=""
+EXEC_DASHBOARD_URL=""
 APP_URL=""
 APP_DISPLAY_NAME=""
 
@@ -429,6 +431,9 @@ freshness_job_id = resources.get('jobs', {}).get('freshness_resurfacing', {}).ge
 lakebase_branch = resources.get('postgres_branches', {}).get('production', {}).get('id', '')
 lakebase_database = resources.get('postgres_databases', {}).get('app_db', {}).get('id', '')
 
+# --- executive dashboard ID (published URL resolved in bash from WORKSPACE_HOST) ---
+exec_dashboard_id = resources.get('dashboards', {}).get('executive', {}).get('id', '')
+
 # --- workspace host ---
 workspace_host = ''
 workspace_block = data.get('workspace', {})
@@ -464,6 +469,7 @@ print(f'FRESHNESS_JOB_ID=\"{safe(freshness_job_id)}\"')
 # slashes; safe_url() preserves ':/' which covers path separators.
 print(f'LAKEBASE_BRANCH=\"{safe_url(lakebase_branch)}\"')
 print(f'LAKEBASE_DATABASE=\"{safe_url(lakebase_database)}\"')
+print(f'EXEC_DASHBOARD_ID=\"{safe(exec_dashboard_id)}\"')
 # Scopes are space-separated and may contain ':' (e.g. catalog.tables:read)
 scopes_clean = re.sub(r'[^a-zA-Z0-9_.: -]', '', str(m2m_scopes)).strip()
 print(f'M2M_OAUTH_SCOPES=\"{scopes_clean}\"')
@@ -507,6 +513,14 @@ print(exp.get("experiment_id", ""))
   ok "  freshness_job=${FRESHNESS_JOB_ID}"
   ok "  lakebase_branch=${LAKEBASE_BRANCH}"
   ok "  lakebase_database=${LAKEBASE_DATABASE}"
+  if [[ -n "${EXEC_DASHBOARD_ID}" ]]; then
+    # Build the published dashboard URL from the workspace host and dashboard ID.
+    EXEC_DASHBOARD_URL="${WORKSPACE_HOST}/dashboardsv3/${EXEC_DASHBOARD_ID}/published"
+    ok "  exec_dashboard_url=${EXEC_DASHBOARD_URL}"
+  else
+    EXEC_DASHBOARD_URL=""
+    warn "  executive dashboard not yet deployed — exec_dashboard_url will be empty."
+  fi
 }
 
 # --------------------------------------------------------------------------- #
@@ -1002,6 +1016,7 @@ if [[ "${DEPLOY_APP}" == true ]]; then
     "--var" "job_id=${FRESHNESS_JOB_ID}"
     "--var" "postgres_branch=${LAKEBASE_BRANCH}"
     "--var" "postgres_database=${LAKEBASE_DATABASE}"
+    "--var" "exec_dashboard_url=$(safe_url "${EXEC_DASHBOARD_URL}")"  # from infra bundle's executive dashboard
   )
 
   # Step 2a': Resolve the app display name from the app bundle's target variables.
