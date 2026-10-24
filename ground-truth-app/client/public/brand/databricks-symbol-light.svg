@@ -1,6 +1,3 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 26.5" fill="none">
-  <!-- Placeholder: replace with databricks-symbol-light.svg from brandfolder CDN -->
-  <!-- CDN: https://cdn.bfldr.com/9AYANS2F/at/b87x34rfnrgcfjvg93pt83x/databricks-symbol-light.svg -->
-  <path d="M12 0L24 6.625V19.875L12 26.5L0 19.875V6.625L12 0Z" fill="#FFFFFF"/>
-  <path d="M12 4L20 8.625V17.875L12 22.5L4 17.875V8.625L12 4Z" fill="#FFFFFF" fill-opacity="0.3"/>
+<svg width="241" height="266" viewBox="0 0 241 266" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M228.085 109.654L120.615 171.674L5.53493 105.41L0 108.475V156.582L120.615 225.911L228.085 164.128V189.596L120.615 251.615L5.53493 185.351L0 188.417V196.67L120.615 266L241 196.67V148.564L235.465 145.498L120.615 211.527L12.9148 149.743V124.275L120.615 186.059L241 116.729V69.3298L235.004 65.7925L120.615 131.585L18.4498 73.1028L120.615 14.3848L204.562 62.7269L211.942 58.4823V52.5869L120.615 0L0 69.3298V76.8759L120.615 146.206L228.085 84.1862V109.654Z" fill="white"/>
 </svg>
