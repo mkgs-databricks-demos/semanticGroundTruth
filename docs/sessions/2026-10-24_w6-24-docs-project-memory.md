@@ -8,7 +8,7 @@ Update root and bundle PROJECT_MEMORY/README files, mark gap statuses in `gap_an
 
 ## Sources used
 
-Summaries for sessions 16, 17, 18, 19, 20, 21, 22a, 22b, 22c and 23; `.build-status/745271774924215/wave_2_gate.json` and `wave_5_gate.json`; `git show fa6d9d2 9921f96`; `ui_brand_plan.md`; live reads of `tokens.ts`, `index.css`, `contrast.test.ts`, `a11y-static.test.ts`, `vitest.config.ts`, `package.json`, `deploy.sh`, `resources/app.app.yml`, `cdf_bronze_refresh.job.yml`, both `databricks.yml` files, `DashboardLink.tsx`, `EmptyState.tsx`, `client/public/brand/*` and migration `001_core_schema.ts`.
+Summaries for sessions 16, 17, 18, 19, 20, 21, 22a, 22b, 22c and 23; `.build-status/745271774924215/wave_2_gate.json` and `wave_5_gate.json`; `git show 6771630 81ed11f`; `ui_brand_plan.md`; live reads of `tokens.ts`, `index.css`, `contrast.test.ts`, `a11y-static.test.ts`, `vitest.config.ts`, `package.json`, `deploy.sh`, `resources/app.app.yml`, `cdf_bronze_refresh.job.yml`, both `databricks.yml` files, `DashboardLink.tsx`, `EmptyState.tsx`, `client/public/brand/*` and migration `001_core_schema.ts`.
 
 ## Changes
 
@@ -26,7 +26,7 @@ Summaries for sessions 16, 17, 18, 19, 20, 21, 22a, 22b, 22c and 23; `.build-sta
 ## Decisions
 
 * **G7 is Partial, not Done.** The toggle bug, tokens, fonts and title are fixed. But `client/public/brand/databricks-symbol-*.svg` are placeholders, the favicons are still the AppKit template, and `EmptyState.tsx` still uses a lucide icon instead of the Databricks primary icons. I checked the files directly.
-* **G3 is Done, with a caveat.** The dashboard and `/api/config` were verified live (22b, 23). The probe passed while the URL was hard-coded in `app.yaml`. `fa6d9d2` moved it to `config.env` after the stable deployment, so the docs ask for a re-check on the next `deploy.sh --app`.
+* **G3 is Done, with a caveat.** The dashboard and `/api/config` were verified live (22b, 23). The probe passed while the URL was hard-coded in `app.yaml`. `6771630` moved it to `config.env` after the stable deployment, so the docs ask for a re-check on the next `deploy.sh --app`.
 * **G9 is Done for the code.** The Genie One rendering check stays deferred (MCP Apps preview).
 * **Manifest vs. runner guardrail.** The runner's read-only list includes `PROJECT_MEMORY.md` and `docs/plans/**`. This session's manifest `owned_paths` and `scope` name `PROJECT_MEMORY.md` and `docs/plans/gap_analysis_2026-10.md` explicitly. I followed the manifest (scope wins) and edited only those plan-dir and memory files, nothing else under `docs/plans/`.
 

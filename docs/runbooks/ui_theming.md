@@ -80,8 +80,8 @@ Render-level `vitest-axe` tests are deferred, because they need `jsdom` / `@test
 | Asset | Location | Source |
 | --- | --- | --- |
 | DM Sans 400 / 400 italic / 500 / 700, DM Mono 400 / 500, `ofl.txt` | `client/public/fonts/` (served at `/fonts/*`; the gate probes `/fonts/dm-sans-regular.ttf`) | `/Shared/brandfolder/DM Sans/`, `/Shared/brandfolder/DM Mono/` |
-| Header symbol (`databricks-symbol-color.svg` light, `databricks-symbol-light.svg` dark) | `client/public/brand/` | **Placeholders.** Download the real files from the CDN URLs in each placeholder's comment (`/Shared/brandfolder/assets.csv`, Symbols & Favicons) |
-| Favicons (`favicon-16/32/48/512`, `favicon.svg`, `apple-touch-icon.png`, `favicon-192x192.png`) | `client/public/` | **Still the AppKit template icons.** Replace with `databricks-favicon-*-orange.png` from `assets.csv`, then regenerate 192 px and apple-touch from 512 px |
+| Header symbol (`databricks-symbol-color.svg` light, `databricks-symbol-light.svg` dark) | `client/public/brand/` | Brandfolder CDN, downloaded by `ground-truth-app/src/notebooks/download_brand_assets` (URLs looked up by filename in `/Shared/brandfolder/assets.csv`). Real files since `05e8c1a`. |
+| Favicons (`favicon-16/32/48/512`, `favicon.svg`, `apple-touch-icon.png`, `favicon-192x192.png`) | `client/public/` | Same notebook. Official 16/32/48/512 px orange PNGs are used as-is; 192 px and apple-touch are derived from 512 px; `favicon.svg` = `databricks-symbol-color.svg` (`d3aefe3`). The notebook's last cell fails on `Placeholder` text, the AppKit colour `#FABFBA`, missing `#FF3621` or wrong PNG sizes; rerun it after any asset change. |
 | Empty-state icons | `components/review/EmptyState.tsx` | **Not done yet.** It still uses a lucide icon. The plan (§5) calls for Databricks primary icons (`unity-catalog`, `genie`, `ai-bi`) from `/Shared/brandfolder/databricks-primary-icons-collection.csv` |
 
 Everything is self-hosted (no Google Fonts or CDN calls at runtime), because the app runs in a HIPAA workspace. Do not change the Databricks symbol's geometry or color.

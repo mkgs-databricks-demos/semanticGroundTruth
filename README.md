@@ -167,9 +167,9 @@ All bundles deployed and converged in `hls_fde_dev.dev_matthew_giglia_semantic_g
 * **Agent:** `[dev matthew_giglia] Ground Truth Operations` Genie space (9 data sources, 9/9 example SQLs pass EXPLAIN, verification 11/11)
 * **Jobs / pipeline:** infra `setup_lakebase_cdf`, `cdf_bronze` (SDP), `cdf_bronze_refresh` (hourly; paused in dev), `metric_view_deploy`, `post_deploy_validation`, `feedback_pipeline`, `freshness_resurfacing`; app `deploy_verification`, `demo_campaign_seed`, `app_post_deploy_setup`, `create_mcp_connection`; agent `agent_verification`
 
-**Brand + gaps build (run `745271774924215`, 2026-10-23/24):** gaps G1, G2, G3, G8, G9, G17 Done; G6, G7 Partial. Executive dashboard `01f1cf0b38d31b7cbac5bdac6cafe3eb` (9/9 datasets execute). App stable on deployment `01f1cf13577d1d66a5fb26679855e41d` with all 6 probes (`/health`, `/api/me`, `/api/campaigns`, `/api/config`, `/fonts/dm-sans-regular.ttf`, `/mcp`). Details: [gap analysis §5](docs/plans/gap_analysis_2026-10.md).
+**Brand + gaps build (run `745271774924215`, 2026-10-23/24):** gaps G1, G2, G3, G7, G8, G9, G17 Done (G7 after post-build brand-asset commits); G6 Partial. Executive dashboard `01f1cf0b38d31b7cbac5bdac6cafe3eb` (9/9 datasets execute). App stable on deployment `01f1cf13577d1d66a5fb26679855e41d` with all 6 probes (`/health`, `/api/me`, `/api/campaigns`, `/api/config`, `/fonts/dm-sans-regular.ttf`, `/mcp`). Details: [gap analysis §5](docs/plans/gap_analysis_2026-10.md).
 
-**Known follow-ups:** re-check `/api/config` after the next `./deploy.sh --target dev --app` (the stable deployment predates the `config.env` wiring in `fa6d9d2`); replace the placeholder Databricks symbol SVGs and AppKit favicons; manual Lighthouse / keyboard / theme-toggle checks; a migration if `skip` votes should be stored; steward triage views (G6); deferred G4, G5, G10–G12. `prod` targets are scaffolded but not deployed.
+**Known follow-ups:** re-check `/api/config` through `./deploy.sh --target dev --app` (the 2026-10-24 redeploy used a bare `bundle deploy` with the dev default); manual Lighthouse / keyboard / theme-toggle checks; a migration if `skip` votes should be stored; steward triage views (G6); deferred G4, G5, G10–G12. `prod` targets are scaffolded but not deployed.
 
 ## License
 
