@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-24 | — | — | [**Build 4 planning: sessions 25-41, one consolidated manifest, Node toolchain re-test**](2026-10-24_build-4-planning.md) | interactive (planning) | planned, not run | `mg-genie-build-4` |
 | 2026-10-24 | all | — | [**Brand + gaps build summary: run 745271774924215, wave 5 repair, real brand assets, history squash**](2026-10-24_brand-gaps-build-summary.md) | orchestration + interactive | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-24 | 6 | 24 | [Project memory, READMEs, gap status, brand runbook](2026-10-24_w6-24-docs-project-memory.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-23 | 5 | 23 | [Converge app: branded UI, runtime config, clean runtime gate](2026-10-23_w5-23-converge-app.md) | converge | pass (repair: status file reconciled, fixes in 6771630) | `mg-genie-ui-brand-and-gaps` |
