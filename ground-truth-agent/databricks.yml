@@ -22,6 +22,9 @@ variables:
   space_title:
     description: "Display title for the Ground Truth Operations Genie space"
     default: "Ground Truth Operations"
+  ops_dashboard_title:
+    description: "Display name of the operations AI/BI dashboard (dev mode adds the [dev <user>] prefix)"
+    default: "Semantic Ground Truth — Operations"
 
 targets:
   # The 'dev' target, for development purposes. This target is the default.
@@ -43,5 +46,6 @@ targets:
       schema_name: semantic_ground_truth
       warehouse_id: "PLACEHOLDER"
       space_title: "Ground Truth Operations"
+      ops_dashboard_title: "Semantic Ground Truth — Operations"
     run_as:
       user_name: matthew.giglia@databricks.com

@@ -4,7 +4,7 @@ Repeatable pattern for running `pnpm install`, `pnpm add`, `vitest`, `tsc` and `
 
 * **First used:** 2026-10-21 (lockfile regeneration, [ground-truth-app/docs/sessions/2026-10-21_first-deploy-planning.md](../../ground-truth-app/docs/sessions/2026-10-21_first-deploy-planning.md)).
 * **Re-verified:** 2026-10-24, interactive Genie Code session on serverless (evidence below).
-* **Still to prove:** inside a build-wave `genie_task`. Session 26 (build 4, wave `4-0`) runs this runbook first and records the result in its status file.
+* **Proven in a build-wave `genie_task`:** 2026-10-24, session 26 (build 4, wave `4-0`, job run `110489694161084`). Same steps, no changes: bootstrap 9 s; `pip`, `nodejs.org` and the npm registry all reachable from the task (evidence below).
 
 ## Why it is needed
 
@@ -44,6 +44,13 @@ Rules:
 * **Lockfile changes:** run `pnpm add` / `pnpm update` in the repo, then `pnpm install --frozen-lockfile` again; commit `package.json` and `pnpm-lock.yaml` together, only if the frozen install, `vitest run` and both `tsc -b` pass.
 * `.npmrc` keeps `enable-pre-post-scripts=true` (pnpm 11 needs it for the `prebuild` typegen). Do not add a registry override.
 * `pnpm run build` runs `prebuild` (`appkit generate-types --wait`), which needs a warehouse connection. Use `tsc -b` + `vitest run` locally; the Apps build is the full build.
+* **Overrides live in `pnpm-workspace.yaml`.** pnpm 11 ignores the top-level `overrides` block in `package.json` (verified: changing it leaves the lockfile untouched; changing `pnpm-workspace.yaml` rewrites it). The `package.json` copy is inert. Any override change must regenerate `pnpm-lock.yaml` in the same commit, or `--frozen-lockfile` fails.
+* **Build scripts are blocked by default.** A new dependency with an install script fails `pnpm add` with `ERR_PNPM_IGNORED_BUILDS` until it is added to `allowBuilds` in `pnpm-workspace.yaml` (example: `msw` 2.x).
+* **Do not bump `zod` alone.** AppKit 0.84.0 pins `zod` `4.3.6` exactly; a different app `zod` gives two copies and `tsc` fails (`_zod.version.minor` 3 vs 6) where app schemas meet AppKit or the MCP SDK. Bump it with an override (so AppKit gets the same copy) or with an AppKit upgrade.
+
+## Component tests (jsdom)
+
+`vitest.config.ts` has two projects: `node` (every `*.test.ts`, including `client/src/theme/*`) and `client` (`client/**/*.test.tsx`, jsdom). The `client` project loads `client/src/test/setup.ts` (jest-dom matchers, `vitest-axe` `toHaveNoViolations`, `matchMedia` / `ResizeObserver` stubs, `cleanup`) and inlines `@databricks/appkit-ui`, whose ESM build imports `echarts-for-react/esm/core` without an extension (Node's resolver rejects it; Vite does not). `client/src/test/vitest-axe.d.ts` declares the axe matcher for vitest 4 (vitest-axe 0.1.0 only augments the legacy `Vi` namespace). `client/src/test/smoke.test.tsx` is the reference test. Run one project with `pnpm exec vitest run --project client`.
 
 ## Evidence (2026-10-24, temp copy of `ground-truth-app` at `0741bc7`)
 
@@ -59,3 +66,16 @@ Rules:
 | `pnpm add -D @testing-library/react @testing-library/user-event @testing-library/jest-dom jsdom vitest-axe msw` | Resolved (16.3.3, 14.6.8, 7.0.1, 30.1.3, 0.1.0, 3.0.3); `pnpm peers check` flags msw and tailwindcss; 331 tests still pass |
 
 Nothing from the experiment was committed; it ran in `/tmp/gt`.
+
+## Evidence (2026-10-24, build-wave `genie_task`, session 26, job run `110489694161084`)
+
+| Check | Result |
+| --- | --- |
+| Bootstrap (steps above) | 9 s; `node v22.16.0`, `npm 10.9.2`, `pnpm 11.0.8` |
+| Network from the task | `pypi.org`, `nodejs.org/dist`, `registry.npmjs.org`: HTTP 200 |
+| Baseline in `/tmp/gt-26` (main `f3583c3`) | frozen install 12.5 s; 21 files / 331 tests; both `tsc -b` exit 0; audit 1 critical, 17 high, 18 moderate, 6 low |
+| Added | `@modelcontextprotocol/ext-apps` 1.7.5 (exact); dev `@testing-library/react` 16.3.3, `@testing-library/user-event` 14.6.8, `@testing-library/jest-dom` 7.0.1, `jsdom` 30.1.3, `vitest-axe` 0.1.0 |
+| Not added | `msw`: 3.x is an unmet peer of vitest 4's `@vitest/mocker` (`^2.4.9`); 2.x needs an install script (`ERR_PNPM_IGNORED_BUILDS`) |
+| Audit fixes | `react-router` 7.18.0 -> 7.18.4; lockfile-only updates of `@grpc/grpc-js` 1.14.4 -> 1.14.6, `body-parser` 1.20.8 / 2.3.0 -> 1.20.9 / 2.4.0, `source-map-js` 1.2.1 -> 1.2.2 |
+| After | audit 1 critical, 12 high, 18 moderate, 5 low; frozen install passes on the committed lockfile; 22 files / 333 tests (incl. 2 smoke component tests); both `tsc -b` exit 0 (with `shared/contracts` at HEAD; wave `4-0` session 25 was mid-edit) |
+| Remaining high/critical | `dompurify` 3.4.11 and `js-yaml` 4.3.1 (exact pins in AppKit 0.84.0), `zod` 4.3.6 (exact pin in AppKit), `fast-uri` 3.1.0 and `@opentelemetry/propagator-jaeger` 2.8.0 (pinned by `pnpm-workspace.yaml` overrides `fast-uri` and `@opentelemetry/core`): all need `pnpm-workspace.yaml` override changes or an AppKit upgrade |

@@ -8,6 +8,7 @@ import {
   CAMPAIGN_STATUSES,
   CAMPAIGN_TYPES,
   COMPLETION_RULES,
+  SKIP_REASONS,
   VOTE_TYPES,
 } from './values';
 
@@ -31,6 +32,14 @@ export const MCP_TOOL_NAMES = [
   'metric_view_validate',
 ] as const;
 export type McpToolName = (typeof MCP_TOOL_NAMES)[number];
+
+/**
+ * Tools added in build 4. Kept out of MCP_TOOL_NAMES until the tool is
+ * registered and the MCP service selectors are updated (session 34), so the
+ * 12-name invariant above keeps describing what is deployed today.
+ */
+export const MCP_TOOL_NAMES_BUILD_4 = ['review_skip_card'] as const;
+export type McpToolNameBuild4 = (typeof MCP_TOOL_NAMES_BUILD_4)[number];
 
 const uuid = z.string().uuid();
 
@@ -69,6 +78,13 @@ export const McpToolShapes = {
   },
   review_run_query: {
     asset_id: uuid,
+  },
+  // Skip is not a vote (plan 25). asset_id defaults to the current review
+  // session asset, like review_submit_vote.
+  review_skip_card: {
+    asset_id: uuid.optional(),
+    campaign_id: uuid.optional(),
+    reason: z.enum(SKIP_REASONS).optional(),
   },
   campaign_list: {
     status: z.enum(CAMPAIGN_STATUSES).optional(),

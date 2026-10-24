@@ -2,19 +2,53 @@
 # Semantic Ground Truth — Feedback Loop Prompt Rules
 # Design source: L300-06, L200-C6, docs/plans/feedback_pipeline_rework_plan.md
 # Consumed by: src/notebooks/setup_genie_automation.py
-# The § Skill Prompt section is extracted at deploy time and embedded in the
-# Genie Code automation prompt ("Ground Truth Feedback Loop" scheduled insight).
-# Version: 1.1.0
+# The § Automation Prompt block is extracted at deploy time and becomes the
+# user_prompt of the "Ground Truth Feedback Author (<target>)" Genie Code
+# automation. The rules live in the versioned skill
+# fixtures/skills/ground-truth-feedback-author/SKILL.md, not here.
+# Version: 2.0.0
 ---
 
 ## Purpose
 
-These rules govern how Genie Code generates proposed metric view YAML edits
-based on reviewer feedback aggregated by the `feedback_pipeline` job. The
-`setup_genie_automation` notebook reads this file, extracts the § Skill Prompt
-section, and embeds it in the automation's `user_prompt`.
+Thin pointer. The `feedback_pipeline` job's `author_feedback_branch` task is a
+Genie Code task (`genie_task`) whose automation prompt is the block below. The
+prompt only passes the per-run values (as `{{name}}` placeholders filled from
+`genie_task.parameters`) and tells Genie Code to read and follow the versioned
+skill [`fixtures/skills/ground-truth-feedback-author/SKILL.md`](../skills/ground-truth-feedback-author/SKILL.md)
+at its bundle-deployed path (`{{skill_path}}`).
 
-## Skill Prompt
+`setup_genie_automation.py` replaces `__SKILL_VERSION__` with the skill's
+`version` and updates the automation's `user_prompt` when it changes. Keep every
+`{{name}}` placeholder in sync with `setup_job_params.py` /
+`feedback_pipeline.job.yml` (`author_feedback_branch` parameters).
+
+## Automation Prompt
+
+```text
+You are the Semantic Ground Truth feedback author, running unattended as the author_feedback_branch task of the feedback_pipeline job.
+
+Inputs for this run:
+- run_date: {{run_date}}
+- batch_id: {{batch_id}}
+- branch_prefix: {{branch_prefix}}
+- feedback_table: {{feedback_table}}
+- repo_path: {{repo_path}}
+- base_branch: {{base_branch}}
+- skill_path: {{skill_path}}
+
+1. Read the skill file at {{skill_path}} and follow it exactly. It is the only source of rules for this task (expected skill version: __SKILL_VERSION__). If you cannot read it, change nothing and report branch null with reason bad_input.
+2. Process only rows of {{feedback_table}} with batch_id = '{{batch_id}}'.
+3. The only branch name you may create is {{branch_prefix}}{{run_date}}, or {{branch_prefix}}{{run_date}}-2, -3 ... when it already exists on the remote. Start from {{base_branch}}. Never commit to {{base_branch}} or main, never merge, never force-push.
+4. End your response with the JSON summary block defined by the skill, including "batch_id" and "skill_version" (the version field of the skill file you actually read).
+```
+
+---
+
+## Superseded rules (1.1.0, kept for history)
+
+The 1.1.0 inline rules below are no longer sent to Genie Code; the skill
+replaces them.
 
 You are a Databricks metric view expert. You will be given structured reviewer feedback
 for one or more semantic ground truth assets, and your task is to produce updated
@@ -98,3 +132,4 @@ measures:
 |---------|------|--------|
 | 1.0.0 | 2026-10-08 | Initial version — feedback loop YAML edit generation |
 | 1.1.0 | 2026-10-11 | Reframed as Genie Code automation prompt rules. Removed UC skill registration section (superseded by setup_genie_automation.py). |
+| 2.0.0 | 2026-10-24 | Thin pointer to the versioned skill `ground-truth-feedback-author` 1.0.0. New § Automation Prompt with `{{run_date}}`, `{{batch_id}}`, `{{branch_prefix}}`, `{{feedback_table}}`, `{{repo_path}}`, `{{base_branch}}`, `{{skill_path}}` placeholders; branches are `mg-genie-feedback-<yyyymmdd>`. Old rules kept above as history only. |

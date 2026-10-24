@@ -1,0 +1,2408 @@
+{
+  "datasets": [
+    {
+      "name": "ds_queue_kpis",
+      "displayName": "Queue: KPIs",
+      "queryLines": [
+        "SELECT MEASURE(`Total Votes`) AS vote_count, MEASURE(`skips`) AS skip_count, MEASURE(`skip_rate`) AS skip_share, MEASURE(`Unique Reviewers`) AS reviewer_count ",
+        "FROM mv_review_activity ",
+        "WHERE (vote_date BETWEEN :date_range.min AND :date_range.max OR :date_range IS NULL)"
+      ],
+      "parameters": [
+        {
+          "displayName": "Date range",
+          "keyword": "date_range",
+          "dataType": "DATE",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATE",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        }
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_votes_skips_daily",
+      "displayName": "Queue: Votes vs Skips per Day",
+      "queryLines": [
+        "SELECT vote_date, campaign_id, MEASURE(`Total Votes`) AS vote_count, MEASURE(`skips`) AS skip_count ",
+        "FROM mv_review_activity ",
+        "WHERE (vote_date BETWEEN :date_range.min AND :date_range.max OR :date_range IS NULL) ",
+        "GROUP BY vote_date, campaign_id"
+      ],
+      "parameters": [
+        {
+          "displayName": "Date range",
+          "keyword": "date_range",
+          "dataType": "DATE",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATE",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        }
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_skips_by_campaign",
+      "displayName": "Queue: Skip Rate and Reviewers by Campaign",
+      "queryLines": [
+        "SELECT campaign_id, MEASURE(`Total Votes`) AS vote_count, MEASURE(`skips`) AS skip_count, MEASURE(`skip_rate`) AS skip_share, MEASURE(`Unique Reviewers`) AS active_reviewers ",
+        "FROM mv_review_activity ",
+        "WHERE campaign_id IS NOT NULL ",
+        "AND (vote_date BETWEEN :date_range.min AND :date_range.max OR :date_range IS NULL) ",
+        "GROUP BY campaign_id"
+      ],
+      "parameters": [
+        {
+          "displayName": "Date range",
+          "keyword": "date_range",
+          "dataType": "DATE",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATE",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        }
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_top_skipped_assets",
+      "displayName": "Queue: Top 10 Most-Skipped Assets",
+      "queryLines": [
+        "SELECT asset_id, MEASURE(`skips`) AS skip_count, MEASURE(`Total Votes`) AS vote_count, MEASURE(`skip_rate`) AS skip_share ",
+        "FROM mv_review_activity ",
+        "WHERE (vote_date BETWEEN :date_range.min AND :date_range.max OR :date_range IS NULL) ",
+        "GROUP BY asset_id ",
+        "ORDER BY skip_count DESC ",
+        "LIMIT 10"
+      ],
+      "parameters": [
+        {
+          "displayName": "Date range",
+          "keyword": "date_range",
+          "dataType": "DATE",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATE",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        }
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_skip_reasons",
+      "displayName": "Queue: Skip Reasons",
+      "queryLines": [
+        "SELECT skip_reason, campaign_id, MEASURE(`skips`) AS skip_count ",
+        "FROM mv_review_activity ",
+        "WHERE skip_reason IS NOT NULL ",
+        "AND (vote_date BETWEEN :date_range.min AND :date_range.max OR :date_range IS NULL) ",
+        "GROUP BY skip_reason, campaign_id"
+      ],
+      "parameters": [
+        {
+          "displayName": "Date range",
+          "keyword": "date_range",
+          "dataType": "DATE",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATE",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        }
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_queue_by_asset_type",
+      "displayName": "Queue: Assets by Type and Review Status",
+      "queryLines": [
+        "SELECT asset_type, status, MEASURE(`Total Assets`) AS asset_count, MEASURE(`Reviewed Assets`) AS reviewed_count ",
+        "FROM mv_coverage_metrics ",
+        "GROUP BY asset_type, status"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_reviewer_skips",
+      "displayName": "Queue: Reviewers with Most Skips",
+      "queryLines": [
+        "SELECT email, MEASURE(`Total Votes`) AS vote_total, MEASURE(`total_skips`) AS skip_total ",
+        "FROM mv_user_leaderboard ",
+        "GROUP BY email ",
+        "ORDER BY skip_total DESC ",
+        "LIMIT 10"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_campaign_kpis",
+      "displayName": "Campaigns: Active KPIs",
+      "queryLines": [
+        "SELECT MEASURE(`Campaign Count`) AS active_campaigns, MEASURE(`Avg Completion`) AS avg_completion, MEASURE(`Total Assets`) AS assigned_assets, MEASURE(`Reviewed Assets`) AS reviewed_assets ",
+        "FROM mv_campaign_progress ",
+        "WHERE campaign_status = 'active'"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_active_campaign_progress",
+      "displayName": "Campaigns: Active Campaign Progress",
+      "queryLines": [
+        "SELECT campaign_type, scope_domain, completion_rule, MEASURE(`Campaign Count`) AS campaigns, MEASURE(`Total Assets`) AS assigned_assets, MEASURE(`Reviewed Assets`) AS reviewed_assets, MEASURE(`Avg Completion`) AS avg_completion ",
+        "FROM mv_campaign_progress ",
+        "WHERE campaign_status = 'active' ",
+        "GROUP BY campaign_type, scope_domain, completion_rule"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_campaign_status_mix",
+      "displayName": "Campaigns: Status Mix",
+      "queryLines": [
+        "SELECT campaign_status, campaign_type, MEASURE(`Campaign Count`) AS campaigns ",
+        "FROM mv_campaign_progress ",
+        "GROUP BY campaign_status, campaign_type"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_feedback_kpis",
+      "displayName": "Feedback: KPIs",
+      "queryLines": [
+        "SELECT MEASURE(`Total Batches`) AS batches, MEASURE(`Success Rate`) AS success_rate, MEASURE(`Failed Batches`) AS failed_batches, MEASURE(`Avg Processing Time`) AS avg_processing_s, MEASURE(`Total Assets Processed`) AS assets_processed ",
+        "FROM mv_feedback_pipeline ",
+        "WHERE (batch_date BETWEEN :date_range.min AND :date_range.max OR :date_range IS NULL)"
+      ],
+      "parameters": [
+        {
+          "displayName": "Date range",
+          "keyword": "date_range",
+          "dataType": "DATE",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATE",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        }
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_feedback_by_status",
+      "displayName": "Feedback: Batches by Status per Day",
+      "queryLines": [
+        "SELECT batch_date, status, MEASURE(`Total Batches`) AS batches, MEASURE(`Total Assets Processed`) AS assets_processed ",
+        "FROM mv_feedback_pipeline ",
+        "WHERE (batch_date BETWEEN :date_range.min AND :date_range.max OR :date_range IS NULL) ",
+        "GROUP BY batch_date, status"
+      ],
+      "parameters": [
+        {
+          "displayName": "Date range",
+          "keyword": "date_range",
+          "dataType": "DATE",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATE",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        }
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_feedback_backlog",
+      "displayName": "Feedback: Edit Votes vs Pending Batches",
+      "queryLines": [
+        "WITH edits AS (",
+        "  SELECT MEASURE(`Edit Count`) AS edit_votes FROM mv_review_activity WHERE (vote_date BETWEEN :date_range.min AND :date_range.max OR :date_range IS NULL)",
+        "), pending AS (",
+        "  SELECT MEASURE(`Total Batches`) AS pending_batches, MEASURE(`Total Assets Processed`) AS pending_assets FROM mv_feedback_pipeline WHERE status = 'pending'",
+        ") ",
+        "SELECT edits.edit_votes, pending.pending_batches, pending.pending_assets FROM edits CROSS JOIN pending"
+      ],
+      "parameters": [
+        {
+          "displayName": "Date range",
+          "keyword": "date_range",
+          "dataType": "DATE",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATE",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        }
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_feedback_latest",
+      "displayName": "Feedback: Latest Batches",
+      "queryLines": [
+        "SELECT batch_date, status, triggered_by, MEASURE(`Total Batches`) AS batches, MEASURE(`Total Assets Processed`) AS assets_processed, MEASURE(`Avg Processing Time`) AS avg_processing_s ",
+        "FROM mv_feedback_pipeline ",
+        "GROUP BY batch_date, status, triggered_by ",
+        "ORDER BY batch_date DESC ",
+        "LIMIT 10"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_app_health_windows",
+      "displayName": "App Health: Last 24 h vs 7 d",
+      "queryLines": [
+        "WITH e24 AS (SELECT MEASURE(`Error Rate`) AS error_rate, MEASURE(`Error Count`) AS error_count FROM mv_otel_error_rate WHERE log_hour >= current_timestamp() - INTERVAL 24 HOURS), ",
+        "e7 AS (SELECT MEASURE(`Error Rate`) AS error_rate, MEASURE(`Error Count`) AS error_count FROM mv_otel_error_rate WHERE log_hour >= current_timestamp() - INTERVAL 7 DAYS), ",
+        "l24 AS (SELECT MEASURE(`P50 Latency`) AS p50_ms, MEASURE(`P95 Latency`) AS p95_ms, MEASURE(`Request Count`) AS requests FROM mv_otel_request_latency WHERE span_hour >= current_timestamp() - INTERVAL 24 HOURS), ",
+        "l7 AS (SELECT MEASURE(`P50 Latency`) AS p50_ms, MEASURE(`P95 Latency`) AS p95_ms, MEASURE(`Request Count`) AS requests FROM mv_otel_request_latency WHERE span_hour >= current_timestamp() - INTERVAL 7 DAYS) ",
+        "SELECT 1 AS sort_key, 'Last 24 h' AS time_window, e24.error_rate, e24.error_count, l24.p50_ms, l24.p95_ms, l24.requests FROM e24 CROSS JOIN l24 ",
+        "UNION ALL ",
+        "SELECT 2 AS sort_key, 'Last 7 d' AS time_window, e7.error_rate, e7.error_count, l7.p50_ms, l7.p95_ms, l7.requests FROM e7 CROSS JOIN l7 ",
+        "ORDER BY sort_key"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_errors_hourly",
+      "displayName": "App Health: Error Rate per Hour (7 d)",
+      "queryLines": [
+        "SELECT log_hour, MEASURE(`Error Rate`) AS error_rate, MEASURE(`Error Count`) AS error_count ",
+        "FROM mv_otel_error_rate ",
+        "WHERE log_hour >= current_timestamp() - INTERVAL 7 DAYS ",
+        "GROUP BY log_hour"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_latency_hourly",
+      "displayName": "App Health: Latency per Hour (7 d)",
+      "queryLines": [
+        "SELECT span_hour, MEASURE(`P50 Latency`) AS p50_ms, MEASURE(`P95 Latency`) AS p95_ms, MEASURE(`Request Count`) AS requests ",
+        "FROM mv_otel_request_latency ",
+        "WHERE span_hour >= current_timestamp() - INTERVAL 7 DAYS ",
+        "GROUP BY span_hour"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    }
+  ],
+  "pages": [
+    {
+      "name": "review_queue_health",
+      "displayName": "Review Queue Health",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "t_ask_genie",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Semantic Ground Truth — Operations\n",
+                "Day-to-day view of the review program for stewards. Filters (date range, default last 30 days; campaign; asset type) are on the Filters page. ",
+                "Have a question this dashboard does not answer? [Ask Ground Truth Operations](/genie/rooms/01f1ceb0506f1c5d9f2024bfc5f95943) (Genie space)."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_queue_votes",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_queue_kpis",
+                  "fields": [
+                    {
+                      "name": "vote_count",
+                      "expression": "`vote_count`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "vote_count",
+                  "displayName": "Votes"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Votes"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_queue_skips",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_queue_kpis",
+                  "fields": [
+                    {
+                      "name": "skip_count",
+                      "expression": "`skip_count`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "skip_count",
+                  "displayName": "Skipped cards"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Skipped cards"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_queue_skip_rate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_queue_kpis",
+                  "fields": [
+                    {
+                      "name": "skip_share",
+                      "expression": "`skip_share`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "skip_share",
+                  "displayName": "Skip rate",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Skip rate"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_votes_skips_daily",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_votes_skips_daily",
+                  "fields": [
+                    {
+                      "name": "vote_date",
+                      "expression": "`vote_date`"
+                    },
+                    {
+                      "name": "sum(vote_count)",
+                      "expression": "SUM(`vote_count`)"
+                    },
+                    {
+                      "name": "sum(skip_count)",
+                      "expression": "SUM(`skip_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "vote_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Date"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "sum(vote_count)",
+                      "displayName": "Votes"
+                    },
+                    {
+                      "fieldName": "sum(skip_count)",
+                      "displayName": "Skips"
+                    }
+                  ]
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Votes vs skips per day"
+              },
+              "mark": {
+                "colors": [
+                  "#1B3139",
+                  "#FF3621"
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "w_queue_by_asset_type",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_queue_by_asset_type",
+                  "fields": [
+                    {
+                      "name": "asset_type",
+                      "expression": "`asset_type`"
+                    },
+                    {
+                      "name": "status",
+                      "expression": "`status`"
+                    },
+                    {
+                      "name": "sum(asset_count)",
+                      "expression": "SUM(`asset_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "asset_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Asset type"
+                },
+                "y": {
+                  "fieldName": "sum(asset_count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Assets"
+                },
+                "color": {
+                  "fieldName": "status",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "PENDING",
+                        "color": "#FFAB00"
+                      },
+                      {
+                        "value": "REVIEWED",
+                        "color": "#2272B4"
+                      },
+                      {
+                        "value": "CERTIFIED",
+                        "color": "#00875C"
+                      }
+                    ]
+                  },
+                  "displayName": "Review status"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Queue by asset type and review status"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "w_skip_rate_by_campaign",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_skips_by_campaign",
+                  "fields": [
+                    {
+                      "name": "campaign_id",
+                      "expression": "`campaign_id`"
+                    },
+                    {
+                      "name": "skip_share",
+                      "expression": "`skip_share`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "campaign_id",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Campaign"
+                },
+                "y": {
+                  "fieldName": "skip_share",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Skip rate",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Skip rate by campaign"
+              },
+              "mark": {
+                "colors": [
+                  "#FF3621"
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 9,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "w_top_skipped_assets",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_top_skipped_assets",
+                  "fields": [
+                    {
+                      "name": "asset_id",
+                      "expression": "`asset_id`"
+                    },
+                    {
+                      "name": "skip_count",
+                      "expression": "`skip_count`"
+                    },
+                    {
+                      "name": "vote_count",
+                      "expression": "`vote_count`"
+                    },
+                    {
+                      "name": "skip_share",
+                      "expression": "`skip_share`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "asset_id",
+                    "displayName": "Asset",
+                    "title": "Asset",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 0
+                  },
+                  {
+                    "fieldName": "skip_count",
+                    "displayName": "Skips",
+                    "title": "Skips",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 1
+                  },
+                  {
+                    "fieldName": "vote_count",
+                    "displayName": "Votes",
+                    "title": "Votes",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 2
+                  },
+                  {
+                    "fieldName": "skip_share",
+                    "displayName": "Skip rate",
+                    "title": "Skip rate",
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 3,
+                    "numberFormat": "0.0%"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top 10 most-skipped assets (candidates for better context)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 14,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w_skip_reasons",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_skip_reasons",
+                  "fields": [
+                    {
+                      "name": "skip_reason",
+                      "expression": "`skip_reason`"
+                    },
+                    {
+                      "name": "sum(skip_count)",
+                      "expression": "SUM(`skip_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(skip_count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Skips"
+                },
+                "y": {
+                  "fieldName": "skip_reason",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Skip reason"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Skip reasons"
+              },
+              "mark": {
+                "colors": [
+                  "#5A6F77"
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 14,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "w_reviewer_skips",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_reviewer_skips",
+                  "fields": [
+                    {
+                      "name": "email",
+                      "expression": "`email`"
+                    },
+                    {
+                      "name": "skip_total",
+                      "expression": "`skip_total`"
+                    },
+                    {
+                      "name": "vote_total",
+                      "expression": "`vote_total`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "email",
+                    "displayName": "Reviewer",
+                    "title": "Reviewer",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 0
+                  },
+                  {
+                    "fieldName": "skip_total",
+                    "displayName": "Skips (all time)",
+                    "title": "Skips (all time)",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 1
+                  },
+                  {
+                    "fieldName": "vote_total",
+                    "displayName": "Votes (all time)",
+                    "title": "Votes (all time)",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 2
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Reviewers with the most skips"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 20,
+            "width": 6,
+            "height": 5
+          }
+        }
+      ]
+    },
+    {
+      "name": "campaigns",
+      "displayName": "Campaigns",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "w_active_campaigns",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_campaign_kpis",
+                  "fields": [
+                    {
+                      "name": "active_campaigns",
+                      "expression": "`active_campaigns`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "active_campaigns",
+                  "displayName": "Active campaigns"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Active campaigns"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_active_completion",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_campaign_kpis",
+                  "fields": [
+                    {
+                      "name": "avg_completion",
+                      "expression": "`avg_completion`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg_completion",
+                  "displayName": "Average completion (active)",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Average completion (active)"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_active_assets",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_campaign_kpis",
+                  "fields": [
+                    {
+                      "name": "reviewed_assets",
+                      "expression": "`reviewed_assets`"
+                    },
+                    {
+                      "name": "assigned_assets",
+                      "expression": "`assigned_assets`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "reviewed_assets",
+                  "displayName": "Reviewed vs assigned assets (active)"
+                },
+                "target": {
+                  "fieldName": "assigned_assets",
+                  "displayName": "Assigned assets"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Reviewed vs assigned assets (active)"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_active_campaign_progress",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_active_campaign_progress",
+                  "fields": [
+                    {
+                      "name": "campaign_type",
+                      "expression": "`campaign_type`"
+                    },
+                    {
+                      "name": "scope_domain",
+                      "expression": "`scope_domain`"
+                    },
+                    {
+                      "name": "completion_rule",
+                      "expression": "`completion_rule`"
+                    },
+                    {
+                      "name": "campaigns",
+                      "expression": "`campaigns`"
+                    },
+                    {
+                      "name": "assigned_assets",
+                      "expression": "`assigned_assets`"
+                    },
+                    {
+                      "name": "reviewed_assets",
+                      "expression": "`reviewed_assets`"
+                    },
+                    {
+                      "name": "avg_completion",
+                      "expression": "`avg_completion`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "campaign_type",
+                    "displayName": "Type",
+                    "title": "Type",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 0
+                  },
+                  {
+                    "fieldName": "scope_domain",
+                    "displayName": "Domain",
+                    "title": "Domain",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 1
+                  },
+                  {
+                    "fieldName": "completion_rule",
+                    "displayName": "Completion rule",
+                    "title": "Completion rule",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 2
+                  },
+                  {
+                    "fieldName": "campaigns",
+                    "displayName": "Campaigns",
+                    "title": "Campaigns",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 3
+                  },
+                  {
+                    "fieldName": "assigned_assets",
+                    "displayName": "Assigned assets",
+                    "title": "Assigned assets",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 4
+                  },
+                  {
+                    "fieldName": "reviewed_assets",
+                    "displayName": "Reviewed assets",
+                    "title": "Reviewed assets",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 5
+                  },
+                  {
+                    "fieldName": "avg_completion",
+                    "displayName": "Average completion",
+                    "title": "Average completion",
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 6,
+                    "numberFormat": "0.0%"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Progress of active campaigns"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "w_campaign_reviewers",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_skips_by_campaign",
+                  "fields": [
+                    {
+                      "name": "campaign_id",
+                      "expression": "`campaign_id`"
+                    },
+                    {
+                      "name": "active_reviewers",
+                      "expression": "`active_reviewers`"
+                    },
+                    {
+                      "name": "vote_count",
+                      "expression": "`vote_count`"
+                    },
+                    {
+                      "name": "skip_count",
+                      "expression": "`skip_count`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "campaign_id",
+                    "displayName": "Campaign",
+                    "title": "Campaign",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 0
+                  },
+                  {
+                    "fieldName": "active_reviewers",
+                    "displayName": "Active reviewers",
+                    "title": "Active reviewers",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 1
+                  },
+                  {
+                    "fieldName": "vote_count",
+                    "displayName": "Votes",
+                    "title": "Votes",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 2
+                  },
+                  {
+                    "fieldName": "skip_count",
+                    "displayName": "Skips",
+                    "title": "Skips",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 3
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Active reviewers per campaign (date range)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "w_campaign_status_mix",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_campaign_status_mix",
+                  "fields": [
+                    {
+                      "name": "campaign_type",
+                      "expression": "`campaign_type`"
+                    },
+                    {
+                      "name": "campaign_status",
+                      "expression": "`campaign_status`"
+                    },
+                    {
+                      "name": "sum(campaigns)",
+                      "expression": "SUM(`campaigns`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "campaign_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Campaign type"
+                },
+                "y": {
+                  "fieldName": "sum(campaigns)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Campaigns"
+                },
+                "color": {
+                  "fieldName": "campaign_status",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "active",
+                        "color": "#2272B4"
+                      },
+                      {
+                        "value": "paused",
+                        "color": "#FFAB00"
+                      },
+                      {
+                        "value": "completed",
+                        "color": "#00875C"
+                      },
+                      {
+                        "value": "archived",
+                        "color": "#5A6F77"
+                      }
+                    ]
+                  },
+                  "displayName": "Status"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Campaigns by type and status"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 7,
+            "width": 3,
+            "height": 5
+          }
+        }
+      ]
+    },
+    {
+      "name": "feedback_loop",
+      "displayName": "Feedback Loop",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "w_feedback_batches",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_feedback_kpis",
+                  "fields": [
+                    {
+                      "name": "batches",
+                      "expression": "`batches`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "batches",
+                  "displayName": "Feedback batches"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Feedback batches"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_feedback_success",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_feedback_kpis",
+                  "fields": [
+                    {
+                      "name": "success_rate",
+                      "expression": "`success_rate`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "success_rate",
+                  "displayName": "Batch success rate",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Batch success rate"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_feedback_failed",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_feedback_kpis",
+                  "fields": [
+                    {
+                      "name": "failed_batches",
+                      "expression": "`failed_batches`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "failed_batches",
+                  "displayName": "Failed batches"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Failed batches"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_edit_votes",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_feedback_backlog",
+                  "fields": [
+                    {
+                      "name": "edit_votes",
+                      "expression": "`edit_votes`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "edit_votes",
+                  "displayName": "Edit votes"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Edit votes (date range)",
+                "showDescription": true,
+                "description": "Edits feed the next mg-genie-feedback-* branch"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_pending_batches",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_feedback_backlog",
+                  "fields": [
+                    {
+                      "name": "pending_batches",
+                      "expression": "`pending_batches`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pending_batches",
+                  "displayName": "Pending batches"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Batches awaiting a branch",
+                "showDescription": true,
+                "description": "Feedback batches still in status pending"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_pending_assets",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_feedback_backlog",
+                  "fields": [
+                    {
+                      "name": "pending_assets",
+                      "expression": "`pending_assets`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pending_assets",
+                  "displayName": "Assets in pending batches"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Assets in pending batches"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "w_feedback_by_status",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_feedback_by_status",
+                  "fields": [
+                    {
+                      "name": "batch_date",
+                      "expression": "`batch_date`"
+                    },
+                    {
+                      "name": "status",
+                      "expression": "`status`"
+                    },
+                    {
+                      "name": "sum(batches)",
+                      "expression": "SUM(`batches`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "batch_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Date"
+                },
+                "y": {
+                  "fieldName": "sum(batches)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Batches"
+                },
+                "color": {
+                  "fieldName": "status",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "pending",
+                        "color": "#FFAB00"
+                      },
+                      {
+                        "value": "completed",
+                        "color": "#00875C"
+                      },
+                      {
+                        "value": "failed",
+                        "color": "#BD2B26"
+                      }
+                    ]
+                  },
+                  "displayName": "Status"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Feedback batches by status"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "w_feedback_latest",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_feedback_latest",
+                  "fields": [
+                    {
+                      "name": "batch_date",
+                      "expression": "`batch_date`"
+                    },
+                    {
+                      "name": "status",
+                      "expression": "`status`"
+                    },
+                    {
+                      "name": "triggered_by",
+                      "expression": "`triggered_by`"
+                    },
+                    {
+                      "name": "batches",
+                      "expression": "`batches`"
+                    },
+                    {
+                      "name": "assets_processed",
+                      "expression": "`assets_processed`"
+                    },
+                    {
+                      "name": "avg_processing_s",
+                      "expression": "`avg_processing_s`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "batch_date",
+                    "displayName": "Batch date",
+                    "title": "Batch date",
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 0,
+                    "dateTimeFormat": "YYYY-MM-DD"
+                  },
+                  {
+                    "fieldName": "status",
+                    "displayName": "Status",
+                    "title": "Status",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 1
+                  },
+                  {
+                    "fieldName": "triggered_by",
+                    "displayName": "Triggered by",
+                    "title": "Triggered by",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 2
+                  },
+                  {
+                    "fieldName": "batches",
+                    "displayName": "Batches",
+                    "title": "Batches",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 3
+                  },
+                  {
+                    "fieldName": "assets_processed",
+                    "displayName": "Files / assets",
+                    "title": "Files / assets",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 4
+                  },
+                  {
+                    "fieldName": "avg_processing_s",
+                    "displayName": "Avg processing (s)",
+                    "title": "Avg processing (s)",
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 5,
+                    "numberFormat": "0.0"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Latest feedback batches (newest first)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 6,
+            "height": 5
+          }
+        }
+      ]
+    },
+    {
+      "name": "app_health",
+      "displayName": "App Health",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "w_app_health_windows",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_app_health_windows",
+                  "fields": [
+                    {
+                      "name": "time_window",
+                      "expression": "`time_window`"
+                    },
+                    {
+                      "name": "error_rate",
+                      "expression": "`error_rate`"
+                    },
+                    {
+                      "name": "error_count",
+                      "expression": "`error_count`"
+                    },
+                    {
+                      "name": "p50_ms",
+                      "expression": "`p50_ms`"
+                    },
+                    {
+                      "name": "p95_ms",
+                      "expression": "`p95_ms`"
+                    },
+                    {
+                      "name": "requests",
+                      "expression": "`requests`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "time_window",
+                    "displayName": "Window",
+                    "title": "Window",
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 0
+                  },
+                  {
+                    "fieldName": "error_rate",
+                    "displayName": "Error rate",
+                    "title": "Error rate",
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 1,
+                    "numberFormat": "0.00%"
+                  },
+                  {
+                    "fieldName": "error_count",
+                    "displayName": "Errors",
+                    "title": "Errors",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 2
+                  },
+                  {
+                    "fieldName": "p50_ms",
+                    "displayName": "P50 latency (ms)",
+                    "title": "P50 latency (ms)",
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 3,
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "p95_ms",
+                    "displayName": "P95 latency (ms)",
+                    "title": "P95 latency (ms)",
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 4,
+                    "numberFormat": "0"
+                  },
+                  {
+                    "fieldName": "requests",
+                    "displayName": "Requests",
+                    "title": "Requests",
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 5
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "App health: last 24 h vs last 7 d"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "w_errors_hourly",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_errors_hourly",
+                  "fields": [
+                    {
+                      "name": "log_hour",
+                      "expression": "`log_hour`"
+                    },
+                    {
+                      "name": "error_rate",
+                      "expression": "`error_rate`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "log_hour",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Hour"
+                },
+                "y": {
+                  "fieldName": "error_rate",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Error rate",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Error rate per hour (last 7 d)"
+              },
+              "mark": {
+                "colors": [
+                  "#BD2B26"
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "w_latency_hourly",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_latency_hourly",
+                  "fields": [
+                    {
+                      "name": "span_hour",
+                      "expression": "`span_hour`"
+                    },
+                    {
+                      "name": "p50_ms",
+                      "expression": "`p50_ms`"
+                    },
+                    {
+                      "name": "p95_ms",
+                      "expression": "`p95_ms`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "span_hour",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Hour"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "p50_ms",
+                      "displayName": "P50 (ms)"
+                    },
+                    {
+                      "fieldName": "p95_ms",
+                      "displayName": "P95 (ms)"
+                    }
+                  ]
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Request latency per hour (last 7 d)"
+              },
+              "mark": {
+                "colors": [
+                  "#2272B4",
+                  "#FF3621"
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 3,
+            "width": 3,
+            "height": 5
+          }
+        }
+      ]
+    },
+    {
+      "name": "global_filters",
+      "displayName": "Filters",
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layout": [
+        {
+          "widget": {
+            "name": "f_date_range",
+            "queries": [
+              {
+                "name": "p_date_ds_queue_kpis",
+                "query": {
+                  "datasetName": "ds_queue_kpis",
+                  "parameters": [
+                    {
+                      "name": "date_range",
+                      "keyword": "date_range"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "p_date_ds_votes_skips_daily",
+                "query": {
+                  "datasetName": "ds_votes_skips_daily",
+                  "parameters": [
+                    {
+                      "name": "date_range",
+                      "keyword": "date_range"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "p_date_ds_skips_by_campaign",
+                "query": {
+                  "datasetName": "ds_skips_by_campaign",
+                  "parameters": [
+                    {
+                      "name": "date_range",
+                      "keyword": "date_range"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "p_date_ds_top_skipped_assets",
+                "query": {
+                  "datasetName": "ds_top_skipped_assets",
+                  "parameters": [
+                    {
+                      "name": "date_range",
+                      "keyword": "date_range"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "p_date_ds_skip_reasons",
+                "query": {
+                  "datasetName": "ds_skip_reasons",
+                  "parameters": [
+                    {
+                      "name": "date_range",
+                      "keyword": "date_range"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "p_date_ds_feedback_kpis",
+                "query": {
+                  "datasetName": "ds_feedback_kpis",
+                  "parameters": [
+                    {
+                      "name": "date_range",
+                      "keyword": "date_range"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "p_date_ds_feedback_by_status",
+                "query": {
+                  "datasetName": "ds_feedback_by_status",
+                  "parameters": [
+                    {
+                      "name": "date_range",
+                      "keyword": "date_range"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "p_date_ds_feedback_backlog",
+                "query": {
+                  "datasetName": "ds_feedback_backlog",
+                  "parameters": [
+                    {
+                      "name": "date_range",
+                      "keyword": "date_range"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "date_range",
+                    "queryName": "p_date_ds_queue_kpis"
+                  },
+                  {
+                    "parameterName": "date_range",
+                    "queryName": "p_date_ds_votes_skips_daily"
+                  },
+                  {
+                    "parameterName": "date_range",
+                    "queryName": "p_date_ds_skips_by_campaign"
+                  },
+                  {
+                    "parameterName": "date_range",
+                    "queryName": "p_date_ds_top_skipped_assets"
+                  },
+                  {
+                    "parameterName": "date_range",
+                    "queryName": "p_date_ds_skip_reasons"
+                  },
+                  {
+                    "parameterName": "date_range",
+                    "queryName": "p_date_ds_feedback_kpis"
+                  },
+                  {
+                    "parameterName": "date_range",
+                    "queryName": "p_date_ds_feedback_by_status"
+                  },
+                  {
+                    "parameterName": "date_range",
+                    "queryName": "p_date_ds_feedback_backlog"
+                  }
+                ]
+              },
+              "selection": {
+                "defaultSelection": {
+                  "range": {
+                    "dataType": "DATE",
+                    "min": {
+                      "value": "now-30d/d"
+                    },
+                    "max": {
+                      "value": "now/d"
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Date range"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f_campaign",
+            "queries": [
+              {
+                "name": "f_campaign_ds_votes_skips_daily",
+                "query": {
+                  "datasetName": "ds_votes_skips_daily",
+                  "fields": [
+                    {
+                      "name": "campaign_id",
+                      "expression": "`campaign_id`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_campaign_ds_skips_by_campaign",
+                "query": {
+                  "datasetName": "ds_skips_by_campaign",
+                  "fields": [
+                    {
+                      "name": "campaign_id",
+                      "expression": "`campaign_id`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_campaign_ds_skip_reasons",
+                "query": {
+                  "datasetName": "ds_skip_reasons",
+                  "fields": [
+                    {
+                      "name": "campaign_id",
+                      "expression": "`campaign_id`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "campaign_id",
+                    "displayName": "Campaign",
+                    "queryName": "f_campaign_ds_votes_skips_daily"
+                  },
+                  {
+                    "fieldName": "campaign_id",
+                    "displayName": "Campaign",
+                    "queryName": "f_campaign_ds_skips_by_campaign"
+                  },
+                  {
+                    "fieldName": "campaign_id",
+                    "displayName": "Campaign",
+                    "queryName": "f_campaign_ds_skip_reasons"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Campaign"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f_asset_type",
+            "queries": [
+              {
+                "name": "f_asset_type_ds_queue_by_asset_type",
+                "query": {
+                  "datasetName": "ds_queue_by_asset_type",
+                  "fields": [
+                    {
+                      "name": "asset_type",
+                      "expression": "`asset_type`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "asset_type",
+                    "displayName": "Asset type",
+                    "queryName": "f_asset_type_ds_queue_by_asset_type"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Asset type"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 1,
+            "height": 2
+          }
+        }
+      ]
+    }
+  ]
+}

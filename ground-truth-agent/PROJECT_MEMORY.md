@@ -22,13 +22,29 @@ C9 — Operational Genie Agent. Conversational analytics over the Ground Truth A
 - **Permissions:** CAN_RUN for users
 - **Added in Databricks CLI 1.3.0**
 
+### Operations dashboard (build 4, session 29)
+| Field | Value |
+|---|---|
+| Resource | `dashboards.ops_dashboard` in `resources/ops_dashboard.dashboard.yml` |
+| Display name | `${var.ops_dashboard_title}` = `Semantic Ground Truth — Operations` (dev adds `[dev matthew_giglia] `) |
+| Definition | `src/dashboards/operations.lvdash.json` — a workspace `DASHBOARD` object: the file edit tools cannot open it; write it with the Workspace import API (same as the infra executive dashboard) |
+| Warehouse | `${var.warehouse_id}`; `embed_credentials: false`; `dataset_catalog` / `dataset_schema` from `var.catalog` / `var.schema_name` |
+| Audience | Stewards / project owner, day-to-day (the infra executive dashboard stays leadership-facing) |
+| Pages | Review Queue Health, Campaigns, Feedback Loop, App Health, global Filters (date range `date_range` RANGE parameter default `now-30d/d`..`now/d`; campaign and asset type field filters) |
+| Datasets | 17, only `MEASURE()` over the 7 metric views; skip measures `skips`, `skip_rate`, `skip_reason` (dim), `total_skips` from session 28 |
+| Verification | `agent_verification` cell "Verify operations dashboard…": exists + published, every dataset runs `SELECT * FROM (<q>) LIMIT 1` with RANGE defaults inlined (the wave gate skips RANGE-parameter datasets) |
+| Converge | Session 39 (wave 4-7) deploys and fixes; session 37 deploys the skip measures first |
+
+Known metric-view limits (dashboard shows the closest available view): `mv_review_activity` has no `asset_type`, so skip rate by asset type is not possible (the page shows the queue by asset type from `mv_coverage_metrics`); `mv_campaign_progress` has no campaign id / name, due date or reviewer assignment, so campaign rows are by type / domain / rule and per-campaign reviewers use `campaign_id` from `mv_review_activity`; `mv_feedback_pipeline` has no `branch_name` dimension, so the latest branch name is not shown (latest batches table shows asset counts).
+
 ## Variables (dev defaults)
 | Variable | Dev default |
 |---|---|
 | `catalog` | `hls_fde_dev` |
 | `schema_name` | `dev_matthew_giglia_semantic_ground_truth` |
 | `warehouse_id` | Infra warehouse ID (look up from infra bundle) |
-| `app_display_name` | `Ground Truth Operations` |
+| `space_title` | `Ground Truth Operations` |
+| `ops_dashboard_title` | `Semantic Ground Truth — Operations` |
 
 ## Data Sources
 

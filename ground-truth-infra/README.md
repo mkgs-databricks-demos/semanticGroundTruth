@@ -12,11 +12,9 @@ Bundle 1 of 3 for the **Semantic Ground Truth App**. Deploys all shared infrastr
 | Lakebase CDF | 21 history tables | All `app` schema tables → `lb_*_history` in UC via Lakehouse Sync |
 | SDP Pipeline | `cdf_bronze` | Metadata-driven bronze: streams all `lb_*_history` into `bronze_lakebase_cdf` (VARIANT `data`) |
 | Lakeflow Jobs | 7 jobs | feedback_pipeline (daily), freshness_resurfacing (daily), metric_view_deploy, post_deploy_validation, setup_lakebase_cdf, M2M SPN setup, **cdf_bronze_refresh** (hourly `cdf_bronze` run; paused in dev) |
-| AI/BI Dashboard | `executive` | `Semantic Ground Truth — Executive`: KPIs, review trend, campaign progress, asset status mix, app error rate and P95 latency over the metric views (`src/dashboards/executive.lvdash.json`) |
+| AI/BI Dashboard | `executive` | `Semantic Ground Truth — Executive`: KPIs, review trend, skipped cards + skip rate by day, campaign progress, asset status mix, app error rate and P95 latency over the metric views (`src/dashboards/executive.lvdash.json`) |
 | Secret scope | `semantic_ground_truth_credentials` | M2M credentials. `permissions` grants the owner MANAGE and the app SPN (`var.app_service_principal_id`) READ |
 | Metric View Fixtures | 7 YAMLs | mv_review_activity, mv_coverage_metrics, mv_user_leaderboard, mv_feedback_pipeline, mv_campaign_progress, mv_otel_error_rate, mv_otel_request_latency |
-| UC Secrets | 3 secrets | slack_webhook_url, teams_webhook_url, git_token |
-| Unity Gateway | HTTP connection | ground-truth-mcp (schema-level; updated by Bundle 2) |
 | Genie Code Skill | Feedback loop prompt | `fixtures/prompts/feedback_loop_prompt.md` |
 
 ## Targets
@@ -56,6 +54,10 @@ databricks bundle run cdf_bronze_refresh --target dev
 ### Executive dashboard
 
 Deployed and published by `bundle deploy`. `deploy.sh` reads its ID from `bundle summary` and passes the published URL (`<workspace>/dashboardsv3/<id>/published`) to the app as `exec_dashboard_url`. If you change a dataset, check it with `EXPLAIN` against the metric view first (column names must exist in the view, for example `campaign_type`, not `campaign_name`).
+
+Skip metrics (build 4): `mv_review_activity` unions `votes` with `review_skips` inserts from bronze. A skip is not a vote: `Total Votes`, `Approval Rate`, `Unique Reviewers` count votes only; `skips`, `skip_rate` (`skips / (votes + skips)`) and the `skip_reason` dimension cover skips. `mv_user_leaderboard.total_skips` sums `app.user_activity.total_skips`. Skip rows reach bronze only once `review_skips` (and `user_settings`) are listed in `fixtures/pipelines/cdf_bronze_tables.yaml`; Lakebase CDF itself replicates every table in the `app` schema automatically (a table appears as `lb_<table>_history` after its first row).
+
+Removed (G10, 2026-10-24): the scaffold-only `setup_gateway_connection` and `setup_app_role_sp` notebooks and their `post_deploy_setup` tasks (plus the `check_m2m_secret_present` gate), and the empty `git_token`, `slack_webhook` and `teams_webhook` secret YAMLs. App notifications go through the workspace Slack MCP instead of webhooks (research 05).
 
 ### Data plane (after the app bundle has run migrations)
 
@@ -97,7 +99,7 @@ ground-truth-infra/
 │   ├── jobs/                        (.job.yml files — one per job, incl. cdf_bronze_refresh)
 │   ├── pipelines/                   (cdf_bronze SDP pipeline)
 │   ├── dashboards/                  (executive.dashboard.yml)
-│   ├── secrets/                     (ground_truth_scope.secret_scope.yml + secret YAMLs)
+│   ├── secrets/                     (ground_truth_scope.secret_scope.yml)
 │   ├── lakebase/                    (5 files — project, branches, role, db)
 │   ├── ground_truth_schema.schema.yml
 │   └── infra_warehouse.warehouse.yml

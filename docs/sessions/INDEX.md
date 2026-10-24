@@ -5,6 +5,14 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-24 | 4-0 | 32 | [UI design review + Figma Make brief + UI test strategy](2026-10-24_w4-0-32-ui-design-review-figma-brief.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 31 | [MCP App design for the review card](2026-10-24_w4-0-31-mcp-app-review-card-design.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 30 | [Research: Slack MCP notifications (G5)](2026-10-24_w4-0-30-slack-mcp-notifications-research.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 29 | [Agent bundle AI/BI operations dashboard](2026-10-24_w4-0-29-agent-operations-dashboard.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 28 | [Skip metrics in the data plane + G10 infra cleanup](2026-10-24_w4-0-28-skip-metrics-g10-cleanup.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 27 | [Feedback pipeline as a Genie Code task with a versioned skill (G4)](2026-10-24_w4-0-27-feedback-pipeline-genie-task.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 26 | [Node toolchain proof, new dependencies, security audit](2026-10-24_w4-0-26-toolchain-deps-audit.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 25 | [Contracts + migration 009 (skips, user settings, steward triage)](2026-10-24_w4-0-25-contracts-migration-009.md) | edit | pass | `mg-genie-build-4` |
 | 2026-10-24 | — | — | [**Build 4 planning: sessions 25-41, one consolidated manifest, Node toolchain re-test**](2026-10-24_build-4-planning.md) | interactive (planning) | planned, not run | `mg-genie-build-4` |
 | 2026-10-24 | all | — | [**Brand + gaps build summary: run 745271774924215, wave 5 repair, real brand assets, history squash**](2026-10-24_brand-gaps-build-summary.md) | orchestration + interactive | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-24 | 6 | 24 | [Project memory, READMEs, gap status, brand runbook](2026-10-24_w6-24-docs-project-memory.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |

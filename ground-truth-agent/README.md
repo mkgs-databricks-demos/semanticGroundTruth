@@ -1,6 +1,6 @@
 # ground-truth-agent
 
-Bundle 3 of 3 for the **Semantic Ground Truth App**. Deploys the Ground Truth Operations Genie Agent — a conversational analytics space over the app's Lakebase CDF data and OTel telemetry.
+Bundle 3 of 3 for the **Semantic Ground Truth App**. Deploys the Ground Truth Operations Genie Agent — a conversational analytics space over the app's Lakebase CDF data and OTel telemetry — and the steward-facing Operations AI/BI dashboard.
 
 > Deploy [ground-truth-infra](../ground-truth-infra/) and [ground-truth-app](../ground-truth-app/) first.
 
@@ -9,7 +9,8 @@ Bundle 3 of 3 for the **Semantic Ground Truth App**. Deploys the Ground Truth Op
 | Resource | Type | Description |
 |----------|------|-------------|
 | Genie Space | `genie_spaces` | `Ground Truth Operations` — 9 data sources (7 metric views + 2 OTel tables), curated instructions + example SQL |
-| Verification Job | `jobs` | `agent_verification` — 11 checks: space config, data source resolution, example SQL EXPLAIN, probe questions |
+| Operations Dashboard | `dashboards` | `ops_dashboard` — `Semantic Ground Truth — Operations` (dev: `[dev matthew_giglia] ` prefix). Pages: Review Queue Health (votes vs skips, skip rate by campaign, top 10 most-skipped assets, skip reasons, queue by asset type), Campaigns, Feedback Loop, App Health (24 h / 7 d error rate, p50/p95 latency), plus a global Filters page (date range default last 30 days, campaign, asset type) and a link to the Genie space. 17 datasets, all `MEASURE()` queries over the 7 metric views. `embed_credentials: false`. |
+| Verification Job | `jobs` | `agent_verification` — space config, data source resolution, example SQL EXPLAIN, probe questions, and the operations dashboard (exists, published, every dataset executes with default parameters) |
 
 ## Data Sources
 
@@ -43,7 +44,7 @@ Bundle 3 of 3 for the **Semantic Ground Truth App**. Deploys the Ground Truth Op
 # Validate
 databricks bundle validate --strict --target dev
 
-# Deploy (creates/updates the Genie space)
+# Deploy (creates/updates the Genie space and the operations dashboard)
 databricks bundle deploy --target dev
 
 # Run verification
@@ -58,11 +59,14 @@ ground-truth-agent/
 ├── ground_truth_ops.geniespace.json         # Genie space definition (v2 serialized_space format)
 ├── resources/
 │   ├── ground_truth_ops.genie_space.yml     # Genie space resource
+│   ├── ops_dashboard.dashboard.yml          # Operations AI/BI dashboard resource
 │   └── jobs/
 │       └── agent_verification.job.yml       # Verification job
 ├── src/
+│   ├── dashboards/
+│   │   └── operations.lvdash.json           # Operations dashboard definition (workspace DASHBOARD object)
 │   └── notebooks/
-│       └── agent_verification.ipynb         # 11-check verification notebook
+│       └── agent_verification.ipynb         # Verification notebook (space + dashboard checks)
 └── docs/
     ├── plans/                              # Build plans + waves.json (superseded by root manifest)
     └── sessions/                           # Session summaries

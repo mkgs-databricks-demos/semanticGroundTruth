@@ -1,0 +1,24 @@
+# resources/ops_dashboard.dashboard.yml
+# Operations AI/BI dashboard for stewards and the project owner (day-to-day review program),
+# next to the "Ground Truth Operations" Genie space. The infra executive dashboard stays
+# leadership-facing.
+# Design source: docs/plans/29_agent_operations_dashboard.md (build 4, wave 4-0, session 29)
+#
+# file_path resolves relative to this YAML file's directory:
+#   resources/ + ../src/dashboards/operations.lvdash.json = src/dashboards/operations.lvdash.json
+# Dev mode prefixes the display name with "[dev matthew_giglia] ".
+# Datasets query only the 7 metric views with MEASURE(); dataset_catalog / dataset_schema
+# point them at the target's schema (the JSON carries the dev defaults).
+
+resources:
+  dashboards:
+    ops_dashboard:
+      display_name: "${var.ops_dashboard_title}"
+      file_path: ../src/dashboards/operations.lvdash.json
+      warehouse_id: "${var.warehouse_id}"
+      embed_credentials: false
+      dataset_catalog: "${var.catalog}"
+      dataset_schema: "${var.schema_name}"
+      permissions:
+        - level: CAN_RUN
+          group_name: users

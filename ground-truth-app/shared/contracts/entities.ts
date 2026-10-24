@@ -9,12 +9,19 @@ import type {
   CampaignStatus,
   CampaignType,
   CompletionRule,
+  ConflictResolution,
+  Density,
+  EditField,
   Environment,
+  FeedbackBatchStatus,
+  MotionPref,
   NotificationChannel,
   NotificationEventType,
   NotificationStatus,
   Role,
+  SkipReason,
   SourceType,
+  Theme,
   VoteSource,
   VoteType,
 } from './values';
@@ -38,7 +45,8 @@ export interface Asset {
   status: AssetStatus;
   domain: string | null;
   subdomain: string | null;
-  synonyms?: string[];
+  // Always present (possibly empty), filled from app.asset_synonyms (plan 25).
+  synonyms: AssetSynonym[];
   sourceId: string | null;
   sourceMetadata: Record<string, unknown> | null;
   createdAt: string;
@@ -105,11 +113,92 @@ export interface FeedbackBatch {
   id: string;
   triggeredBy: string;
   branchName: string | null;
-  status: string;
+  status: FeedbackBatchStatus;
   assetCount: number;
   processingTimeSeconds: number | null;
+  files: string[];
+  summary: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
   createdAt: string;
   completedAt: string | null;
+}
+
+// ── Skips (plan 25: skip is tracked, never a vote) ────────────────────────
+
+export interface ReviewSkip {
+  id: string;
+  assetId: string;
+  campaignId: string | null;
+  reason: SkipReason | null;
+  versionHash: string | null;
+  source: VoteSource;
+  createdAt: string;
+}
+
+// ── User settings (plan 25) ────────────────────────────────────────────
+
+export interface UserSettings {
+  theme: Theme;
+  density: Density;
+  motion: MotionPref;
+  defaultCampaignId: string | null;
+  defaultAssetType: AssetType | null;
+  showKeyboardHints: boolean;
+  /** 5-100 */
+  cardsPerSession: number;
+  /** null when the user has no app.user_settings row yet (defaults). */
+  updatedAt: string | null;
+}
+
+// ── Steward triage (plan 25, routes in session 33) ───────────────────────
+
+export interface FeedbackQueueItem {
+  assetId: string;
+  displayName: string;
+  assetType: AssetType;
+  campaignId: string | null;
+  votes: { approve: number; reject: number; edit: number };
+  skips: number;
+  pendingEdits: number;
+  lastActivityAt: string | null;
+}
+
+export interface EditProposal {
+  voteId: string;
+  userId: string;
+  field: EditField;
+  value: string;
+  createdAt: string;
+}
+
+export interface ConflictGroup {
+  assetId: string;
+  displayName: string;
+  edits: EditProposal[];
+  rejectCount: number;
+  approveCount: number;
+}
+
+export interface ConflictResolutionResult {
+  assetId: string;
+  resolution: ConflictResolution;
+  /** Votes whose resolution/resolved_by/resolved_at were written. */
+  resolvedVotes: number;
+  resolvedBy: string;
+  resolvedAt: string;
+}
+
+export interface FeedbackBranch {
+  batchId: string;
+  branchName: string;
+  status: FeedbackBatchStatus;
+  assetCount: number;
+  files: string[];
+  summary: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  reviewedBy: string | null;
 }
 
 // ── Campaigns (L200-C5 + conventions §5) ───────────────────────────────
@@ -168,9 +257,11 @@ export interface UserActivity {
   userId: string;
   email: string;
   totalVotes: number;
+  totalSkips: number;
   currentStreakDays: number;
   longestStreakDays: number;
   lastVoteDate: string | null;
+  lastSkipAt: string | null;
   badges: string[];
 }
 
@@ -182,6 +273,8 @@ export interface LeaderboardEntry {
   approvals: number;
   rejections: number;
   edits: number;
+  /** Shown on the leaderboard, never ranked on. */
+  skippedCount: number;
   currentStreakDays: number;
   rank: number;
 }
@@ -191,10 +284,15 @@ export interface UserStats {
   approvals: number;
   rejections: number;
   edits: number;
+  skippedCount: number;
+  skippedToday: number;
   currentStreakDays: number;
   rank: number;
   coveragePct: number;
 }
+
+/** Review stats (GET /api/review/stats/me, MCP review_get_stats). */
+export type ReviewStats = UserStats;
 
 // ── Executive summary ──────────────────────────────────────────────────
 

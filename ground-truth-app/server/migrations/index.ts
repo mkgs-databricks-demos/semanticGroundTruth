@@ -8,6 +8,7 @@ import { migration as m005 } from './005_app_state';
 import { migration as m006 } from './006_indexes';
 import { migration as m007 } from './007_rbac_sources_cdf';
 import { migration as m008 } from './008_votes_version_hash';
+import { migration as m009 } from './009_skips_settings_triage';
 import { runMigrationsWithList } from './runner';
 
 export type { Migration } from './types';
@@ -21,6 +22,7 @@ export const MIGRATIONS: Migration[] = [
   m006,
   m007,
   m008,
+  m009,
 ];
 
 export { ensureReplicaIdentityFull } from './runner';
