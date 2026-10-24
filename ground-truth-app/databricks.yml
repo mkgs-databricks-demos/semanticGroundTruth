@@ -62,7 +62,7 @@ targets:
       agents_mlflow_experiment_experimentId: "1698842789305538"
       m2m_client_id_key: m2m_client_id_dev
       m2m_client_secret_key: m2m_client_secret_dev
-      exec_dashboard_url: ""
+      exec_dashboard_url: "https://fevm-hls-fde.cloud.databricks.com/dashboardsv3/01f1cf0b38d31b7cbac5bdac6cafe3eb/published"
       # ↑ These are also resolved at deploy time by deploy.sh --var passthrough.
 
   # Prod target — deployed by: ./deploy.sh --target prod --app
