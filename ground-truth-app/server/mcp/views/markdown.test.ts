@@ -3,11 +3,16 @@
 
 import { describe, it, expect } from 'vitest';
 import {
+  CARD_ACTIONS_TEXT,
+  EMPTY_QUEUE_TEXT,
   renderCardMarkdown,
   renderStatsMarkdown,
   renderCampaignsMarkdown,
   renderQueryResultMarkdown,
+  renderSkipMarkdown,
+  renderVoteMarkdown,
 } from './markdown';
+import { NEXT_ASSET_ID, makeCard, makeSkipResponse, makeVoteResult } from '../testFixtures';
 import { renderCardHtml } from './cardHtml';
 import type { ReviewCard } from '../../../shared/contracts/review';
 import type { UserStats, Campaign, QueryResult } from '../../../shared/contracts/entities';
@@ -252,5 +257,45 @@ describe('renderCardHtml', () => {
     expect(html).toContain('Total Revenue');
     expect(html).toContain('Sum of all revenue line items');
     expect(html).toContain('gross revenue');
+  });
+});
+
+// Session 34 · Wave 4-2: the text fallback names the card's actions; vote/skip replies.
+describe('session 34 text fallback', () => {
+  it('card markdown ends with the available actions', () => {
+    expect(renderCardMarkdown(mockCard).endsWith(CARD_ACTIONS_TEXT)).toBe(true);
+    expect(CARD_ACTIONS_TEXT).toContain('review_skip_card');
+    expect(CARD_ACTIONS_TEXT).toContain('a skip is not a vote');
+  });
+
+  it('query results render object cells as JSON', () => {
+    const md = renderQueryResultMarkdown({ columns: ['k', 'v'], rows: [[{ a: 1 }, null]], truncated: false });
+    expect(md).toContain('| {"a":1} |  |');
+    expect(md).not.toContain('[object Object]');
+  });
+
+  it('stats show skips separately from votes', () => {
+    const md = renderStatsMarkdown({ ...mockStats, skippedCount: 4, skippedToday: 2 });
+    expect(md).toContain('| Skipped (not votes) | 4 (2 today) |');
+  });
+
+  it('vote markdown includes the next card, or the empty-queue text', () => {
+    const result = makeVoteResult(makeCard(NEXT_ASSET_ID));
+    const md = renderVoteMarkdown(result);
+    expect(md.startsWith('Vote recorded: **approve**')).toBe(true);
+    expect(md).toContain('**Next card:**');
+    expect(md).toContain('## Net Margin');
+    expect(renderVoteMarkdown(makeVoteResult(null)).endsWith(EMPTY_QUEUE_TEXT)).toBe(true);
+  });
+
+  it('skip markdown says a skip is not a vote and includes the next card', () => {
+    const md = renderSkipMarkdown({ ...makeSkipResponse(), next: makeCard(NEXT_ASSET_ID) });
+    expect(md).toContain('(reason: not_sure)');
+    expect(md).toContain('A skip is not a vote');
+    expect(md).toContain('Skipped 3 in total, 1 today.');
+    expect(md).toContain('## Net Margin');
+    const noReason = renderSkipMarkdown({ skip: { ...makeSkipResponse().skip, reason: null }, stats: makeSkipResponse().stats, next: null });
+    expect(noReason).not.toContain('reason:');
+    expect(noReason.endsWith(EMPTY_QUEUE_TEXT)).toBe(true);
   });
 });
