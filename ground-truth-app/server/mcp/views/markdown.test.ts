@@ -34,6 +34,7 @@ const mockCard: ReviewCard = {
     sourceMetadata: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
+    synonyms: [],
   },
   synonyms: [
     {
@@ -81,6 +82,8 @@ const mockStats: UserStats = {
   currentStreakDays: 7,
   rank: 3,
   coveragePct: 65.5,
+  skippedCount: 0,
+  skippedToday: 0,
 };
 
 const mockCampaigns: Campaign[] = [

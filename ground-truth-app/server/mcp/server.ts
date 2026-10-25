@@ -58,6 +58,7 @@ export function buildMcpServer(
               sourceMetadata: null,
               createdAt: '',
               updatedAt: '',
+              synonyms: [],
             },
             synonyms: [],
             examples: [],

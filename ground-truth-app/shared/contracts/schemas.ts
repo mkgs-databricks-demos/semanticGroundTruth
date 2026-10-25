@@ -599,8 +599,6 @@ const AUTH_400 = [400, 401, 403, 500];
 const AUTH_404 = [400, 401, 403, 404, 500];
 const UPSTREAM = [400, 401, 403, 404, 500, 502];
 
-const SESSION_33 = 'session 33';
-
 export const ROUTE_CONTRACTS: readonly RouteContract[] = [
   // ── health.ts, config.ts, me.ts ──
   { method: 'GET', path: '/health', role: 'public', response: HealthResponseSchema, status: 200, errors: [500] },
@@ -660,15 +658,15 @@ export const ROUTE_CONTRACTS: readonly RouteContract[] = [
   { method: 'DELETE', path: '/api/admin/groups/:name/members/:memberId', role: 'admin', params: RemoveGroupMemberParamSchema, response: AppGroupSchema, status: 200, errors: [400, 401, 403, 404, 409, 500] },
 
   // ── Planned (session 33): skip, user settings, steward triage ──
-  { method: 'POST', path: '/api/review/skip', role: 'reviewer', request: SkipRequestSchema, response: SkipResponseSchema, status: 201, errors: AUTH_404, plannedIn: SESSION_33 },
-  { method: 'GET', path: '/api/me/settings', role: 'reviewer', response: UserSettingsSchema, status: 200, errors: AUTH, plannedIn: SESSION_33 },
-  { method: 'PUT', path: '/api/me/settings', role: 'reviewer', request: UpdateUserSettingsRequestSchema, response: UserSettingsSchema, status: 200, errors: AUTH_404, plannedIn: SESSION_33 },
-  { method: 'GET', path: '/api/steward/feedback-queue', role: 'steward', query: FeedbackQueueQuerySchema, response: PagedFeedbackQueueSchema, status: 200, errors: AUTH_400, plannedIn: SESSION_33 },
-  { method: 'GET', path: '/api/steward/conflicts', role: 'steward', query: ConflictsQuerySchema, response: z.array(ConflictGroupSchema), status: 200, errors: AUTH_400, plannedIn: SESSION_33 },
-  { method: 'POST', path: '/api/steward/conflicts/:assetId/resolve', role: 'steward', params: AssetIdParamSchema, request: ResolveConflictRequestSchema, response: ConflictResolutionResultSchema, status: 200, errors: [400, 401, 403, 404, 409, 500], plannedIn: SESSION_33 },
-  { method: 'GET', path: '/api/steward/feedback-branches', role: 'steward', query: FeedbackBranchListQuerySchema, response: z.array(FeedbackBranchSchema), status: 200, errors: AUTH_400, plannedIn: SESSION_33 },
-  { method: 'POST', path: '/api/steward/feedback-branches', role: 'admin', request: UpsertFeedbackBranchRequestSchema, response: FeedbackBranchSchema, status: 201, errors: AUTH_404, plannedIn: SESSION_33 },
-  { method: 'POST', path: '/api/steward/feedback-branches/:batchId/status', role: 'steward', params: BatchIdParamSchema, request: UpdateFeedbackBranchStatusRequestSchema, response: FeedbackBranchSchema, status: 200, errors: [400, 401, 403, 404, 409, 500], plannedIn: SESSION_33 },
+  { method: 'POST', path: '/api/review/skip', role: 'reviewer', request: SkipRequestSchema, response: SkipResponseSchema, status: 201, errors: AUTH_404 },
+  { method: 'GET', path: '/api/me/settings', role: 'reviewer', response: UserSettingsSchema, status: 200, errors: AUTH },
+  { method: 'PUT', path: '/api/me/settings', role: 'reviewer', request: UpdateUserSettingsRequestSchema, response: UserSettingsSchema, status: 200, errors: AUTH_404 },
+  { method: 'GET', path: '/api/steward/feedback-queue', role: 'steward', query: FeedbackQueueQuerySchema, response: PagedFeedbackQueueSchema, status: 200, errors: AUTH_400 },
+  { method: 'GET', path: '/api/steward/conflicts', role: 'steward', query: ConflictsQuerySchema, response: z.array(ConflictGroupSchema), status: 200, errors: AUTH_400 },
+  { method: 'POST', path: '/api/steward/conflicts/:assetId/resolve', role: 'steward', params: AssetIdParamSchema, request: ResolveConflictRequestSchema, response: ConflictResolutionResultSchema, status: 200, errors: [400, 401, 403, 404, 409, 500] },
+  { method: 'GET', path: '/api/steward/feedback-branches', role: 'steward', query: FeedbackBranchListQuerySchema, response: z.array(FeedbackBranchSchema), status: 200, errors: AUTH_400 },
+  { method: 'POST', path: '/api/steward/feedback-branches', role: 'admin', request: UpsertFeedbackBranchRequestSchema, response: FeedbackBranchSchema, status: 201, errors: AUTH_404 },
+  { method: 'POST', path: '/api/steward/feedback-branches/:batchId/status', role: 'steward', params: BatchIdParamSchema, request: UpdateFeedbackBranchStatusRequestSchema, response: FeedbackBranchSchema, status: 200, errors: [400, 401, 403, 404, 409, 500] },
 ];
 
 /** Stable key for a route contract, e.g. "GET /api/assets/:assetId". */

@@ -50,20 +50,10 @@ const NOW = '2026-10-24T18:00:00.000Z';
 describe('ROUTE_CONTRACTS', () => {
   // Plan 25 says "49 (41 + 8 new)" but lists 9 new method+path pairs
   // (GET|PUT /api/me/settings are two routes), so the contract has 50.
-  it('covers 50 routes (41 registered today + 9 planned for session 33)', () => {
+  // Session 33 registered the 9 new routes, so no route is plannedIn any more.
+  it('covers 50 routes, all registered (none plannedIn)', () => {
     expect(ROUTE_CONTRACTS).toHaveLength(50);
-    expect(ROUTE_CONTRACTS.filter((c) => !c.plannedIn)).toHaveLength(41);
-    expect(ROUTE_CONTRACTS.filter((c) => c.plannedIn === 'session 33').map(routeKey).sort()).toEqual([
-      'GET /api/me/settings',
-      'GET /api/steward/conflicts',
-      'GET /api/steward/feedback-branches',
-      'GET /api/steward/feedback-queue',
-      'POST /api/review/skip',
-      'POST /api/steward/conflicts/:assetId/resolve',
-      'POST /api/steward/feedback-branches',
-      'POST /api/steward/feedback-branches/:batchId/status',
-      'PUT /api/me/settings',
-    ]);
+    expect(ROUTE_CONTRACTS.filter((c) => c.plannedIn).map(routeKey)).toEqual([]);
   });
 
   it('has unique method + path keys', () => {
