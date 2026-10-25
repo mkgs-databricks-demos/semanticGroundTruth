@@ -185,7 +185,7 @@ export class AssetRegistry {
       [assetId],
     );
     if (!row) throw notFound(`Asset not found: ${assetId}`);
-    return rowToAsset(row);
+    return rowToAsset(row, await this.listSynonyms(assetId));
   }
 
   async list(q: ReviewableQuery): Promise<Paged<Asset>> {
@@ -218,8 +218,10 @@ export class AssetRegistry {
       [...params, limit, offset],
     );
 
+    const synonymsByAsset = await this.synonymsFor(rows.map((r) => String(r.id)));
+
     return {
-      items: rows.map(rowToAsset),
+      items: rows.map((r) => rowToAsset(r, synonymsByAsset.get(String(r.id)) ?? [])),
       total,
       limit,
       offset,
@@ -246,6 +248,29 @@ export class AssetRegistry {
       [assetId],
     );
     return rows.map(rowToSynonym);
+  }
+
+  /** Active synonyms for many assets in one query (Asset.synonyms on list pages). */
+  private async synonymsFor(assetIds: string[]): Promise<Map<string, AssetSynonym[]>> {
+    const byAsset = new Map<string, AssetSynonym[]>();
+    if (assetIds.length === 0) return byAsset;
+    const rows = await this.db.query(
+      `SELECT s.*,
+              COALESCE(SUM(CASE WHEN sv.action = 'approve' THEN 1 ELSE 0 END), 0)::int AS approvals,
+              COALESCE(SUM(CASE WHEN sv.action = 'reject' THEN 1 ELSE 0 END), 0)::int AS rejections
+       FROM app.asset_synonyms s
+       LEFT JOIN app.synonym_votes sv ON sv.synonym_id = s.id
+       WHERE s.asset_id = ANY($1::uuid[]) AND s.is_active = TRUE
+       GROUP BY s.id`,
+      [assetIds],
+    );
+    for (const row of rows) {
+      const syn = rowToSynonym(row);
+      const list = byAsset.get(syn.assetId) ?? [];
+      list.push(syn);
+      byAsset.set(syn.assetId, list);
+    }
+    return byAsset;
   }
 
   async listExamples(assetId: string): Promise<ExampleQuestion[]> {

@@ -1,10 +1,13 @@
 // client/src/components/review/CardStack.tsx — framer-motion drag + keyboard swipe
 // Session 17 · Wave 1 · vote-token overlay tint, ArrowUp=edit, S=skip, aria-live
+// Session 33 · Wave 4-1 · S / Skip button call POST /api/review/skip (skip is not a vote)
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import type { ReviewCard as ReviewCardType, VoteBody, VoteType } from '../../../../shared/contracts';
+import { useSkipCard } from '../../lib/api';
 import { ReviewCard } from './ReviewCard';
+import { SkipActionContext } from './SwipeActions';
 
 const SWIPE_THRESHOLD = 120;
 const VELOCITY_THRESHOLD = 600;
@@ -21,7 +24,6 @@ function overlayVar(type: VoteType): string {
     case 'approve': return 'var(--vote-approve)';
     case 'reject': return 'var(--vote-reject)';
     case 'edit': return 'var(--vote-edit)';
-    case 'skip': return 'var(--vote-skip)';
     default: return 'transparent';
   }
 }
@@ -56,13 +58,26 @@ export function CardStack({ card, onVote, disabled }: CardStackProps) {
       const action =
         body.voteType === 'approve' ? 'Approved' :
         body.voteType === 'reject' ? 'Rejected' :
-        body.voteType === 'edit' ? 'Editing' :
-        'Skipped';
+        'Editing';
       announce(`${action} ${label}`);
       onVote(body);
     },
     [onVote, card.asset.displayName, card.asset.name, announce],
   );
+
+  // Skip: POST /api/review/skip. Never a vote; the next card is refetched by the hook.
+  const skipMutation = useSkipCard();
+  const skipPending = skipMutation.isPending;
+  const skipMutate = skipMutation.mutate;
+  const skip = useCallback(() => {
+    if (skipPending) return;
+    const label = card.asset.displayName || card.asset.name;
+    announce(`Skipped ${label}`);
+    skipMutate({
+      assetId: card.asset.id,
+      ...(card.campaign ? { campaignId: card.campaign.campaignId } : {}),
+    });
+  }, [skipPending, skipMutate, card.asset.id, card.asset.displayName, card.asset.name, card.campaign, announce]);
 
   const swipeVote = useCallback(
     (type: VoteType) => {
@@ -81,11 +96,11 @@ export function CardStack({ card, onVote, disabled }: CardStackProps) {
       if (e.key === 'ArrowRight') { e.preventDefault(); swipeVote('approve'); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); swipeVote('reject'); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); swipeVote('edit'); }
-      else if (e.key === 's' || e.key === 'S') { e.preventDefault(); swipeVote('skip'); }
+      else if (e.key === 's' || e.key === 'S') { e.preventDefault(); skip(); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [swipeVote, disabled]);
+  }, [swipeVote, skip, disabled]);
 
   useEffect(() => {
     return () => clearTimeout(announcementTimeoutRef.current);
@@ -130,7 +145,9 @@ export function CardStack({ card, onVote, disabled }: CardStackProps) {
               style={{ backgroundColor: overlayColor, opacity: overlayOpacity }}
             />
           )}
-          <ReviewCard card={card} onVote={submit} disabled={disabled} />
+          <SkipActionContext.Provider value={skip}>
+            <ReviewCard card={card} onVote={submit} disabled={disabled || skipPending} />
+          </SkipActionContext.Provider>
         </motion.div>
       </AnimatePresence>
 

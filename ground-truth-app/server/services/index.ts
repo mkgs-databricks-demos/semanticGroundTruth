@@ -11,6 +11,8 @@ import { ReviewEngine } from './review';
 import { CampaignManager } from './campaign';
 import { NotificationService } from './notification';
 import { MembershipService } from './membership';
+import { StewardService } from './steward';
+import { UserSettingsService } from './settings';
 
 export interface Services {
   assets: AssetRegistry;
@@ -19,6 +21,8 @@ export interface Services {
   campaigns: CampaignManager;
   notifications: NotificationService;
   membership: MembershipService;
+  steward: StewardService;
+  settings: UserSettingsService;
   config: ConfigStore;
   db: Db;
   events: EventBus;
@@ -33,6 +37,8 @@ export function createServices(deps: ServiceDeps): Services {
   const review = new ReviewEngine(deps, assets, metricViews);
   const campaigns = new CampaignManager(deps, membership);
   const notifications = new NotificationService(deps);
+  const steward = new StewardService(deps, notifications);
+  const settings = new UserSettingsService(deps);
 
   campaigns.subscribe();
   notifications.subscribe();
@@ -44,6 +50,8 @@ export function createServices(deps: ServiceDeps): Services {
     campaigns,
     notifications,
     membership,
+    steward,
+    settings,
     config: deps.config,
     db: deps.db,
     events: deps.events,

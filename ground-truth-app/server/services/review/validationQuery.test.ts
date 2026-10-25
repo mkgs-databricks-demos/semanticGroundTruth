@@ -27,6 +27,7 @@ function makeAsset(
     subdomain: null,
     sourceId: null,
     sourceMetadata: null,
+    synonyms: [],
     createdAt: '2026-10-21T00:00:00Z',
     updatedAt: '2026-10-21T00:00:00Z',
     ...overrides,

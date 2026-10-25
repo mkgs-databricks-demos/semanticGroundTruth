@@ -10,6 +10,8 @@ export interface AppSettings {
   minVotesForCertification: number;
   stalenessDays: number;
   freshnessIntervalDays: number;
+  /** app_config skip_cooldown_hours (migration 009): a skipped asset is hidden from that user's queue this long. */
+  skipCooldownHours: number;
   adminEmails: string[];
   stewardEmails: string[];
   seedSampleAssets: boolean;
@@ -25,6 +27,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   minVotesForCertification: 5,
   stalenessDays: 90,
   freshnessIntervalDays: 180,
+  skipCooldownHours: 24,
   adminEmails: [],
   stewardEmails: [],
   seedSampleAssets: false,
@@ -42,6 +45,7 @@ const SNAKE_TO_CAMEL: Record<string, keyof AppSettings> = {
   min_votes_for_certification: 'minVotesForCertification',
   staleness_days: 'stalenessDays',
   freshness_interval_days: 'freshnessIntervalDays',
+  skip_cooldown_hours: 'skipCooldownHours',
   admin_emails: 'adminEmails',
   steward_emails: 'stewardEmails',
   seed_sample_assets: 'seedSampleAssets',

@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-24 | 4-1 | 33 | [Server: skip endpoint, user settings, steward triage APIs (G6 backend)](2026-10-24_w4-1-33-server-skip-settings-steward-api.md) | edit | pass | `mg-genie-build-4` |
 | 2026-10-24 | 4-0 | 32 | [UI design review + Figma Make brief + UI test strategy](2026-10-24_w4-0-32-ui-design-review-figma-brief.md) | edit | pass | `mg-genie-build-4` |
 | 2026-10-24 | 4-0 | 31 | [MCP App design for the review card](2026-10-24_w4-0-31-mcp-app-review-card-design.md) | edit | pass | `mg-genie-build-4` |
 | 2026-10-24 | 4-0 | 30 | [Research: Slack MCP notifications (G5)](2026-10-24_w4-0-30-slack-mcp-notifications-research.md) | edit | pass | `mg-genie-build-4` |

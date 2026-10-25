@@ -4,7 +4,8 @@
 import type { Application } from 'express';
 import type { Services } from '../services';
 import { asyncRoute } from '../lib/http';
-import { getUser, requireRole } from '../lib/context';
+import { validate } from '../lib/validate';
+import { requireRoleMiddleware } from '../middleware';
 import type { AppRuntimeConfig } from '../../shared/contracts/config';
 
 /**
@@ -19,10 +20,7 @@ export function resolveExecDashboardUrl(): string | null {
 }
 
 export function registerConfigRoutes(app: Application, _services: Services): void {
-  app.get('/api/config', asyncRoute(async (_req, res) => {
-    const user = getUser(res);
-    requireRole(user, 'reviewer');
-
+  app.get('/api/config', requireRoleMiddleware('reviewer'), validate({}), asyncRoute(async (_req, res) => {
     const config: AppRuntimeConfig = {
       executive_dashboard_url: resolveExecDashboardUrl(),
     };

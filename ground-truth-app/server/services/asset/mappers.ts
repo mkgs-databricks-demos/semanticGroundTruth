@@ -17,7 +17,14 @@ function toNum(val: unknown): number {
   return 0;
 }
 
-export function rowToAsset(row: Record<string, unknown>): Asset {
+/**
+ * Map an app.assets row to the Asset DTO. `synonyms` are loaded separately
+ * from app.asset_synonyms (AssetRegistry.get / list); [] when none.
+ */
+export function rowToAsset(
+  row: Record<string, unknown>,
+  synonyms: AssetSynonym[] = [],
+): Asset {
   return {
     id: row.id as string,
     assetType: row.asset_type as Asset['assetType'],
@@ -41,6 +48,7 @@ export function rowToAsset(row: Record<string, unknown>): Asset {
         ? JSON.parse(row.source_metadata as string) as Record<string, unknown>
         : row.source_metadata as Record<string, unknown>)
       : null,
+    synonyms,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
   };

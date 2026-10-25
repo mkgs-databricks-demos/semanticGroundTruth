@@ -39,4 +39,15 @@ export const queryKeys = {
 
   // Runtime config
   runtimeConfig: ['config'] as const,
+
+  // User settings (session 33)
+  mySettings: ['me', 'settings'] as const,
+
+  // Steward triage (session 33)
+  feedbackQueue: (params?: Record<string, unknown>) =>
+    ['steward', 'feedback-queue', params] as const,
+  conflicts: (params?: Record<string, unknown>) =>
+    ['steward', 'conflicts', params] as const,
+  feedbackBranches: (params?: Record<string, unknown>) =>
+    ['steward', 'feedback-branches', params] as const,
 } as const;

@@ -5,9 +5,11 @@ import type { Application } from 'express';
 import type { Services } from '../services';
 import { asyncRoute } from '../lib/http';
 import { logger } from '../lib/logger';
+import { validate } from '../lib/validate';
 
 export function registerHealthRoutes(app: Application, services: Services): void {
-  app.get('/health', asyncRoute(async (_req, res) => {
+  // Public (no role middleware); no request input.
+  app.get('/health', validate({}), asyncRoute(async (_req, res) => {
     let dbOk = false;
     let migrationCount = 0;
 

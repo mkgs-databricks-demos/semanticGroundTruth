@@ -15,6 +15,11 @@ import type {
   RegisterSourceBody,
   ReviewableQuery,
   UpdateCampaignStatusBody,
+  ConflictsQuery,
+  FeedbackBranchListQuery,
+  FeedbackQueueQuery,
+  ResolveConflictRequest,
+  UpdateFeedbackBranchStatusRequest,
 } from '../../../../shared/contracts';
 
 import {
@@ -58,6 +63,14 @@ import {
   updateCampaignStatus,
   updateNotificationPreferences,
   validateMetricView,
+  skipCard,
+  getMySettings,
+  updateMySettings,
+  getFeedbackQueue,
+  getConflicts,
+  resolveConflict,
+  getFeedbackBranches,
+  updateFeedbackBranchStatus,
 } from './endpoints';
 import { queryKeys } from './keys';
 
@@ -417,6 +430,84 @@ export function useRemoveGroupMember() {
 // ─────────────────────────────────────────────────────────────────────
 // Runtime config
 // ─────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────
+// Skip, user settings, steward triage (session 33)
+// ─────────────────────────────────────────────────────────────────────
+
+/** Skip the current card: refetch the next card (the skipped one is in cooldown) and stats. */
+export function useSkipCard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: skipCard,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['review', 'next'] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.userStats });
+      void queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+    },
+  });
+}
+
+export function useMySettings() {
+  return useQuery({
+    queryKey: queryKeys.mySettings,
+    queryFn: getMySettings,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useUpdateMySettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateMySettings,
+    onSuccess: (settings) => {
+      queryClient.setQueryData(queryKeys.mySettings, settings);
+    },
+  });
+}
+
+export function useFeedbackQueue(params?: Partial<FeedbackQueueQuery>) {
+  return useQuery({
+    queryKey: queryKeys.feedbackQueue(params as Record<string, unknown>),
+    queryFn: () => getFeedbackQueue(params),
+  });
+}
+
+export function useConflicts(params?: ConflictsQuery) {
+  return useQuery({
+    queryKey: queryKeys.conflicts(params as Record<string, unknown>),
+    queryFn: () => getConflicts(params),
+  });
+}
+
+export function useResolveConflict() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { assetId: string; body: ResolveConflictRequest }) =>
+      resolveConflict(vars.assetId, vars.body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['steward'] });
+    },
+  });
+}
+
+export function useFeedbackBranches(params?: FeedbackBranchListQuery) {
+  return useQuery({
+    queryKey: queryKeys.feedbackBranches(params as Record<string, unknown>),
+    queryFn: () => getFeedbackBranches(params),
+  });
+}
+
+export function useUpdateFeedbackBranchStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { batchId: string; body: UpdateFeedbackBranchStatusRequest }) =>
+      updateFeedbackBranchStatus(vars.batchId, vars.body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['steward', 'feedback-branches'] });
+    },
+  });
+}
 
 export function useRuntimeConfig() {
   return useQuery({
