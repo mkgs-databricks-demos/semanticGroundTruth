@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-26 | 4-6 | 38 | [Converge infra: feedback pipeline — attempt 2 stable, votes marked processed, idempotency run created no branch (run 655172288447819, w4-6 repair)](2026-10-26_w4-6-38-infra-converge-feedback-pipeline.md) | converge | pass | `mg-genie-build-4` |
 | 2026-10-26 | 4-6 | 38 | [Converge infra: feedback pipeline branch pushed and registered; votes not marked processed (run 655172288447819)](2026-10-26_w4-6-38-infra-converge-feedback-pipeline.md) | converge | blocked | `mg-genie-build-4` |
 | 2026-10-26 | 4-5 | 37 | [Converge infra: skips through CDF, bronze, metric views; G10 cleanup deployed (run 655172288447819)](2026-10-26_w4-5-37-infra-converge-skips-cdf.md) | converge | pass | `mg-genie-build-4` |
 | 2026-10-26 | 4-4 | 36 | [Converge app: session 35 defects fixed, attempt 1 stable (run 655172288447819)](2026-10-26_w4-4-36-app-converge-stable.md) | converge | pass | `mg-genie-build-4` |
