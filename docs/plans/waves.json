@@ -445,6 +445,7 @@
     {
       "wave_id": "4-0",
       "build": "4",
+      "archived": true,
       "name": "Edit: contracts + migration 009, toolchain + deps, feedback pipeline, skip metrics + G10, ops dashboard, research (Slack MCP, MCP App, UI)",
       "concurrency": 8,
       "gate": [
@@ -543,6 +544,7 @@
     {
       "wave_id": "4-1",
       "build": "4",
+      "archived": true,
       "name": "Edit: server skip, settings and steward triage APIs",
       "gate": [
         "All wave 4-1 sessions have status done",
@@ -568,6 +570,7 @@
     {
       "wave_id": "4-2",
       "build": "4",
+      "archived": true,
       "name": "Edit: MCP review_skip_card + MCP App review card",
       "gate": [
         "All wave 4-2 sessions have status done",
@@ -591,6 +594,7 @@
     {
       "wave_id": "4-3",
       "build": "4",
+      "archived": true,
       "name": "Edit: contract tests (in-process + live job)",
       "gate": [
         "All wave 4-3 sessions have status done",
@@ -615,7 +619,11 @@
       "wave_id": "4-4",
       "build": "4",
       "name": "Converge: app",
-      "gate": ["Session 36 status is pass with a final attempt classified stable"],
+      "gate": [
+        "Session 36 status is pass with a final attempt classified stable",
+        "Integrator runs the app checks in a copy of ground-truth-app (/tmp/gt-gate-4-4/, excluding node_modules, dist, .databricks) with the Node toolchain from docs/runbooks/node_toolchain_genie_code.md (nodeenv Node 22.16.0 + npm install -g pnpm@11.0.8, then pnpm install --frozen-lockfile). Check vitest = pnpm exec vitest run exits 0. Check tsc = pnpm exec tsc -b tsconfig.server.json and pnpm exec tsc -b tsconfig.client.json both exit 0. Report them in checks with names exactly vitest and tsc."
+      ],
+      "required_checks": ["tsc", "vitest"],
       "runtime_gate": ["app", "app_deploy_verification"],
       "sessions": [
         {
@@ -703,7 +711,11 @@
       "wave_id": "4-8",
       "build": "4",
       "name": "Converge: live contract tests at 100%",
-      "gate": ["Session 40 status is pass with a final attempt classified stable"],
+      "gate": [
+        "Session 40 status is pass with a final attempt classified stable",
+        "Integrator runs the app checks in a copy of ground-truth-app (/tmp/gt-gate-4-8/, excluding node_modules, dist, .databricks) with the Node toolchain from docs/runbooks/node_toolchain_genie_code.md (nodeenv Node 22.16.0 + npm install -g pnpm@11.0.8, then pnpm install --frozen-lockfile). Check vitest = pnpm exec vitest run exits 0. Check tsc = pnpm exec tsc -b tsconfig.server.json and pnpm exec tsc -b tsconfig.client.json both exit 0. Report them in checks with names exactly vitest and tsc."
+      ],
+      "required_checks": ["tsc", "vitest"],
       "runtime_gate": ["api_contract_tests", "api_contract_results", "app"],
       "sessions": [
         {
