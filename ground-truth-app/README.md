@@ -55,7 +55,7 @@ ground-truth-app/
 │   └── agents/
 │       ├── review-assistant/   # Markdown agent (default)
 │       ├── review-worker/      # Code agent (6 read-only tools)
-│       └── skills/             # review-guide, scoring-model, tracer-bullets
+│       └── (skills load from the agent_skills UC volume; sources in ../agent_skills/)
 ├── client/
 │   └── src/
 │       ├── App.tsx             # Router: /, /leaderboard, /steward, /admin, /executive, /assistant

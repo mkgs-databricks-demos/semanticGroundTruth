@@ -1,0 +1,39 @@
+# resources/jobs/sync_agent_skills.job.yml
+# Mirrors ../../agent_skills/ (git) into the agent skills UC volume, then
+# redeploys the app only if something changed (AppKit reads volume skills at boot).
+# Triggered by run_sync_agent_skills.job_run.yml when a skill file changes;
+# run by hand with `bundle run sync_agent_skills --target <t>`.
+
+resources:
+  jobs:
+    sync_agent_skills:
+      name: ${var.app_display_name}-sync-agent-skills
+      max_concurrent_runs: 1
+      parameters:
+        - name: source_dir
+          default: ${workspace.file_path}/agent_skills
+        - name: volume_path
+          default: /Volumes/${var.catalog}/${var.schema_name}/agent_skills
+        - name: app_name
+          default: ${var.app_display_name}
+      tasks:
+        - task_key: mirror
+          notebook_task:
+            notebook_path: ../../src/notebooks/sync_agent_skills.ipynb
+            base_parameters:
+              action: mirror
+        - task_key: check_changed
+          depends_on:
+            - task_key: mirror
+          condition_task:
+            op: EQUAL_TO
+            left: "{{tasks.mirror.values.changed}}"
+            right: "true"
+        - task_key: restart_app
+          depends_on:
+            - task_key: check_changed
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../../src/notebooks/sync_agent_skills.ipynb
+            base_parameters:
+              action: restart

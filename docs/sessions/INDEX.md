@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-26 | 4-4 | owner | [Agent skills UC volume, OTel table grants, wave 4-4 unblock](2026-10-26_agent-skills-volume-otel-grants.md) | interactive | done | `mg-genie-build-4` |
 | 2026-10-26 | 4-4 | 36 | [Converge app: migration 009, skip/settings/steward APIs, MCP App](2026-10-26_w4-4-36-app-converge.md) | converge | blocked | `mg-genie-build-4` |
 | 2026-10-26 | 4-3 | 35 | [Contract tests for every REST route and MCP tool](2026-10-26_w4-3-35-contract-tests.md) | edit | pass | `mg-genie-build-4` |
 | 2026-10-25 | 4-2 | 34 | [MCP: review_skip_card tool + interactive review card as an MCP App](2026-10-25_w4-2-34-mcp-skip-tool-mcp-app.md) | edit | pass | `mg-genie-build-4` |

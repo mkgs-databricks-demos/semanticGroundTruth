@@ -1,0 +1,12 @@
+# resources/jobs/run_sync_agent_skills.job_run.yml
+# Deploy hook: runs sync_agent_skills when a skill file changes.
+# Glob is relative to this file; single-level * only (skill/<file>).
+# Requires: engine: direct.
+
+resources:
+  job_runs:
+    run_sync_agent_skills:
+      job_id: ${resources.jobs.sync_agent_skills.id}
+      lifecycle:
+        triggers:
+          - on_file_change: "../../agent_skills/*/*"
