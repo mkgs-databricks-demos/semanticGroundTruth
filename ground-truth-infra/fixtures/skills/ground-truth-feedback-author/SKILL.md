@@ -83,7 +83,7 @@ One commit per batch.
 
 ## Final JSON summary (required)
 
-Keep your final response short (at most 5 lines of prose), then end it with exactly one fenced `json` block and nothing after it. The `register_feedback_branch` task reads your final response through `{{tasks.author_feedback_branch.output.response}}` and parses the last `json` block; very long responses can be cut off.
+Keep your final response short (at most 5 lines of prose), then end it with exactly one fenced `json` block and nothing after it. The `register_feedback_branch` task reads your final response from the Jobs API (`runs/get-output`, `genie_task_output.agent_output.response`) and parses the last `json` block; very long responses can be cut off.
 
 ```json
 {

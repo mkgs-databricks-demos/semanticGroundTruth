@@ -1,9 +1,11 @@
 # Metric View Fixture: mv_review_activity
 # Design source: L200-C9, L300-05
 # Source: bronze_lakebase_cdf (_source_table IN ('votes', 'review_skips'))
-#   votes        -> app.votes CDF rows (one row per vote; id set, skip_id NULL)
-#   review_skips -> app.review_skips CDF inserts (migration 009; skip_id set, id NULL).
+#   votes        -> app.votes, latest CDF row per vote (id set, skip_id NULL)
+#   review_skips -> app.review_skips, latest CDF row per skip (migration 009; skip_id set, id NULL).
 #                   A skip is NOT a vote: vote measures count id, skip measures count skip_id.
+#   Latest row per _record_key (same pattern as the other CDF views): Lakehouse Sync resnapshots
+#   (e.g. after a migration ALTERs a table) and updates re-emit rows that must not count twice.
 # Measures: Total Votes, Unique Reviewers, Approval Rate, Reject Count, Edit Count, skips, skip_rate
 
 name: mv_review_activity
@@ -29,8 +31,13 @@ sql: |
         DATE_TRUNC('MONTH', data:created_at::TIMESTAMP) AS vote_month,
         CAST(NULL AS STRING) AS skip_id,
         CAST(NULL AS STRING) AS skip_reason
-      FROM ${catalog}.${schema}.bronze_lakebase_cdf
-      WHERE _source_table = 'votes'
+      FROM (
+        SELECT data, _pg_change_type
+        FROM ${catalog}.${schema}.bronze_lakebase_cdf
+        WHERE _source_table = 'votes'
+          AND _pg_change_type <> 'update_preimage'
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY _record_key ORDER BY _sort_by DESC) = 1
+      ) WHERE _pg_change_type <> 'delete'
       UNION ALL
       SELECT
         CAST(NULL AS STRING) AS id,
@@ -46,9 +53,13 @@ sql: |
         DATE_TRUNC('MONTH', data:created_at::TIMESTAMP) AS vote_month,
         data:id::STRING AS skip_id,
         data:reason::STRING AS skip_reason
-      FROM ${catalog}.${schema}.bronze_lakebase_cdf
-      WHERE _source_table = 'review_skips'
-        AND _pg_change_type = 'insert'
+      FROM (
+        SELECT data, _pg_change_type
+        FROM ${catalog}.${schema}.bronze_lakebase_cdf
+        WHERE _source_table = 'review_skips'
+          AND _pg_change_type <> 'update_preimage'
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY _record_key ORDER BY _sort_by DESC) = 1
+      ) WHERE _pg_change_type <> 'delete'
     comment: Review activity metrics over the semantic ground truth vote history.
     dimensions:
       - name: asset_id

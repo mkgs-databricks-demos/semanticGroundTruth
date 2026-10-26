@@ -104,7 +104,11 @@ resources:
               branch_prefix: "{{job.parameters.branch_prefix}}"
               repo_path: "{{job.parameters.repo_path}}"
               dry_run: "{{job.parameters.dry_run}}"
-              genie_response: "{{tasks.author_feedback_branch.output.response}}"
+              # Empty on purpose: jobs/reset rejects {{tasks.<key>.output.*}} while author_feedback_branch
+              # is still the notebook placeholder at deploy time ("Unsupported task type for the 'output'
+              # namespace"), which failed every bundle deploy. The notebook reads the Genie Code final
+              # response from runs/get-output (genie_task_output.agent_output.response) instead.
+              genie_response: ""
               job_run_id: "{{job.run_id}}"
               bundle_target: "${bundle.target}"
               secret_scope: "${resources.secret_scopes.ground_truth_secret_scope.name}"
