@@ -1,0 +1,32 @@
+# resources/jobs/api_contract_tests.job.yml
+# Live API contract tests (session 35, build 4): calls the deployed app as the
+# M2M SPN, checks every route and MCP tool in tests/contract/manifest.json
+# (status, JSON Schema, exact seeded values), cleans up, writes one row per
+# check to <catalog>.<schema>.api_contract_results and fails on any miss.
+# Serverless (no cluster spec), no schedule: run after a deploy, e.g.
+#   databricks bundle run api_contract_tests --target dev
+# Name follows deploy_verification: dev = [dev matthew_giglia] dev-semantic-ground-truth-api-contract-tests
+
+resources:
+  jobs:
+    api_contract_tests:
+      name: ${var.app_display_name}-api-contract-tests
+      parameters:
+        - name: app_name
+          default: ${var.app_display_name}
+        - name: secret_scope
+          default: ${var.secret_scope_name}
+        - name: client_id_key
+          default: ${var.m2m_client_id_key}
+        - name: client_secret_key
+          default: ${var.m2m_client_secret_key}
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema_name}
+      tasks:
+        - task_key: api_contract_tests
+          notebook_task:
+            notebook_path: ../../src/notebooks/api_contract_tests.ipynb
+            base_parameters:
+              run_id: "{{job.run_id}}"

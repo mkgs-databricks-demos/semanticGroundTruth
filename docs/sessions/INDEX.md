@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-26 | 4-3 | 35 | [Contract tests for every REST route and MCP tool](2026-10-26_w4-3-35-contract-tests.md) | edit | pass | `mg-genie-build-4` |
 | 2026-10-25 | 4-2 | 34 | [MCP: review_skip_card tool + interactive review card as an MCP App](2026-10-25_w4-2-34-mcp-skip-tool-mcp-app.md) | edit | pass | `mg-genie-build-4` |
 | 2026-10-24 | 4-1 | 33 | [Server: skip endpoint, user settings, steward triage APIs (G6 backend)](2026-10-24_w4-1-33-server-skip-settings-steward-api.md) | edit | pass | `mg-genie-build-4` |
 | 2026-10-24 | 4-0 | 32 | [UI design review + Figma Make brief + UI test strategy](2026-10-24_w4-0-32-ui-design-review-figma-brief.md) | edit | pass | `mg-genie-build-4` |
