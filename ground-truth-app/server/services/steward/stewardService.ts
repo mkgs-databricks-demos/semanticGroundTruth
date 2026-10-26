@@ -386,7 +386,12 @@ export class StewardService {
 
   // ── POST /api/steward/feedback-branches (admin; feedback job via M2M) ──
 
-  /** Upsert by batchId (when given) or branchName. `created` is true for a new row. */
+  /**
+   * Upsert by batchId (when given) or branchName. `created` is true for a new row.
+   * For a 'proposed' branch, `voteIds` are marked processed right after the upsert. Db has no
+   * parameterised transaction, so this is a second statement; a retry is safe (the upsert is by
+   * branch name and only unprocessed votes are updated).
+   */
   async upsertFeedbackBranch(
     user: UserContext,
     req: UpsertFeedbackBranchRequest,
@@ -424,6 +429,18 @@ export class StewardService {
     }
     if (!row) throw new Error('feedback_batches upsert returned no row');
     const branch = rowToFeedbackBranch(row);
+
+    if (req.status === 'proposed' && req.voteIds?.length) {
+      const marked = await this.db.query<{ id: string }>(
+        `UPDATE app.votes SET is_processed = TRUE
+         WHERE id = ANY($1::uuid[]) AND NOT is_processed
+         RETURNING id`,
+        [req.voteIds],
+      );
+      logger.info('Feedback votes marked processed', {
+        branchName: branch.branchName, requested: req.voteIds.length, marked: marked.length,
+      });
+    }
 
     if (NOTIFY_ON_UPSERT.includes(req.status)) {
       await this.notifications.notify({

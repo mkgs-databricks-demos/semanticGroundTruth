@@ -140,14 +140,19 @@ def parse_genie_summary(text):
 
 
 def build_upsert_body(summary, batch_id, vote_ids):
-    """UpsertFeedbackBranchRequest {batchId?, branchName, files, summary?, status} (+ voteIds, see session 27 request)."""
+    """UpsertFeedbackBranchRequest {batchId?, branchName, files, summary?, status} (+ voteIds, see session 27 request).
+
+    `batchId` is NOT sent: in the app contract it is the id of an existing `app.feedback_batches` row
+    (the app answers 404 when it does not exist), while `batch_id` here is the staging batch id from
+    collect_feedback. Without it the app upserts by `branchName`. The staging batch id goes in `summary`.
+    """
     skipped = summary.get("skipped") or []
     text = (
         f"{len(summary.get('asset_ids') or [])} asset(s) changed in {len(summary.get('files') or [])} file(s); "
-        f"{len(skipped)} skipped; skill ground-truth-feedback-author {summary.get('skill_version') or 'unknown'}"
+        f"{len(skipped)} skipped; skill ground-truth-feedback-author {summary.get('skill_version') or 'unknown'}; "
+        f"staging batch {batch_id}"
     )
     return {
-        "batchId": batch_id,
         "branchName": summary["branch"],
         "files": list(summary.get("files") or []),
         "summary": text,

@@ -205,6 +205,14 @@ describe('steward triage request schemas', () => {
     expect(UpsertFeedbackBranchRequestSchema.safeParse({ ...body, branchName: 'main' }).success).toBe(false);
   });
 
+  it('UpsertFeedbackBranchRequestSchema keeps uuid voteIds and rejects others', () => {
+    const body = { branchName: 'mg-genie-feedback-20261024', files: ['a.yaml'], status: 'proposed' };
+    const voteIds = ['644eff17-327b-4a18-9563-68ebc160dd81'];
+    const parsed = UpsertFeedbackBranchRequestSchema.safeParse({ ...body, voteIds });
+    expect(parsed.success && parsed.data.voteIds).toEqual(voteIds);
+    expect(UpsertFeedbackBranchRequestSchema.safeParse({ ...body, voteIds: ['v1'] }).success).toBe(false);
+  });
+
   it('UpdateFeedbackBranchStatusRequestSchema allows only steward transitions', () => {
     expect(UpdateFeedbackBranchStatusRequestSchema.safeParse({ status: 'merged' }).success).toBe(true);
     expect(UpdateFeedbackBranchStatusRequestSchema.safeParse({ status: 'pending' }).success).toBe(false);

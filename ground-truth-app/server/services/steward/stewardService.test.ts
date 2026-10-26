@@ -275,6 +275,30 @@ describe('StewardService.upsertFeedbackBranch', () => {
     const { svc } = makeService([]);
     await expect(svc.upsertFeedbackBranch(STEWARD, { ...req, batchId: BATCH })).rejects.toMatchObject({ status: 404 });
   });
+
+  const VOTES = ['644eff17-327b-4a18-9563-68ebc160dd81', '4f81557c-0000-4000-8000-000000000001'];
+
+  it('marks voteIds processed for a proposed branch (unprocessed only)', async () => {
+    const { svc, calls } = makeService([
+      [/INSERT INTO app\.feedback_batches/, () => [batchRow()]],
+      [/UPDATE app\.votes SET is_processed = TRUE/, () => [{ id: VOTES[0] }]],
+    ]);
+    await svc.upsertFeedbackBranch(STEWARD, { ...req, voteIds: VOTES });
+    const mark = calls.find((c) => /UPDATE app\.votes/.test(c.sql))!;
+    expect(mark.sql).toMatch(/NOT is_processed/);
+    expect(mark.params).toEqual([VOTES]);
+    // after the branch row exists
+    expect(calls.findIndex((c) => /INSERT INTO app\.feedback_batches/.test(c.sql)))
+      .toBeLessThan(calls.indexOf(mark));
+  });
+
+  it('leaves votes unprocessed for failed or pending runs and when voteIds is empty', async () => {
+    for (const [status, voteIds] of [['failed', VOTES], ['pending', VOTES], ['proposed', []]] as const) {
+      const { svc, calls } = makeService([[/INSERT INTO app\.feedback_batches/, () => [batchRow({ status })]]]);
+      await svc.upsertFeedbackBranch(STEWARD, { ...req, status, voteIds: [...voteIds] });
+      expect(calls.some((c) => /UPDATE app\.votes/.test(c.sql))).toBe(false);
+    }
+  });
 });
 
 describe('StewardService.updateFeedbackBranchStatus', () => {

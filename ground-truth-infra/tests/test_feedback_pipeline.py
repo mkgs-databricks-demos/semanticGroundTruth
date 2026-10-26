@@ -176,7 +176,9 @@ def test_parse_summary_rejects_non_string_branch(register):
 
 def test_build_upsert_body_matches_contract(register):
     body = register["build_upsert_body"](SUMMARY, "b-1", ["v2", "v1"])
-    assert body["batchId"] == "b-1"
+    # batchId in the app contract is an existing app.feedback_batches id (404 otherwise), not the staging batch id.
+    assert "batchId" not in body
+    assert "staging batch b-1" in body["summary"]
     assert body["branchName"] == "mg-genie-feedback-20261024"
     assert body["files"] == SUMMARY["files"]
     assert body["status"] == "proposed"

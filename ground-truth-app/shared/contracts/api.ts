@@ -540,6 +540,8 @@ export const UpsertFeedbackBranchRequestSchema = z.object({
   files: z.array(z.string().min(1)),
   summary: z.string().max(20000).optional(),
   status: z.enum(FEEDBACK_BATCH_STATUSES),
+  /** Votes the branch addresses. Marked processed when status is 'proposed'; ignored otherwise. */
+  voteIds: z.array(uuid).max(1000).optional(),
 });
 export type UpsertFeedbackBranchRequest = z.infer<typeof UpsertFeedbackBranchRequestSchema>;
 // Response: FeedbackBranch (201 created, 200 updated)
