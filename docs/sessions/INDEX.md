@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-26 | 4-8 | 40 | [Converge app: live contract tests at 100% — 147 pass, 0 fail, coverage 100%, attempts 2-3 stable (run 655172288447819)](2026-10-26_w4-8-40-app-converge-contract-tests.md) | converge | pass | `mg-genie-build-4` |
 | 2026-10-26 | 4-7 | 39 | [Converge agent: operations dashboard published, 17/17 datasets execute, agent_verification 29/29, Genie probes 2/2 — attempt 1 stable (run 655172288447819)](2026-10-26_w4-7-39-agent-converge-ops-dashboard.md) | converge | pass | `mg-genie-build-4` |
 | 2026-10-26 | 4-6 | 38 | [Converge infra: feedback pipeline — attempt 2 stable, votes marked processed, idempotency run created no branch (run 655172288447819, w4-6 repair)](2026-10-26_w4-6-38-infra-converge-feedback-pipeline.md) | converge | pass | `mg-genie-build-4` |
 | 2026-10-26 | 4-6 | 38 | [Converge infra: feedback pipeline branch pushed and registered; votes not marked processed (run 655172288447819)](2026-10-26_w4-6-38-infra-converge-feedback-pipeline.md) | converge | blocked | `mg-genie-build-4` |

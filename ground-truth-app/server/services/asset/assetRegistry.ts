@@ -78,7 +78,7 @@ export class AssetRegistry {
       await this.db.query(
         `UPDATE app.assets
          SET version_hash = $1, yaml_content = $2, description = $3,
-             plain_english_logic = $4, display_name = $5,
+             plain_english_logic = $4, display_name = COALESCE($5, display_name, name),
              domain = $6, subdomain = $7,
              status = 'PENDING', updated_at = NOW()
          WHERE id = $8`,
@@ -115,7 +115,7 @@ export class AssetRegistry {
       [
         input.assetType,
         input.name,
-        input.displayName ?? null,
+        input.displayName ?? input.name,
         input.description ?? null,
         input.plainEnglishLogic ?? null,
         input.yamlContent,
@@ -228,7 +228,14 @@ export class AssetRegistry {
     };
   }
 
+  /** 404 for an unknown asset id, before any read or write that would otherwise hit a FK error or return []. */
+  private async requireAsset(assetId: string): Promise<void> {
+    const row = await this.db.one<{ id: string }>('SELECT id FROM app.assets WHERE id = $1', [assetId]);
+    if (!row) throw notFound(`Asset not found: ${assetId}`);
+  }
+
   async listVersions(assetId: string): Promise<AssetVersion[]> {
+    await this.requireAsset(assetId);
     const rows = await this.db.query(
       'SELECT * FROM app.asset_versions WHERE asset_id = $1 ORDER BY version DESC',
       [assetId],
@@ -274,6 +281,7 @@ export class AssetRegistry {
   }
 
   async listExamples(assetId: string): Promise<ExampleQuestion[]> {
+    await this.requireAsset(assetId);
     const rows = await this.db.query(
       'SELECT * FROM app.example_questions WHERE asset_id = $1 ORDER BY created_at',
       [assetId],
@@ -286,6 +294,7 @@ export class AssetRegistry {
     synonym: string,
     userId: string,
   ): Promise<void> {
+    await this.requireAsset(assetId);
     await this.db.query(
       `INSERT INTO app.asset_synonyms (asset_id, synonym, proposed_by)
        VALUES ($1, $2, $3)
@@ -317,6 +326,7 @@ export class AssetRegistry {
   }
 
   async removeSynonym(assetId: string, synonym: string): Promise<void> {
+    await this.requireAsset(assetId);
     await this.db.query(
       `UPDATE app.asset_synonyms SET is_active = FALSE
        WHERE asset_id = $1 AND synonym = $2`,
@@ -329,6 +339,7 @@ export class AssetRegistry {
     questionText: string,
     userId: string,
   ): Promise<void> {
+    await this.requireAsset(assetId);
     await this.db.query(
       `INSERT INTO app.example_questions (asset_id, question_text, proposed_by)
        VALUES ($1, $2, $3)`,

@@ -29,7 +29,8 @@ export function rowToAsset(
     id: row.id as string,
     assetType: row.asset_type as Asset['assetType'],
     name: row.name as string,
-    displayName: (row.display_name as string) ?? '',
+    // Rows registered before display_name defaulted to name have NULL here.
+    displayName: (row.display_name as string) ?? (row.name as string) ?? '',
     description: (row.description as string) ?? null,
     plainEnglishLogic: (row.plain_english_logic as string) ?? null,
     yamlContent: (row.yaml_content as string) ?? null,

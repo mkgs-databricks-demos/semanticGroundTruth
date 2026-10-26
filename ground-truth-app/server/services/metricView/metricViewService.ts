@@ -1,5 +1,5 @@
 import type { UserContext } from '../../lib/context';
-import { forbidden, badRequest } from '../../lib/errors';
+import { AppError, forbidden, badRequest, notFound } from '../../lib/errors';
 import { executeStatement } from '../../lib/databricks';
 import type {
   MetricViewSummary,
@@ -25,6 +25,27 @@ function defaultCatalog(): string {
 
 function defaultSchema(): string {
   return process.env.GT_METRIC_VIEW_SCHEMA ?? 'dev_matthew_giglia_semantic_ground_truth';
+}
+
+/** SQL error classes that mean the catalog, schema or table does not exist. */
+const NOT_FOUND_SQL_RE = /\[(TABLE_OR_VIEW_NOT_FOUND|SCHEMA_NOT_FOUND|NO_SUCH_CATALOG_EXCEPTION|CATALOG_NOT_FOUND)\b/;
+/** A SQL error class prefix, e.g. "[UNRESOLVED_COLUMN.WITH_SUGGESTION] ...": the statement ran and failed. */
+const SQL_ERROR_CLASS_RE = /^\s*\[[A-Z][A-Z0-9_.]*\]/;
+
+/**
+ * Run a warehouse call and turn a "does not exist" SQL failure (reported by
+ * executeStatement as UPSTREAM_ERROR) into NOT_FOUND with `message`. Other
+ * errors pass through unchanged (502 stays 502).
+ */
+async function orNotFound<T>(fn: () => Promise<T>, message: string): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err instanceof AppError && err.code === 'UPSTREAM_ERROR' && NOT_FOUND_SQL_RE.test(err.message)) {
+      throw notFound(message);
+    }
+    throw err;
+  }
 }
 
 function requireSafeIdent(value: string, label: string): void {
@@ -55,14 +76,14 @@ export class MetricViewService {
     catalog: string,
   ): Promise<{ name: string; fullName: string; comment: string | null }[]> {
     requireSafeIdent(catalog, 'catalog');
-    const result = await executeStatement({
+    const result = await orNotFound(() => executeStatement({
       token,
       statement:
         `SELECT schema_name, comment
          FROM \`${catalog}\`.information_schema.schemata
          WHERE schema_name NOT IN ('information_schema')
          ORDER BY schema_name`,
-    });
+    }), `Catalog not found: ${catalog}`);
     return result.rows.map((row) => ({
       name: row[0] as string,
       fullName: `${catalog}.${row[0] as string}`,
@@ -77,19 +98,26 @@ export class MetricViewService {
   ): Promise<MetricViewSummary[]> {
     requireSafeIdent(catalog, 'catalog');
     requireSafeIdent(schema, 'schema');
-    const result = await executeStatement({
+    // One round trip: the schema row (LEFT JOIN its metric views). No row at all
+    // means the schema does not exist (404); a row with a NULL table_name means
+    // the schema exists but has no metric views ([]).
+    const result = await orNotFound(() => executeStatement({
       token,
       statement:
-        `SELECT table_catalog, table_schema, table_name, comment
-         FROM \`${catalog}\`.information_schema.tables
-         WHERE table_type = 'METRIC_VIEW'
-           AND table_schema = :schema
-         ORDER BY table_name`,
+        `SELECT t.table_catalog, t.table_schema, t.table_name, t.comment
+         FROM \`${catalog}\`.information_schema.schemata s
+         LEFT JOIN \`${catalog}\`.information_schema.tables t
+           ON t.table_schema = s.schema_name AND t.table_type = 'METRIC_VIEW'
+         WHERE s.schema_name = :schema
+         ORDER BY t.table_name`,
       parameters: [
         { name: 'schema', value: schema },
       ],
-    });
-    return result.rows.map((row) => ({
+    }), `Catalog not found: ${catalog}`);
+    if (result.rows.length === 0) {
+      throw notFound(`Schema not found: ${catalog}.${schema}`);
+    }
+    return result.rows.filter((row) => row[2] != null).map((row) => ({
       fullName: `${row[0] as string}.${row[1] as string}.${row[2] as string}`,
       comment: (row[3] as string) ?? null,
       measureCount: 0,
@@ -142,10 +170,10 @@ export class MetricViewService {
     const token = requireToken(user);
     const [catalog, schema, table] = fullName.split('.');
 
-    const result = await executeStatement({
+    const result = await orNotFound(() => executeStatement({
       token,
       statement: `DESCRIBE TABLE EXTENDED \`${catalog}\`.\`${schema}\`.\`${table}\` AS JSON`,
-    });
+    }), `Metric view not found: ${fullName}`);
 
     // Extract view_text (YAML) from the DESCRIBE result
     let yaml = '';
@@ -182,11 +210,17 @@ export class MetricViewService {
     user: UserContext,
     fullName: string,
   ): Promise<{ valid: boolean; error?: string }> {
+    // Request errors keep their status: a bad name is 400, a missing view 404,
+    // no OBO token 403, an unreachable warehouse 502. Only a statement that ran
+    // and failed with a SQL error class means the view itself is invalid.
     try {
       await this.get(user, fullName);
       return { valid: true };
     } catch (err) {
-      return { valid: false, error: (err as Error).message };
+      if (err instanceof AppError && err.code === 'UPSTREAM_ERROR' && SQL_ERROR_CLASS_RE.test(err.message)) {
+        return { valid: false, error: err.message };
+      }
+      throw err;
     }
   }
 

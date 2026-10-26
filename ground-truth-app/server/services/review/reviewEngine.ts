@@ -108,6 +108,12 @@ export class ReviewEngine {
     let campaignJoin = '';
 
     if (q.campaignId) {
+      // An unknown campaign is a 404, not an empty queue.
+      const campaignRow = await this.db.one<{ id: string }>(
+        'SELECT id FROM app.campaigns WHERE id = $1',
+        [q.campaignId],
+      );
+      if (!campaignRow) throw notFound(`Campaign not found: ${q.campaignId}`);
       campaignJoin = `JOIN app.campaign_assets ca ON ca.asset_id = a.id
                         AND ca.campaign_id = $${idx} AND ca.status = 'pending'`;
       params.push(q.campaignId);
@@ -533,7 +539,8 @@ export class ReviewEngine {
       'SELECT version_hash FROM app.assets WHERE id = $1',
       [assetId],
     );
-    const versionHash = hashRow?.version_hash ?? '';
+    if (!hashRow) throw notFound(`Asset not found: ${assetId}`);
+    const versionHash = hashRow.version_hash ?? '';
 
     // Count by vote_type at current version
     const rows = await this.db.query<{ vote_type: string; cnt: string }>(
