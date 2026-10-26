@@ -10,17 +10,18 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Services } from '../../services';
 import type { UserContext } from '../../lib/context';
+import { forbidden } from '../../lib/errors';
 import { registerContractTool } from './define';
+
+// Session 36 · Wave 4-4: list results are wrapped as { items } (structuredContent
+// must be an object); requireObo throws forbidden() so toToolError maps it to FORBIDDEN.
 
 function requireObo(user: UserContext): void {
   if (!user.accessToken) {
-    throw Object.assign(
-      new Error(
-        'OBO token unavailable. Metric view tools require a user access token, ' +
-        'which is not forwarded over M2M MCP connections. Use the web UI or a ' +
-        'direct MCP client with user authentication.',
-      ),
-      { code: 'FORBIDDEN', status: 403 },
+    throw forbidden(
+      'OBO token unavailable. Metric view tools require a user access token, ' +
+      'which is not forwarded over M2M MCP connections. Use the web UI or a ' +
+      'direct MCP client with user authentication.',
     );
   }
 }
@@ -42,7 +43,7 @@ export function registerMetricViewTools(
       const text = views.length > 0
         ? views.map((v) => `- **${v.fullName}**${v.comment ? `: ${v.comment}` : ''}`).join('\n')
         : 'No metric views found.';
-      return { text, data: views };
+      return { text, data: { items: views } };
     },
   });
 

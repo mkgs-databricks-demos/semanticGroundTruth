@@ -10,6 +10,11 @@ export default defineConfig({
   test: {
     passWithNoTests: true,
     globals: true,
+    // Session 36: print console output only for failing tests. Error-path tests
+    // log JSON lines with "level":"error" on purpose; the Apps build runs
+    // vitest in prebuild, and those lines landed in the app's BUILD logs as
+    // ERROR rows that the runtime gate counts. Failing tests still show logs.
+    silent: 'passed-only',
     exclude: ['**/node_modules/**', '**/dist/**', '**/.databricks/**', '**/.venv/**'],
     projects: [
       {

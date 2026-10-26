@@ -18,7 +18,7 @@ import { ALL_MCP_TOOL_NAMES, MCP_TOOL_CONTRACTS } from '../../shared/contracts/s
 import type { McpToolContract } from '../../shared/contracts/schemas';
 import { connectMcp, newEnv, toolText } from './harness';
 import { REVIEWER } from './fixtures';
-import { KNOWN_DEFECTS, TOOL_CASES } from './toolCases';
+import { TOOL_CASES } from './toolCases';
 import type { ToolCall } from './toolCases';
 import { UI_TOOLS } from './manifest';
 
@@ -119,16 +119,17 @@ for (const t of MCP_TOOL_CONTRACTS) {
       tc.happy.after?.(env.store);
     });
 
-    if (tc.happy.knownDefect === KNOWN_DEFECTS.bareArrayStructuredContent) {
-      // Characterises the defect over raw JSON-RPC (no SDK client): the server's own
-      // result validation rejects the bare-array structuredContent, so every MCP
-      // client gets JSON-RPC error -32602. The values are covered by the route suite.
-      it('[known defect] server answers JSON-RPC -32602: structuredContent must be an object', async () => {
+    // Over raw JSON-RPC (no SDK client) too: structuredContent is an object, so the
+    // server's own result validation accepts it (session 36 fixed the bare arrays).
+    if (!tc.happy.knownDefect) {
+      it('raw JSON-RPC result carries an object structuredContent', async () => {
         const { response } = await callRaw(t, tc.happy);
-        expect(response.result).toBeUndefined();
-        expect(response.error?.code).toBe(-32602);
-        expect(response.error?.message).toContain('structuredContent');
-        expect(response.error?.message).toContain('expected record, received array');
+        expect(response.error).toBeUndefined();
+        const structured = (response.result as { structuredContent?: unknown } | undefined)?.structuredContent;
+        if (structured !== undefined) {
+          expect(typeof structured).toBe('object');
+          expect(Array.isArray(structured)).toBe(false);
+        }
       });
     }
 

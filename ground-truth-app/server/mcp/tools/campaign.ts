@@ -19,7 +19,7 @@ export function registerCampaignTools(
     description: 'List review campaigns. Optionally filter by status.',
     handler: async (args) => {
       const campaigns = await services.campaigns.list(user, { status: args.status });
-      return { text: renderCampaignsMarkdown(campaigns), data: campaigns };
+      return { text: renderCampaignsMarkdown(campaigns), data: { items: campaigns } };
     },
   });
 

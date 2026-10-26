@@ -693,15 +693,15 @@ export const MCP_TOOL_CONTRACTS: readonly McpToolContract[] = [
   { name: 'review_get_next', role: 'reviewer', input: z.object(McpToolShapes.review_get_next), output: ReviewCardSchema, emptyText: 'No more assets to review.' },
   // asset_id is optional at runtime: it defaults to the current MCP review session asset.
   { name: 'review_submit_vote', role: 'reviewer', input: z.object({ ...McpToolShapes.review_submit_vote, asset_id: z.string().uuid().optional() }), output: VoteResultSchema },
-  // structuredContent is currently a bare array for the next four list tools.
-  { name: 'review_add_synonym', role: 'reviewer', input: z.object(McpToolShapes.review_add_synonym), output: z.array(AssetSynonymSchema) },
-  { name: 'review_add_example', role: 'reviewer', input: z.object(McpToolShapes.review_add_example), output: z.array(ExampleQuestionSchema) },
+  // structuredContent must be an object (MCP CallToolResult): list tools wrap their array as { items } (session 36).
+  { name: 'review_add_synonym', role: 'reviewer', input: z.object(McpToolShapes.review_add_synonym), output: z.object({ items: z.array(AssetSynonymSchema) }) },
+  { name: 'review_add_example', role: 'reviewer', input: z.object(McpToolShapes.review_add_example), output: z.object({ items: z.array(ExampleQuestionSchema) }) },
   { name: 'review_get_stats', role: 'reviewer', input: z.object(McpToolShapes.review_get_stats), output: UserStatsSchema },
   { name: 'review_run_query', role: 'reviewer', input: z.object(McpToolShapes.review_run_query), output: QueryResultSchema },
-  { name: 'campaign_list', role: 'reviewer', input: z.object(McpToolShapes.campaign_list), output: z.array(CampaignSchema) },
+  { name: 'campaign_list', role: 'reviewer', input: z.object(McpToolShapes.campaign_list), output: z.object({ items: z.array(CampaignSchema) }) },
   { name: 'campaign_create', role: 'steward', input: z.object(McpToolShapes.campaign_create), output: CampaignSchema },
   { name: 'campaign_update_status', role: 'steward', input: z.object(McpToolShapes.campaign_update_status), output: CampaignSchema },
-  { name: 'metric_view_list', role: 'reviewer', input: z.object(McpToolShapes.metric_view_list), output: z.array(MetricViewSummarySchema) },
+  { name: 'metric_view_list', role: 'reviewer', input: z.object(McpToolShapes.metric_view_list), output: z.object({ items: z.array(MetricViewSummarySchema) }) },
   { name: 'metric_view_get', role: 'reviewer', input: z.object(McpToolShapes.metric_view_get), output: MetricViewDetailSchema },
   { name: 'metric_view_validate', role: 'reviewer', input: z.object(McpToolShapes.metric_view_validate), output: ValidateResultSchema },
   { name: 'review_skip_card', role: 'reviewer', input: z.object(McpToolShapes.review_skip_card), output: SkipResponseSchema, plannedIn: 'session 34' },

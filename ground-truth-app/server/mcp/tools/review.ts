@@ -134,7 +134,7 @@ export function registerReviewTools(
       }
       const synonyms = await services.assets.listSynonyms(args.asset_id);
       const text = `Synonym "${args.synonym}" ${args.action}d. Asset now has ${synonyms.length} synonym(s).`;
-      return { text, data: synonyms };
+      return { text, data: { items: synonyms } };
     },
   });
 
@@ -153,7 +153,7 @@ export function registerReviewTools(
       }
       const examples = await services.assets.listExamples(args.asset_id);
       const text = `Example ${args.action}d. Asset now has ${examples.length} example(s).`;
-      return { text, data: examples };
+      return { text, data: { items: examples } };
     },
   });
 

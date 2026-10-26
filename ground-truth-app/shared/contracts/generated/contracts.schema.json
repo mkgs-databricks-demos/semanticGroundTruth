@@ -183,9 +183,9 @@
     "res_GET_api_steward_feedback_queue": {"type":"object","properties":{"items":{"type":"array","items":{"$ref":"#/$defs/FeedbackQueueItem"}},"total":{"type":"integer","minimum":0,"maximum":9007199254740991},"limit":{"type":"integer","minimum":1,"maximum":9007199254740991},"offset":{"type":"integer","minimum":0,"maximum":9007199254740991}},"required":["items","total","limit","offset"],"additionalProperties":false},
     "res_GET_api_steward_conflicts": {"type":"array","items":{"$ref":"#/$defs/ConflictGroup"}},
     "res_GET_api_steward_feedback_branches": {"type":"array","items":{"$ref":"#/$defs/FeedbackBranch"}},
-    "mcp_out_review_add_synonym": {"type":"array","items":{"$ref":"#/$defs/AssetSynonym"}},
-    "mcp_out_review_add_example": {"type":"array","items":{"$ref":"#/$defs/ExampleQuestion"}},
-    "mcp_out_campaign_list": {"type":"array","items":{"$ref":"#/$defs/Campaign"}},
-    "mcp_out_metric_view_list": {"type":"array","items":{"$ref":"#/$defs/MetricViewSummary"}}
+    "mcp_out_review_add_synonym": {"type":"object","properties":{"items":{"type":"array","items":{"$ref":"#/$defs/AssetSynonym"}}},"required":["items"],"additionalProperties":false},
+    "mcp_out_review_add_example": {"type":"object","properties":{"items":{"type":"array","items":{"$ref":"#/$defs/ExampleQuestion"}}},"required":["items"],"additionalProperties":false},
+    "mcp_out_campaign_list": {"type":"object","properties":{"items":{"type":"array","items":{"$ref":"#/$defs/Campaign"}}},"required":["items"],"additionalProperties":false},
+    "mcp_out_metric_view_list": {"type":"object","properties":{"items":{"type":"array","items":{"$ref":"#/$defs/MetricViewSummary"}}},"required":["items"],"additionalProperties":false}
   }
 }

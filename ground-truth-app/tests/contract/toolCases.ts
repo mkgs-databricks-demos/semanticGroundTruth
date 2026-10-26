@@ -44,16 +44,12 @@ export interface ToolError extends ToolCall {
 }
 
 /**
- * Defects found by this suite in code outside session 35's paths. Each test
- * marked with one runs as `it.fails`, so it turns red (and must be unmarked)
- * the moment the server is fixed. Listed in the session 35 status file.
+ * Defects found by this suite in server code. Each test marked with one runs as
+ * `it.fails`, so it turns red (and must be unmarked) the moment the server is
+ * fixed. None open: session 36 fixed bareArrayStructuredContent (list tools now
+ * return { items }) and oboErrorIsInternal (requireObo throws forbidden()).
  */
-export const KNOWN_DEFECTS = {
-  bareArrayStructuredContent:
-    'server/mcp/tools: structuredContent is a bare array; MCP CallToolResult requires an object, so the SDK client rejects the result (-32602). Wrap as { items: [...] } and update MCP_TOOL_CONTRACTS output.',
-  oboErrorIsInternal:
-    'server/mcp/tools/metricView.ts requireObo throws a plain Error with code FORBIDDEN; toToolError maps it to INTERNAL. Throw forbidden() from server/lib/errors.',
-} as const;
+export const KNOWN_DEFECTS: Readonly<Record<string, string>> = {};
 
 /** Reviewer with an OBO token (the metric view tools require one). */
 export const REVIEWER_OBO: UserContext = { ...REVIEWER, accessToken: 'obo-token-reviewer' };
@@ -118,8 +114,7 @@ export const TOOL_CASES: Record<string, ToolCase> = {
   review_add_synonym: {
     happy: {
       args: { asset_id: IDS.A1, action: 'approve', synonym: 'sales' },
-      expected: () => [SYNONYMS[0], { ...SYNONYMS[1], approvals: 2 }],
-      knownDefect: KNOWN_DEFECTS.bareArrayStructuredContent,
+      expected: () => ({ items: [SYNONYMS[0], { ...SYNONYMS[1], approvals: 2 }] }),
     },
     invalid: { asset_id: IDS.A1, action: 'merge', synonym: 'sales' },
     errors: [
@@ -130,11 +125,12 @@ export const TOOL_CASES: Record<string, ToolCase> = {
   review_add_example: {
     happy: {
       args: { asset_id: IDS.A1, action: 'add', question_text: 'Revenue by region this year?' },
-      expected: () => [
-        ...EXAMPLES,
-        { id: GEN(1), assetId: IDS.A1, questionText: 'Revenue by region this year?', proposedBy: REVIEWER.userId, approved: false, createdAt: NOW },
-      ],
-      knownDefect: KNOWN_DEFECTS.bareArrayStructuredContent,
+      expected: () => ({
+        items: [
+          ...EXAMPLES,
+          { id: GEN(1), assetId: IDS.A1, questionText: 'Revenue by region this year?', proposedBy: REVIEWER.userId, approved: false, createdAt: NOW },
+        ],
+      }),
     },
     invalid: { asset_id: IDS.A1, action: 'add', question_text: '' },
     errors: [{ args: { asset_id: IDS.A1, action: 'reject', question_id: IDS.UNKNOWN }, code: 'NOT_FOUND' }],
@@ -157,7 +153,7 @@ export const TOOL_CASES: Record<string, ToolCase> = {
     ],
   },
   campaign_list: {
-    happy: { args: { status: 'paused' }, expected: () => [CAMPAIGNS[1]], knownDefect: KNOWN_DEFECTS.bareArrayStructuredContent },
+    happy: { args: { status: 'paused' }, expected: () => ({ items: [CAMPAIGNS[1]] }) },
     invalid: { status: 'live' },
   },
   campaign_create: {
@@ -190,13 +186,12 @@ export const TOOL_CASES: Record<string, ToolCase> = {
     happy: {
       user: REVIEWER_OBO,
       args: { catalog: 'hls_fde_dev', schema: 'ground_truth' },
-      expected: () => [summary],
-      knownDefect: KNOWN_DEFECTS.bareArrayStructuredContent,
+      expected: () => ({ items: [summary] }),
     },
     invalid: { catalog: 42 },
     errors: [
       { user: REVIEWER_OBO, args: {}, setup: (s) => { s.upstreamDown = true; }, code: 'UPSTREAM_ERROR' },
-      { args: {}, code: 'FORBIDDEN', knownDefect: KNOWN_DEFECTS.oboErrorIsInternal },
+      { args: {}, code: 'FORBIDDEN' },
     ],
   },
   metric_view_get: {
@@ -204,7 +199,7 @@ export const TOOL_CASES: Record<string, ToolCase> = {
     invalid: { full_name: '' },
     errors: [
       { user: REVIEWER_OBO, args: { full_name: 'hls_fde_dev.ground_truth.mv_missing' }, code: 'NOT_FOUND' },
-      { args: { full_name: METRIC_VIEW_FQN }, code: 'FORBIDDEN', knownDefect: KNOWN_DEFECTS.oboErrorIsInternal },
+      { args: { full_name: METRIC_VIEW_FQN }, code: 'FORBIDDEN' },
     ],
   },
   metric_view_validate: {
@@ -216,7 +211,7 @@ export const TOOL_CASES: Record<string, ToolCase> = {
     invalid: {},
     errors: [
       { user: REVIEWER_OBO, args: { full_name: 'hls_fde_dev.ground_truth.mv_missing' }, code: 'NOT_FOUND' },
-      { args: { full_name: METRIC_VIEW_FQN }, code: 'FORBIDDEN', knownDefect: KNOWN_DEFECTS.oboErrorIsInternal },
+      { args: { full_name: METRIC_VIEW_FQN }, code: 'FORBIDDEN' },
     ],
   },
   review_skip_card: {
