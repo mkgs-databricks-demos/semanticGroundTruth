@@ -1,5 +1,16 @@
 import type { CSSProperties, ReactNode } from 'react'
 
+const assetModules = import.meta.glob<string>('../assets/brand/*.svg', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+})
+
+function brandUrl(file: string) {
+  const entry = Object.entries(assetModules).find(([path]) => path.endsWith(`/${file}`))
+  return entry?.[1] ?? `/brand/${file}`
+}
+
 const iconFiles: Record<string, string> = {
   review: 'checklistIcon.svg',
   checklist: 'checklistIcon.svg',
@@ -64,7 +75,7 @@ export function BrandIcon({
     )
   }
 
-  const url = `url("/brand/${file}")`
+  const url = `url("${brandUrl(file)}")`
   return (
     <span
       aria-hidden="true"
@@ -84,8 +95,8 @@ export function BrandIcon({
 export function BrandLogo() {
   return (
     <span className="brand-logo" aria-hidden="true">
-      <img className="brand-logo-light" src="/brand/databricks-symbol-color.svg" alt="" />
-      <img className="brand-logo-dark" src="/brand/databricks-symbol-light.svg" alt="" />
+      <img className="brand-logo-light" src={brandUrl('databricks-symbol-color.svg')} alt="" />
+      <img className="brand-logo-dark" src={brandUrl('databricks-symbol-light.svg')} alt="" />
     </span>
   )
 }
@@ -99,7 +110,7 @@ export function BrandProductIcon({
   label: string
   className?: string
 }) {
-  return <img className={`brand-product-icon ${className}`} src={`/brand/${file}`} alt={label} />
+  return <img className={`brand-product-icon ${className}`} src={brandUrl(file)} alt={label} />
 }
 
 export function BrandIllustration({ name }: { name: string }) {
@@ -107,12 +118,12 @@ export function BrandIllustration({ name }: { name: string }) {
     <span className="brand-illustration" aria-hidden="true">
       <img
         className="brand-illustration-light"
-        src={`/brand/primary-icon-navy-${name}.svg`}
+        src={brandUrl(`primary-icon-navy-${name}.svg`)}
         alt=""
       />
       <img
         className="brand-illustration-dark"
-        src={`/brand/primary-icon-white-${name}.svg`}
+        src={brandUrl(`primary-icon-white-${name}.svg`)}
         alt=""
       />
     </span>
