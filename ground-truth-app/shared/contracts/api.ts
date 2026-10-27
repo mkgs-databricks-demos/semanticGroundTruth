@@ -19,10 +19,21 @@ import {
   ASSET_TYPES,
   CAMPAIGN_STATUSES,
   CAMPAIGN_TYPES,
+  CARDS_PER_SESSION_MAX,
+  CARDS_PER_SESSION_MIN,
   COMPLETION_RULES,
+  CONFLICT_RESOLUTIONS,
+  DENSITIES,
   ENVIRONMENTS,
+  FEEDBACK_BATCH_STATUSES,
+  FEEDBACK_BRANCH_REVIEW_STATUSES,
+  MOTION_PREFS,
   NOTIFICATION_CHANNELS,
   NOTIFICATION_EVENT_TYPES,
+  SKIP_COOLDOWN_HOURS_MAX,
+  SKIP_COOLDOWN_HOURS_MIN,
+  SKIP_REASONS,
+  THEMES,
   VOTE_TYPES,
 } from './values';
 import type { AssetStatus, Role } from './values';
@@ -221,6 +232,7 @@ export const UpdateConfigBodySchema = z.object({
   minVotesForCertification: z.number().int().positive().optional(),
   stalenessDays: z.number().int().positive().optional(),
   freshnessIntervalDays: z.number().int().positive().optional(),
+  skipCooldownHours: z.number().int().min(SKIP_COOLDOWN_HOURS_MIN).max(SKIP_COOLDOWN_HOURS_MAX).optional(),
   adminEmails: z.array(z.string().email()).optional(),
   stewardEmails: z.array(z.string().email()).optional(),
 });
@@ -414,3 +426,131 @@ export const RemoveGroupMemberParamSchema = z.object({
   memberId: z.string().min(1),
 });
 export type RemoveGroupMemberParam = z.infer<typeof RemoveGroupMemberParamSchema>;
+
+// ──────────────────────────────────────────────────────────────────────
+// Path params (plan 25: one schema per path param set)
+// ──────────────────────────────────────────────────────────────────────
+
+export const AssetIdParamSchema = z.object({ assetId: uuid });
+export type AssetIdParam = z.infer<typeof AssetIdParamSchema>;
+
+export const CampaignIdParamSchema = z.object({ campaignId: uuid });
+export type CampaignIdParam = z.infer<typeof CampaignIdParamSchema>;
+
+export const SourceIdParamSchema = z.object({ id: uuid });
+export type SourceIdParam = z.infer<typeof SourceIdParamSchema>;
+
+export const MetricViewFullNameParamSchema = z.object({ fullName: z.string().min(1) });
+export type MetricViewFullNameParam = z.infer<typeof MetricViewFullNameParamSchema>;
+
+export const BatchIdParamSchema = z.object({ batchId: uuid });
+export type BatchIdParam = z.infer<typeof BatchIdParamSchema>;
+
+// ──────────────────────────────────────────────────────────────────────
+// Skips (plan 25; route in session 33)
+// ──────────────────────────────────────────────────────────────────────
+
+// ── Review: POST /api/review/skip ───────────────────────────────────────
+
+export const SkipRequestSchema = z.object({
+  assetId: uuid,
+  campaignId: uuid.optional(),
+  reason: z.enum(SKIP_REASONS).optional(),
+});
+export type SkipRequest = z.infer<typeof SkipRequestSchema>;
+// Response: SkipResponse (review.ts)
+
+// ──────────────────────────────────────────────────────────────────────
+// User settings (plan 25; routes in session 33)
+// ──────────────────────────────────────────────────────────────────────
+
+// ── Me: PUT /api/me/settings (partial update, upsert) ───────────────────
+
+export const UpdateUserSettingsRequestSchema = z.object({
+  theme: z.enum(THEMES).optional(),
+  density: z.enum(DENSITIES).optional(),
+  motion: z.enum(MOTION_PREFS).optional(),
+  defaultCampaignId: uuid.nullable().optional(),
+  defaultAssetType: z.enum(ASSET_TYPES).nullable().optional(),
+  showKeyboardHints: z.boolean().optional(),
+  cardsPerSession: z.number().int().min(CARDS_PER_SESSION_MIN).max(CARDS_PER_SESSION_MAX).optional(),
+}).strict().refine(
+  (d) => Object.keys(d).length > 0,
+  { message: 'At least one setting must be provided' },
+);
+export type UpdateUserSettingsRequest = z.infer<typeof UpdateUserSettingsRequestSchema>;
+// Response (GET and PUT): UserSettings (entities)
+
+// ──────────────────────────────────────────────────────────────────────
+// Steward triage (plan 25; routes in session 33)
+// ──────────────────────────────────────────────────────────────────────
+
+// ── Steward: GET /api/steward/feedback-queue ───────────────────────────
+
+export const FeedbackQueueQuerySchema = z.object({
+  campaignId: uuid.optional(),
+  assetType: z.enum(ASSET_TYPES).optional(),
+  status: z.enum(['pending', 'all']).default('pending'),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+export type FeedbackQueueQuery = z.infer<typeof FeedbackQueueQuerySchema>;
+// Response: Paged<FeedbackQueueItem>
+
+// ── Steward: GET /api/steward/conflicts ────────────────────────────────
+
+export const ConflictsQuerySchema = z.object({
+  campaignId: uuid.optional(),
+  assetType: z.enum(ASSET_TYPES).optional(),
+});
+export type ConflictsQuery = z.infer<typeof ConflictsQuerySchema>;
+// Response: ConflictGroup[]
+
+// ── Steward: POST /api/steward/conflicts/:assetId/resolve ───────────────
+
+export const ResolveConflictRequestSchema = z.object({
+  resolution: z.enum(CONFLICT_RESOLUTIONS),
+  voteId: uuid.optional(),
+  note: z.string().max(4000).optional(),
+}).refine(
+  (d) => d.resolution !== 'accept_edit' || !!d.voteId,
+  { message: 'accept_edit requires voteId (the edit vote to accept)' },
+);
+export type ResolveConflictRequest = z.infer<typeof ResolveConflictRequestSchema>;
+// Response: ConflictResolutionResult (entities)
+
+// ── Steward: GET /api/steward/feedback-branches ─────────────────────────
+
+export const FeedbackBranchListQuerySchema = z.object({
+  status: z.enum(FEEDBACK_BATCH_STATUSES).optional(),
+});
+export type FeedbackBranchListQuery = z.infer<typeof FeedbackBranchListQuerySchema>;
+// Response: FeedbackBranch[]
+
+// ── Steward: POST /api/steward/feedback-branches (admin / feedback job M2M) ─
+
+const feedbackBranchName = z.string().regex(
+  /^mg-genie-feedback-\d{8}(-[a-z0-9-]+)?$/,
+  'Feedback branch names must be mg-genie-feedback-<yyyymmdd>[-suffix]',
+);
+
+export const UpsertFeedbackBranchRequestSchema = z.object({
+  batchId: uuid.optional(),
+  branchName: feedbackBranchName,
+  files: z.array(z.string().min(1)),
+  summary: z.string().max(20000).optional(),
+  status: z.enum(FEEDBACK_BATCH_STATUSES),
+  /** Votes the branch addresses. Marked processed when status is 'proposed'; ignored otherwise. */
+  voteIds: z.array(uuid).max(1000).optional(),
+});
+export type UpsertFeedbackBranchRequest = z.infer<typeof UpsertFeedbackBranchRequestSchema>;
+// Response: FeedbackBranch (201 created, 200 updated)
+
+// ── Steward: POST /api/steward/feedback-branches/:batchId/status ────────
+
+export const UpdateFeedbackBranchStatusRequestSchema = z.object({
+  status: z.enum(FEEDBACK_BRANCH_REVIEW_STATUSES),
+  note: z.string().max(4000).optional(),
+});
+export type UpdateFeedbackBranchStatusRequest = z.infer<typeof UpdateFeedbackBranchStatusRequestSchema>;
+// Response: FeedbackBranch

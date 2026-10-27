@@ -60,6 +60,22 @@ import type {
   VoteResult,
 } from '../../../../shared/contracts';
 import type { ReviewCard } from '../../../../shared/contracts';
+import type {
+  ConflictGroup,
+  ConflictResolutionResult,
+  ConflictsQuery,
+  FeedbackBranch,
+  FeedbackBranchListQuery,
+  FeedbackQueueItem,
+  FeedbackQueueQuery,
+  ResolveConflictRequest,
+  SkipRequest,
+  SkipResponse,
+  UpdateFeedbackBranchStatusRequest,
+  UpdateUserSettingsRequest,
+  UpsertFeedbackBranchRequest,
+  UserSettings,
+} from '../../../../shared/contracts';
 
 import { apiDelete, apiGet, apiSend } from './http';
 
@@ -67,6 +83,16 @@ import { apiDelete, apiGet, apiSend } from './http';
 
 export async function getMe(): Promise<MeResponse> {
   return apiGet<MeResponse>('/api/me');
+}
+
+export async function getMySettings(): Promise<UserSettings> {
+  return apiGet<UserSettings>('/api/me/settings');
+}
+
+export async function updateMySettings(
+  body: UpdateUserSettingsRequest,
+): Promise<UserSettings> {
+  return apiSend<UserSettings>('PUT', '/api/me/settings', body);
 }
 
 // ── Review ──────────────────────────────────────────────────────────────
@@ -79,6 +105,11 @@ export async function getNextCard(
 
 export async function submitVote(body: VoteBody): Promise<VoteResult> {
   return apiSend<VoteResult>('POST', '/api/review/vote', body);
+}
+
+/** Skip is not a vote: recorded in app.review_skips, never changes confidence. */
+export async function skipCard(body: SkipRequest): Promise<SkipResponse> {
+  return apiSend<SkipResponse>('POST', '/api/review/skip', body);
 }
 
 export async function synonymAction(
@@ -338,6 +369,69 @@ export async function removeGroupMember(
     `/api/admin/groups/${encodeURIComponent(groupName)}/members/${encodeURIComponent(memberId)}`,
   );
 }
+
+// ── Steward triage (session 33 routes) ──────────────────────────────────
+
+export async function getFeedbackQueue(
+  query?: Partial<FeedbackQueueQuery>,
+): Promise<Paged<FeedbackQueueItem>> {
+  return apiGet<Paged<FeedbackQueueItem>>('/api/steward/feedback-queue', query as Record<string, unknown>);
+}
+
+export async function getConflicts(
+  query?: ConflictsQuery,
+): Promise<ConflictGroup[]> {
+  return apiGet<ConflictGroup[]>('/api/steward/conflicts', query as Record<string, unknown>);
+}
+
+export async function resolveConflict(
+  assetId: string,
+  body: ResolveConflictRequest,
+): Promise<ConflictResolutionResult> {
+  return apiSend<ConflictResolutionResult>(
+    'POST',
+    `/api/steward/conflicts/${encodeURIComponent(assetId)}/resolve`,
+    body,
+  );
+}
+
+export async function getFeedbackBranches(
+  query?: FeedbackBranchListQuery,
+): Promise<FeedbackBranch[]> {
+  return apiGet<FeedbackBranch[]>('/api/steward/feedback-branches', query as Record<string, unknown>);
+}
+
+/** Admin only (the feedback job's M2M principal); 201 created / 200 updated. */
+export async function upsertFeedbackBranch(
+  body: UpsertFeedbackBranchRequest,
+): Promise<FeedbackBranch> {
+  return apiSend<FeedbackBranch>('POST', '/api/steward/feedback-branches', body);
+}
+
+export async function updateFeedbackBranchStatus(
+  batchId: string,
+  body: UpdateFeedbackBranchStatusRequest,
+): Promise<FeedbackBranch> {
+  return apiSend<FeedbackBranch>(
+    'POST',
+    `/api/steward/feedback-branches/${encodeURIComponent(batchId)}/status`,
+    body,
+  );
+}
+
+/** Grouped view of the session-33 endpoints (plain object, not a TS namespace). */
+export const api = {
+  review: { skip: skipCard },
+  me: { getSettings: getMySettings, updateSettings: updateMySettings },
+  steward: {
+    feedbackQueue: getFeedbackQueue,
+    conflicts: getConflicts,
+    resolveConflict,
+    feedbackBranches: getFeedbackBranches,
+    upsertFeedbackBranch,
+    updateFeedbackBranchStatus,
+  },
+} as const;
 
 // ── Runtime config (session 20 route) ───────────────────────────────────
 

@@ -5,7 +5,7 @@ import type { ServiceDeps } from '../../lib/deps';
 import type { Db } from '../../lib/db';
 import type { ConfigStore } from '../../lib/config';
 import type { EventBus } from '../../lib/events';
-import { badRequest } from '../../lib/errors';
+import { badRequest, notFound } from '../../lib/errors';
 
 import type { AssetRegistry } from '../asset/assetRegistry';
 import type { MetricViewService } from '../metricView/metricViewService';
@@ -15,15 +15,17 @@ import type {
   LeaderboardEntry,
   ExecutiveSummary,
   QueryResult,
+  ReviewSkip,
 } from '../../../shared/contracts/entities';
-import type { ReviewCard } from '../../../shared/contracts/review';
+import type { ReviewCard, SkipResponse, SkipStats } from '../../../shared/contracts/review';
 import type {
   GetNextQuery,
+  SkipRequest,
   VoteBody,
   VoteResult,
 } from '../../../shared/contracts/api';
 import type { UserContext } from '../../lib/context';
-import type { VoteType, VoteSource } from '../../../shared/contracts/values';
+import type { VoteType, VoteSource, SkipReason } from '../../../shared/contracts/values';
 import { computeConfidence, deriveStatus } from './wilsonScore';
 import type { Candidate } from './surfacing';
 import { surfacingWeight, pickWeighted, reasonFor } from './surfacing';
@@ -32,6 +34,30 @@ import { buildValidationQuery } from './validationQuery';
 
 function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function toIso(val: unknown): string {
+  if (val instanceof Date) return val.toISOString();
+  return String(val);
+}
+
+/** Next card plus whether it came back from the user's skip cooldown. */
+export interface NextCardResult {
+  card: ReviewCard | null;
+  /** True when every eligible asset was in skip cooldown and the oldest-skipped one was returned. */
+  resurfacedFromSkip: boolean;
+}
+
+export function rowToReviewSkip(r: Record<string, unknown>): ReviewSkip {
+  return {
+    id: String(r.id),
+    assetId: String(r.asset_id),
+    campaignId: r.campaign_id ? String(r.campaign_id) : null,
+    reason: (r.reason as SkipReason | null) ?? null,
+    versionHash: r.version_hash ? String(r.version_hash) : null,
+    source: String(r.source) as VoteSource,
+    createdAt: toIso(r.created_at),
+  };
 }
 
 export class ReviewEngine {
@@ -59,7 +85,21 @@ export class ReviewEngine {
     user: UserContext,
     q: GetNextQuery,
   ): Promise<ReviewCard | null> {
+    return (await this.getNextWithMeta(user, q)).card;
+  }
+
+  /**
+   * Pick the next card. Assets the user skipped within `skipCooldownHours`
+   * are excluded; when every eligible asset is in cooldown, the asset whose
+   * latest skip is oldest comes back (resurfacedFromSkip) instead of an
+   * empty queue.
+   */
+  async getNextWithMeta(
+    user: UserContext,
+    q: GetNextQuery,
+  ): Promise<NextCardResult> {
     const settings = await this.config.get();
+    const cooldownHours = Math.max(0, Number(settings.skipCooldownHours) || 0);
 
     // Build dynamic conditions
     const params: unknown[] = [user.userId];
@@ -68,6 +108,12 @@ export class ReviewEngine {
     let campaignJoin = '';
 
     if (q.campaignId) {
+      // An unknown campaign is a 404, not an empty queue.
+      const campaignRow = await this.db.one<{ id: string }>(
+        'SELECT id FROM app.campaigns WHERE id = $1',
+        [q.campaignId],
+      );
+      if (!campaignRow) throw notFound(`Campaign not found: ${q.campaignId}`);
       campaignJoin = `JOIN app.campaign_assets ca ON ca.asset_id = a.id
                         AND ca.campaign_id = $${idx} AND ca.status = 'pending'`;
       params.push(q.campaignId);
@@ -81,6 +127,17 @@ export class ReviewEngine {
 
     const whereSuffix =
       extraWhere.length > 0 ? 'AND ' + extraWhere.join(' AND ') : '';
+
+    // Skip cooldown: hide assets this user skipped in the last N hours.
+    const cooldownWhere =
+      cooldownHours > 0
+        ? `AND NOT EXISTS (
+           SELECT 1 FROM app.review_skips rs
+           WHERE rs.asset_id = a.id AND rs.user_id = $1
+             AND rs.created_at > NOW() - make_interval(hours => $${idx}::int)
+         )`
+        : '';
+    const candidateParams = cooldownHours > 0 ? [...params, cooldownHours] : params;
 
     const rows = await this.db.query<Record<string, unknown>>(
       `SELECT
@@ -111,11 +168,35 @@ export class ReviewEngine {
            AND v2.version_hash = a.version_hash
        )
        ${whereSuffix}
+       ${cooldownWhere}
        LIMIT 200`,
-      params,
+      candidateParams,
     );
 
-    if (rows.length === 0) return null;
+    if (rows.length === 0) {
+      if (cooldownHours === 0) return { card: null, resurfacedFromSkip: false };
+      // Everything eligible is in cooldown: resurface the oldest-skipped asset.
+      const oldest = await this.db.one<{ asset_id: string }>(
+        `SELECT a.id AS asset_id
+         FROM app.assets a
+         JOIN app.review_skips rs ON rs.asset_id = a.id AND rs.user_id = $1
+         ${campaignJoin}
+         WHERE NOT EXISTS (
+           SELECT 1 FROM app.votes v2
+           WHERE v2.asset_id = a.id
+             AND v2.user_id = $1
+             AND v2.version_hash = a.version_hash
+         )
+         ${whereSuffix}
+         GROUP BY a.id
+         ORDER BY MAX(rs.created_at) ASC
+         LIMIT 1`,
+        params,
+      );
+      if (!oldest) return { card: null, resurfacedFromSkip: false };
+      const card = await this.buildCard(user, q, String(oldest.asset_id), 'random');
+      return { card, resurfacedFromSkip: true };
+    }
 
     const now = new Date();
     const candidates: (Candidate & { _row: Record<string, unknown> })[] =
@@ -135,13 +216,23 @@ export class ReviewEngine {
       candidates,
       (c) => surfacingWeight(c, now, settings.stalenessDays),
     );
-    if (!picked) return null;
+    if (!picked) return { card: null, resurfacedFromSkip: false };
 
-    // Hydrate full data
-    const asset = await this.assets.get(picked.assetId);
-    const synonyms = await this.assets.listSynonyms(picked.assetId);
-    const examples = await this.assets.listExamples(picked.assetId);
-    const confidence = await this.readConfidence(picked.assetId);
+    const card = await this.buildCard(user, q, picked.assetId, reasonFor(picked));
+    return { card, resurfacedFromSkip: false };
+  }
+
+  /** Hydrate a ReviewCard for one asset. */
+  private async buildCard(
+    user: UserContext,
+    q: GetNextQuery,
+    assetId: string,
+    reason: ReviewCard['reason'],
+  ): Promise<ReviewCard> {
+    const asset = await this.assets.get(assetId);
+    const synonyms = await this.assets.listSynonyms(assetId);
+    const examples = await this.assets.listExamples(assetId);
+    const confidence = await this.readConfidence(assetId);
 
     // Progress: user's distinct-asset votes vs total pool
     const totalRow = await this.db.one<{ count: string }>(
@@ -168,7 +259,7 @@ export class ReviewEngine {
       campaign: campaign
         ? { campaignId: campaign.id, name: campaign.name }
         : undefined,
-      reason: reasonFor(picked),
+      reason,
       progress: {
         reviewed: Number(votedRow?.count ?? 0),
         total: Number(totalRow?.count ?? 0),
@@ -363,6 +454,81 @@ export class ReviewEngine {
     return { vote, confidence, assetStatus: newStatus, next };
   }
 
+  // ── skip ────────────────────────────────────────────────────────────────
+
+  /**
+   * Record a skip (plan 25/33). A skip is NOT a vote: it inserts
+   * app.review_skips (with the asset's current version_hash) and bumps
+   * user_activity.total_skips / last_skip_at. It never touches app.votes,
+   * app.confidence_scores, Wilson inputs, streaks, badges, campaign_assets
+   * or certification, and emits no vote events.
+   */
+  async skip(
+    user: UserContext,
+    req: SkipRequest,
+    source: VoteSource = user.source,
+  ): Promise<SkipResponse> {
+    const assetRow = await this.db.one<{ version_hash: string | null }>(
+      'SELECT version_hash FROM app.assets WHERE id = $1',
+      [req.assetId],
+    );
+    if (!assetRow) throw notFound(`Asset not found: ${req.assetId}`);
+
+    if (req.campaignId) {
+      const campaignRow = await this.db.one<{ id: string }>(
+        'SELECT id FROM app.campaigns WHERE id = $1',
+        [req.campaignId],
+      );
+      if (!campaignRow) throw notFound(`Campaign not found: ${req.campaignId}`);
+    }
+
+    const row = await this.db.one<Record<string, unknown>>(
+      `INSERT INTO app.review_skips (
+         user_id, asset_id, campaign_id, reason, version_hash, source
+       ) VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        user.userId,
+        req.assetId,
+        req.campaignId ?? null,
+        req.reason ?? null,
+        assetRow.version_hash ?? null,
+        source,
+      ],
+    );
+    if (!row) throw new Error('INSERT INTO app.review_skips returned no row');
+
+    // Activity row: skip counters only (vote totals and streaks untouched).
+    await this.db.query(
+      `INSERT INTO app.user_activity (user_id, email, total_skips, last_skip_at)
+       VALUES ($1, $2, 1, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET
+         total_skips = app.user_activity.total_skips + 1,
+         last_skip_at = NOW(),
+         updated_at = NOW()`,
+      [user.userId, user.email],
+    );
+
+    const stats = await this.getSkipStats(user.userId);
+    return { skip: rowToReviewSkip(row), stats };
+  }
+
+  /** Skip counts for one user (all time, and since 00:00 UTC today). */
+  async getSkipStats(userId: string): Promise<SkipStats> {
+    const row = await this.db.one<{ skipped_count: number | string; skipped_today: number | string }>(
+      `SELECT
+         COUNT(*)::int AS skipped_count,
+         COUNT(*) FILTER (WHERE created_at >= date_trunc('day', NOW(), 'UTC'))::int AS skipped_today
+       FROM app.review_skips
+       WHERE user_id = $1`,
+      [userId],
+    );
+    return {
+      skippedCount: Number(row?.skipped_count ?? 0),
+      skippedToday: Number(row?.skipped_today ?? 0),
+    };
+  }
+
   // ── recompute ──────────────────────────────────────────────────────
 
   async recompute(assetId: string): Promise<ConfidenceScore> {
@@ -373,7 +539,8 @@ export class ReviewEngine {
       'SELECT version_hash FROM app.assets WHERE id = $1',
       [assetId],
     );
-    const versionHash = hashRow?.version_hash ?? '';
+    if (!hashRow) throw notFound(`Asset not found: ${assetId}`);
+    const versionHash = hashRow.version_hash ?? '';
 
     // Count by vote_type at current version
     const rows = await this.db.query<{ vote_type: string; cnt: string }>(
@@ -477,12 +644,15 @@ export class ReviewEngine {
       [userId],
     );
 
+    const skipStats = await this.getSkipStats(userId);
+
     if (!row) {
       return {
         totalVotes: 0,
         approvals: 0,
         rejections: 0,
         edits: 0,
+        ...skipStats,
         currentStreakDays: 0,
         rank: 0,
         coveragePct: 0,
@@ -542,6 +712,7 @@ export class ReviewEngine {
       approvals,
       rejections,
       edits,
+      ...skipStats,
       currentStreakDays: Number(row.current_streak_days),
       rank,
       coveragePct,
@@ -555,10 +726,13 @@ export class ReviewEngine {
     limit = 20,
   ): Promise<LeaderboardEntry[]> {
     let dateFilter = '';
+    let skipDateFilter = '';
     if (period === '7d') {
       dateFilter = `AND v.created_at >= NOW() - INTERVAL '7 days'`;
+      skipDateFilter = `AND rs.created_at >= NOW() - INTERVAL '7 days'`;
     } else if (period === '30d') {
       dateFilter = `AND v.created_at >= NOW() - INTERVAL '30 days'`;
+      skipDateFilter = `AND rs.created_at >= NOW() - INTERVAL '30 days'`;
     }
 
     const rows = await this.db.query<Record<string, unknown>>(
@@ -571,6 +745,8 @@ export class ReviewEngine {
          COUNT(*) FILTER (WHERE v.vote_type = 'reject')::int AS rejections,
          COUNT(*) FILTER (WHERE v.vote_type = 'edit')::int AS edits,
          COALESCE(ua.current_streak_days, 0)::int AS current_streak_days,
+         (SELECT COUNT(*) FROM app.review_skips rs
+          WHERE rs.user_id = v.user_id ${skipDateFilter})::int AS skipped_count,
          ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC)::int AS rank
        FROM app.votes v
        LEFT JOIN app.user_activity ua ON ua.user_id = v.user_id
@@ -589,6 +765,7 @@ export class ReviewEngine {
       approvals: Number(r.approvals),
       rejections: Number(r.rejections),
       edits: Number(r.edits),
+      skippedCount: Number(r.skipped_count ?? 0),
       currentStreakDays: Number(r.current_streak_days),
       rank: Number(r.rank),
     }));

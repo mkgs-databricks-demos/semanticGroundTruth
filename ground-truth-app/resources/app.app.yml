@@ -14,6 +14,10 @@ resources:
         env:
           - name: GT_EXEC_DASHBOARD_URL
             value: "${var.exec_dashboard_url}"
+          # AppKit agents plugin: catalog skills volume (/Volumes/... form required).
+          # Must match the agents-skills resource below.
+          - name: DATABRICKS_VOLUME_AGENT_SKILLS
+            value: "/Volumes/${var.catalog}/${var.schema_name}/agent_skills"
 
       # Start the app automatically on deploy.
       lifecycle:
@@ -46,13 +50,14 @@ resources:
           experiment:
             experiment_id: ${var.agents_mlflow_experiment_experimentId}
             permission: CAN_EDIT
-        # Optional: UC volume for remote agent skills. Uncomment when needed.
-        # Skills currently served from local server/agents/skills/ directory.
-        # - name: agents-skills
-        #   uc_securable:
-        #     securable_full_name: ${var.agents_skills_path}
-        #     securable_type: VOLUME
-        #     permission: READ_VOLUME
+        # Agent skills UC volume (created by ground-truth-infra, filled by the
+        # sync_agent_skills job from ../agent_skills/). Grants the app SPN READ VOLUME;
+        # the path reaches AppKit via config.env DATABRICKS_VOLUME_AGENT_SKILLS above.
+        - name: agents-skills
+          uc_securable:
+            securable_full_name: ${var.agents_skills_path}
+            securable_type: VOLUME
+            permission: READ_VOLUME
         - name: sql-warehouse
           sql_warehouse:
             id: ${var.sql_warehouse_id}
@@ -71,3 +76,23 @@ resources:
             scope: ${var.secret_scope_name}
             key: ${var.m2m_client_id_key}
             permission: READ
+        # OTel target tables (telemetry_export_destinations above).
+        # A TABLE resource makes Databricks grant the app SPN USE CATALOG / USE SCHEMA
+        # on the parents, so telemetry no longer depends on `account users` grants.
+        # The automatic USE CATALOG grant needs the deployer to have MANAGE on the catalog.
+        # Removing these resources also tries to revoke the catalog/schema grants.
+        - name: otel-logs
+          uc_securable:
+            securable_full_name: ${var.catalog}.${var.schema_name}.semantic_ground_truth_otel_logs
+            securable_type: TABLE
+            permission: MODIFY
+        - name: otel-spans
+          uc_securable:
+            securable_full_name: ${var.catalog}.${var.schema_name}.semantic_ground_truth_otel_spans
+            securable_type: TABLE
+            permission: MODIFY
+        - name: otel-metrics
+          uc_securable:
+            securable_full_name: ${var.catalog}.${var.schema_name}.semantic_ground_truth_otel_metrics
+            securable_type: TABLE
+            permission: MODIFY

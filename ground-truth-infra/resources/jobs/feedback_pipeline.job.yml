@@ -1,16 +1,42 @@
 # resources/jobs/feedback_pipeline.job.yml
-# Daily 11 PM: collect unprocessed votes → Genie Code generates YAML edits → Git feature branch
-# Design source: L300-04, L300-05, docs/plans/feedback_pipeline_rework_plan.md
+# Daily 11 PM UTC: unprocessed edit votes -> Genie Code authors YAML/glossary edits on a
+# mg-genie-feedback-<yyyymmdd> branch -> branch registered with the app for steward review.
+# Design source: L300-04, L300-05, docs/plans/27_infra_feedback_pipeline_genie_task.md (gap G4)
+#
+# collect_feedback -> check_has_feedback (vote_count > 0) -> author_feedback_branch (genie_task)
+#   -> register_feedback_branch
+# With zero unprocessed edit votes the run ends successfully at check_has_feedback
+# (downstream tasks are excluded, no branch is created).
 
 resources:
   jobs:
     feedback_pipeline:
       name: "Semantic Ground Truth — Feedback Pipeline"
-      description: "Collects reviewer votes, generates proposed YAML edits via Genie Code, and creates a Git feature branch."
+      description: "Collects unprocessed reviewer edit votes, has a Genie Code task (skill ground-truth-feedback-author) author proposed YAML/glossary edits on an mg-genie-feedback-<yyyymmdd> branch, and registers the branch with the app for steward review."
 
       schedule:
-        quartz_cron_expression: "0 0 23 * * ?"  # Daily 11 PM UTC
+        quartz_cron_expression: "0 0 23 * * ?"  # Daily 11 PM UTC (dev mode pauses it)
         timezone_id: UTC
+
+      # One batch at a time: concurrent runs would race for the same votes and branch name.
+      max_concurrent_runs: 1
+
+      parameters:
+        # Feedback branches are always mg-genie-feedback-<yyyymmdd>[-n] (owner decision 2026-10-24);
+        # collect_feedback and register_feedback_branch reject any other prefix.
+        - name: branch_prefix
+          default: "mg-genie-feedback-"
+        - name: base_branch
+          default: "main"
+        # true = stage + author, but do not register the branch with the app.
+        - name: dry_run
+          default: "false"
+        # Dedicated workspace Git folder (clone of the semanticGroundTruth repo) that Genie Code
+        # commits, branches and pushes from. Never the build/dev folder: the task switches branches
+        # in repo_path (owner decision, session 38). Create it once: Git folder
+        # /Workspace/Users/<you>/semanticGroundTruth-feedback on main.
+        - name: repo_path
+          default: "/Workspace/Users/${workspace.current_user.userName}/semanticGroundTruth-feedback"
 
       environments:
         - environment_key: serverless
@@ -19,36 +45,47 @@ resources:
 
       tasks:
         - task_key: collect_feedback
-          description: "Query unprocessed votes, group by asset, write feedback staging table"
+          description: "Stage unprocessed edit votes (latest CDF row per vote) per asset under a new batch_id; set vote_count/batch_id/run_date task values"
           notebook_task:
             notebook_path: ../../src/notebooks/collect_feedback.py
             base_parameters:
               catalog: "${var.catalog}"
               schema: "${resources.schemas.ground_truth_schema.name}"
-              cutoff_hours: "24"
+              branch_prefix: "{{job.parameters.branch_prefix}}"
           environment_key: serverless
 
-        # Task 2: PLACEHOLDER notebook_task — replaced at runtime by a genie_task.
-        #
-        # Why not genie_task in YAML? The bundle validator strips unknown fields
-        # (genie_task is Beta), so the Jobs API receives a task with no type and
-        # rejects it. Workaround: declare a notebook_task placeholder here, and
-        # setup_job_params (post_deploy_setup job) patches it to a genie_task via
-        # the Jobs API after every deploy.
-        #
-        # The notebook is deprecated and exits harmlessly if it runs before the
-        # patch (no genie_space_id configured → early exit).
-        #
-        # See: docs/plans/feedback_pipeline_rework_plan.md
-        - task_key: create_feature_branch
-          description: "Genie Code reads feedback staging, generates YAML edits, creates Git feature branch"
+        - task_key: check_has_feedback
+          description: "Continue only when collect_feedback staged at least one edit vote"
           depends_on:
             - task_key: collect_feedback
+          condition_task:
+            left: "{{tasks.collect_feedback.values.vote_count}}"
+            op: GREATER_THAN
+            right: "0"
+
+        # PLACEHOLDER notebook_task, replaced by a genie_task after every deploy.
+        #
+        # Bundle YAML cannot express genie_task (Beta; dropped by bundle validation),
+        # so setup_job_params (post_deploy_setup job) patches this task via jobs/reset:
+        # genie_task {configuration_id: <setup_genie_automation>, parameters: <base_parameters below>}.
+        # The automation prompt (fixtures/prompts/feedback_loop_prompt.md) uses these names as
+        # {{placeholders}} and tells Genie Code to follow the skill at {{skill_path}}.
+        # If the placeholder runs unpatched it fails on purpose (create_feature_branch.py).
+        - task_key: author_feedback_branch
+          description: "Genie Code (skill ground-truth-feedback-author) applies the batch's edits and pushes an mg-genie-feedback-<yyyymmdd> branch"
+          depends_on:
+            - task_key: check_has_feedback
+              outcome: "true"
           notebook_task:
             notebook_path: ../../src/notebooks/create_feature_branch.py
             base_parameters:
-              catalog: "${var.catalog}"
-              schema: "${resources.schemas.ground_truth_schema.name}"
+              run_date: "{{tasks.collect_feedback.values.run_date}}"
+              batch_id: "{{tasks.collect_feedback.values.batch_id}}"
+              branch_prefix: "{{job.parameters.branch_prefix}}"
+              feedback_table: "{{tasks.collect_feedback.values.feedback_table}}"
+              skill_path: "${workspace.file_path}/fixtures/skills/ground-truth-feedback-author/SKILL.md"
+              repo_path: "{{job.parameters.repo_path}}"
+              base_branch: "{{job.parameters.base_branch}}"
           environment_key: serverless
           timeout_seconds: 1800
           health:
@@ -56,6 +93,31 @@ resources:
               - metric: RUN_DURATION_SECONDS
                 op: GREATER_THAN
                 value: 600
+
+        - task_key: register_feedback_branch
+          description: "Verify the pushed branch, POST /api/steward/feedback-branches (M2M), mark the batch's votes processed"
+          depends_on:
+            - task_key: author_feedback_branch
+          notebook_task:
+            notebook_path: ../../src/notebooks/register_feedback_branch.py
+            base_parameters:
+              batch_id: "{{tasks.collect_feedback.values.batch_id}}"
+              run_date: "{{tasks.collect_feedback.values.run_date}}"
+              feedback_table: "{{tasks.collect_feedback.values.feedback_table}}"
+              branch_prefix: "{{job.parameters.branch_prefix}}"
+              repo_path: "{{job.parameters.repo_path}}"
+              dry_run: "{{job.parameters.dry_run}}"
+              # Empty on purpose: jobs/reset rejects {{tasks.<key>.output.*}} while author_feedback_branch
+              # is still the notebook placeholder at deploy time ("Unsupported task type for the 'output'
+              # namespace"), which failed every bundle deploy. The notebook reads the Genie Code final
+              # response from runs/get-output (genie_task_output.agent_output.response) instead.
+              genie_response: ""
+              job_run_id: "{{job.run_id}}"
+              bundle_target: "${bundle.target}"
+              secret_scope: "${resources.secret_scopes.ground_truth_secret_scope.name}"
+              m2m_client_id_key: "${var.m2m_client_id_dbs_key}"
+              m2m_client_secret_key: "${var.m2m_client_secret_dbs_key}"
+          environment_key: serverless
 
       email_notifications:
         on_failure:

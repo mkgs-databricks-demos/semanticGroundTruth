@@ -1,7 +1,8 @@
 # Metric View Fixture: mv_user_leaderboard
 # Design source: L200-C9, L300-05
-# Source: bronze_lakebase_cdf (user_activity)
-# Measures: Total Votes, Current Streak, Longest Streak, Active Reviewers
+# Source: bronze_lakebase_cdf (_source_table = 'user_activity', latest row per user;
+#   total_skips added to app.user_activity by migration 009 — null on older rows, counted as 0)
+# Measures: Total Votes, Current Streak, Longest Streak, Active Reviewers, total_skips
 
 name: mv_user_leaderboard
 
@@ -16,6 +17,7 @@ sql: |
         data:user_id::STRING AS user_id,
         data:email::STRING AS email,
         data:total_votes::INT AS total_votes,
+        COALESCE(data:total_skips::INT, 0) AS total_skips,
         data:current_streak_days::INT AS current_streak_days,
         data:longest_streak_days::INT AS longest_streak_days,
         data:last_vote_date::DATE AS last_vote_date,
@@ -78,4 +80,11 @@ sql: |
         synonyms:
           - users
           - participants
+      - name: total_skips
+        expr: SUM(total_skips)
+        display_name: Total Skips
+        comment: Aggregate skipped cards across reviewers (shown, never ranked on; skips are not votes)
+        synonyms:
+          - skips
+          - skipped cards
   $$

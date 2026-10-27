@@ -68,3 +68,9 @@ tables:
     keys: [group_name, member_id]
   - name: asset_sources
     keys: [id]
+
+  # --- Migration 009: skips, user settings ---
+  - name: review_skips
+    keys: [id]
+  - name: user_settings
+    keys: [user_id]

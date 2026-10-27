@@ -45,8 +45,11 @@ export async function resolveRoles(
   return [...roles];
 }
 
-export function requireRoleMiddleware(role: Role): RequestHandler {
-  return (_req, res, next) => {
+/** Role middleware; carries `requiredRole` so route tests can compare it with ROUTE_CONTRACTS. */
+export type RoleMiddleware = RequestHandler & { requiredRole: Role };
+
+export function requireRoleMiddleware(role: Role): RoleMiddleware {
+  const middleware: RequestHandler = (_req, res, next) => {
     try {
       const user = getUser(res);
       const hierarchy: Record<Role, number> = {
@@ -66,4 +69,5 @@ export function requireRoleMiddleware(role: Role): RequestHandler {
       sendError(res, err);
     }
   };
+  return Object.assign(middleware, { requiredRole: role });
 }

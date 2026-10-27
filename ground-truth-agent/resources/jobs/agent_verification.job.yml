@@ -11,6 +11,7 @@ resources:
               schema: ${var.schema_name}
               warehouse_id: ${var.warehouse_id}
               space_title: ${var.space_title}
+              dashboard_title: ${var.ops_dashboard_title}
           environment_key: default
       environments:
         - environment_key: default

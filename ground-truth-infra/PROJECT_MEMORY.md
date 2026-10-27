@@ -38,30 +38,29 @@
 - Permissions: CAN_MANAGE (matthew.giglia), CAN_USE (users group); app SPN added post-Bundle 2
 
 **Lakeflow Jobs** (`resources/jobs/`)
-- `feedback_pipeline.job.yml` — ID `811289891166091` — daily 11 PM UTC (Task 2 being reworked to `genie_task`)
+- `feedback_pipeline.job.yml` — ID `811289891166091` — daily 11 PM UTC (paused in dev). 4 tasks: `collect_feedback` -> `check_has_feedback` -> `author_feedback_branch` (Genie Code `genie_task`, skill `ground-truth-feedback-author` `1.0.0` at `fixtures/skills/ground-truth-feedback-author/SKILL.md`) -> `register_feedback_branch`. Branches are `mg-genie-feedback-<yyyymmdd>[-n]`; first branch `mg-genie-feedback-20261026` (`38fb38e`, run `799084267984677`, session 38). Bundle YAML cannot express `genie_task`, so every deploy resets `author_feedback_branch` to a placeholder notebook that fails on purpose; `post_deploy_setup` (`setup_job_params`) patches it back. `register_feedback_branch.genie_response` is `""` (an `{{tasks.author_feedback_branch.output...}}` reference makes `jobs/reset` fail while the task is the placeholder); the notebook reads `runs/get-output`. **`repo_path`:** use the dedicated Git folder `/Workspace/Users/<user>/semanticGroundTruth-feedback` (dev repo id `1397479021974305`), never the build folder (Genie Code switches branches there); this is the YAML default since 2026-10-27 (`/Workspace/Users/${workspace.current_user.userName}/semanticGroundTruth-feedback`; the Git folder must exist before the first run). **`batchId`** in the app's `UpsertFeedbackBranchRequest` is an `app.feedback_batches` id, not the staging batch id, so the job does not send it; it sends `voteIds` and the app marks those votes processed (app `e7c8736`). Runbook: `../docs/runbooks/feedback_pipeline.md`. Gap G4, build 4.
 - `freshness_resurfacing.job.yml` — ID `1103481179431341` — daily 6 AM UTC
 - `metric_view_deploy.job.yml` — ID `423348439302077` — on-demand
 - `post_deploy_validation.job.yml` — ID `123170360460207` — on-demand
 - `cdf_bronze_refresh.job.yml` — ID `703274109872341` (dev) — hourly `0 0 * * * ?` UTC `pipeline_task` on `cdf_bronze` (`full_refresh: false`, `max_concurrent_runs: 1`). Development mode pauses the schedule in `dev`; it runs hourly only in `prod`. Gap G2, added 2026-10-23.
-- `post_deploy_setup.job.yml` — (planned) — auto-triggered by `job_run` on every deploy
-- `run_post_deploy.job_run.yml` — (planned) — deploy hook, fires post_deploy_setup
+- `post_deploy_setup.job.yml` — ID `159451853337655` (dev) — auto-triggered by `job_run` on every deploy (with `run_setup=true`). G10 (build 4, session 28): tasks `setup_gateway_connection`, `setup_app_role_sp` and `check_m2m_secret_present` removed (notebooks deleted). The `app_sp_client_id` parameter is kept because `run_post_deploy.job_run.yml` still passes it (optional cleanup). Open: `setup_cdf_config` gets `lakebase_branch_id` but the notebook reads a `database` widget (default `""`). Each `setup_genie_automation` run may create a new Genie Code scheduled task (session 38 saw a new `configuration_id`); check for duplicates.
+- `run_post_deploy.job_run.yml` — deploy hook, fires post_deploy_setup
 
 **Secret scope** (`resources/secrets/ground_truth_scope.secret_scope.yml`) — `semantic_ground_truth_credentials`
 - The `permissions` block is **authoritative**: every infra deploy removes ACLs that are not listed. It lists the owner (MANAGE) and the app SPN (`service_principal_name: ${var.app_service_principal_id}`, READ) in both targets. Without the app SPN entry, the app logs `error resolving resource m2m-client-id` on every start (gap G1, fixed 2026-10-23).
 
 **Executive dashboard** (`resources/dashboards/executive.dashboard.yml` → `src/dashboards/executive.lvdash.json`)
 - `Semantic Ground Truth — Executive`, dev ID `01f1cf0b38d31b7cbac5bdac6cafe3eb`, warehouse `${resources.sql_warehouses.infra_warehouse.id}`.
-- 9 datasets (`MEASURE()` over 6 of the 7 metric views; `mv_feedback_pipeline` has no widget yet), 1 page: 4 KPI counters, review trend, campaign progress, asset status mix, error rate, P95 latency. Brand chart palette.
+- 11 datasets (`MEASURE()` over 6 of the 7 metric views, incl. `ds_skipped_cards` / `ds_skip_rate_trend` added in build 4; `mv_feedback_pipeline` has no widget yet), 1 page: KPI counters, review trend, skips, campaign progress, asset status mix, error rate, P95 latency. Brand chart palette. Published 2026-10-26 05:27Z; all 11 datasets pass `EXPLAIN` (session 37).
+- The app dev target's `exec_dashboard_url` is the real published URL of this dashboard; update it if the dashboard is recreated (`../docs/runbooks/deploy_order_and_permissions.md`).
 - Datasets use `catalog`/`schema` fields, not 3-part names. `mv_campaign_progress` has no `campaign_name` column; use `campaign_type` (fixed in session 22b).
 - The app gets the published URL from `deploy.sh` (`--var exec_dashboard_url`). Gap G3, added 2026-10-23.
 
-**UC Secrets** (`resources/secrets/`) — planned
-- `slack_webhook.secret.yml` — `catalog.schema.slack_webhook_url`
-- `teams_webhook.secret.yml` — `catalog.schema.teams_webhook_url`
-- `git_token.secret.yml` — `catalog.schema.git_token`
+**Agent skills volume** (`resources/agent_skills.volume.yml`) — managed volume `agent_skills` (`prevent_destroy`), added 2026-10-26. The app bundle's `sync_agent_skills` job mirrors `ground-truth-app/agent_skills/` into it, and the app's `agents-skills` resource reads it, so **deploy infra before the app**.
 
-**MCP Service** (`resources/mcp/`) — planned
-- `ground_truth_mcp.mcp_service.yml` — Unity Gateway MCP registration
+**UC Secrets** — removed. The comment-only `slack_webhook`, `teams_webhook` and `git_token` secret YAMLs were deleted in build 4 (G10, session 28). Slack goes through `system.ai.slack` per `../docs/research/05_slack_mcp_notifications.md` (G5, not built yet).
+
+**MCP Service** — not in this bundle. The Unity Gateway MCP service and its HTTP connection live in `ground-truth-app` (see that bundle's PROJECT_MEMORY "MCP Service (moved from infra)").
 
 **Lakebase** (`resources/lakebase/`)
 - `ground_truth_project.postgres_project.yml` — dev: `projects/dev-matthew-giglia-ground-truth` | prod: `projects/ground-truth`
@@ -70,7 +69,7 @@
 - `app_role.postgres_role.yml` — `ground_truth_app_role`; identity_type added post-Bundle 2
 - `app_db.postgres_database.yml` — `ground_truth_app` on production branch
 
-> CDF tables (`lb_*_history`) are now configured and active — 21 history tables feeding `bronze_lakebase_cdf`.
+> CDF tables (`lb_*_history`) are now configured and active — 23 history tables in `cdf_bronze_tables.yaml` feeding `bronze_lakebase_cdf` (21 + `review_skips`, `user_settings` since build 4).
 > `postgres_synced_tables` in DABs = Reverse ETL (Delta→Lakebase), NOT Lakebase→Delta.
 
 **SDP Pipeline**
@@ -82,8 +81,10 @@
 ### Source Files
 - **Python notebooks** (deployed) — `src/notebooks/` — collect_feedback, create_feature_branch, freshness_check, list_fixtures, deploy_metric_view, post_deploy_validation, setup_cdf_config
 - **Python library** — `src/lib/lakebase_cdf.py` — CDF config helpers (create/list configs)
-- **7 metric view fixtures** — `fixtures/metric_views/` — mv_review_activity, mv_coverage_metrics, mv_user_leaderboard, mv_feedback_pipeline, mv_campaign_progress, mv_otel_error_rate, mv_otel_request_latency
-- **1 Genie Code automation prompt** — `fixtures/prompts/feedback_loop_prompt.md` (consumed by `setup_genie_automation.py`)
+- **7 metric view fixtures** — `fixtures/metric_views/` — mv_review_activity, mv_coverage_metrics, mv_user_leaderboard, mv_feedback_pipeline, mv_campaign_progress, mv_otel_error_rate, mv_otel_request_latency. Build 4: `mv_review_activity` is `votes` UNION ALL `review_skips` inserts and keeps the latest row per `_record_key` (no `update_preimage`, no `delete`), like the other CDF views; new measures `skips`, `skip_rate`, dimension `skip_reason`; `mv_user_leaderboard.total_skips`. Open (session 29): `asset_type` dimension on `mv_review_activity`, campaign name/due date on `mv_campaign_progress`, `branch_name` on `mv_feedback_pipeline`.
+- **Bronze table list** — `fixtures/pipelines/cdf_bronze_tables.yaml` now includes `review_skips` (keys `[id]`) and `user_settings` (keys `[user_id]`) from migration 009 (session 37). A migration that ALTERs a synced table triggers a Lakehouse Sync re-snapshot; recover with `reset_checkpoint_selection` on the `bronze_from_<table>` flows, **never a full refresh** (`../docs/runbooks/cdf_bronze_operations.md` §1).
+- **Genie Code skill** — `fixtures/skills/ground-truth-feedback-author/SKILL.md` (`1.0.0`)
+- **1 Genie Code automation prompt** — `fixtures/prompts/feedback_loop_prompt.md` (`2.0.0`, thin pointer to the skill; consumed by `setup_genie_automation.py`). `docs/plans/feedback_pipeline_rework_plan.md` (`feedback/YYYY-MM-DD` branches) is superseded by plan 27.
 
 ### Post-Deploy Automation (replaces prior manual steps)
 
@@ -91,7 +92,7 @@
 
 **Auto-triggered (via `job_run` resource):**
 - Group A (every deploy): Genie Code automation creation, feedback_pipeline job param patching
-- Group B (post-Bundle 2): Unity Gateway HTTP connection, Lakebase CDF config, app_role SP update
+- Group B (post-Bundle 2): Lakebase CDF config (the Unity Gateway HTTP connection and app_role SP tasks were removed in build 4: the MCP connection is the app's `create_mcp_connection` job, the Lakebase role comes from AppKit `CAN_CONNECT_AND_CREATE`)
 
 **Remaining manual step:** Lakebase Lakehouse Sync — configure in Lakebase App UI after Bundle 2 (creates `lb_*_history` Delta tables). Planned for `setup_cdf_config.py` notebook but needs API verification.
 
@@ -128,8 +129,8 @@ All at `../docs/design/` (solution root).
 | `schema` | Target UC schema | Not yet |
 | `warehouse_id` | ~~Replaced by DAB substitution~~ `${resources.sql_warehouses.infra_warehouse.id}` | N/A |
 | `lakebase_project_id` | ~~Replaced by DAB substitution~~ `${resources.postgres_projects.ground_truth_project.id}` | N/A |
-| `notification_slack_webhook` | Slack webhook URL | Not yet |
-| `notification_teams_webhook` | Teams webhook URL | Not yet |
+| `notification_slack_webhook` | Slack webhook URL | Not used (webhooks deferred; G5 recommends `system.ai.slack`) |
+| `notification_teams_webhook` | Teams webhook URL | Not used (webhooks deferred) |
 | `app_service_principal_id` | Application (client) ID of the app SPN that gets READ on the secret scope | dev default `9f3db838-9415-46fe-9722-9654a6856ecc`; no global default (prod must pass it). `deploy.sh` overrides it with the live SPN from `databricks apps get`. The app SPN changes on every app destroy/recreate, so update the dev default then. |
 
 ---
@@ -179,6 +180,8 @@ Key resolutions:
 | 2026-10-08 | docs/ restructure | `docs/plans/`, `docs/sessions/` established; fixtures/ is now exclusively deployable config |
 | 2026-10-23 | Root build waves 0–4 complete | CDF setup job, bronze SDP pipeline (21 flows / 281 rows), 7 metric views deployed. Branch `mg-genie-agent-build`. |
 | 2026-10-24 | **Brand + gaps build (run `745271774924215`)** ✅ | Branch `mg-genie-ui-brand-and-gaps`. G1: `app_service_principal_id` var + app SPN READ in the scope `permissions` (sessions 18, 22a; stale dev default `55882972-…` corrected to `9f3db838-…`); `secrets list-acls` verified after the 22a and 22b deploys. G2: `cdf_bronze_refresh` job; run `950875080561148` SUCCESS, pipeline update `800a3ae5-…` COMPLETED with 0 issues, bronze 774 rows. G3: executive dashboard `01f1cf0b38d31b7cbac5bdac6cafe3eb`, 9/9 datasets pass EXPLAIN and LIMIT 1 (session 22b). `agent_verification` regression run `149451153256513` SUCCESS (session 22c). |
+| 2026-10-26 | **Build 4 (runs `110489694161084` + `655172288447819`)** | Branch `mg-genie-build-4`. Owner: `agent_skills` volume. Session 27/38 (G4): feedback pipeline as Genie Code task + skill `1.0.0`; first branch `mg-genie-feedback-20261026`, votes marked processed, idempotency run `885100203138696` created no branch. Session 28/37 (G10 + skips): G10 deletions deployed in `post_deploy_setup` `159451853337655`; `review_skips`/`user_settings` in bronze; migration 009 re-snapshot recovered with `reset_checkpoint_selection` on `bronze_from_votes`/`bronze_from_user_activity` (update `2454186f`); `mv_review_activity` latest-row dedupe; 7 metric views redeployed, cross-checked 13 votes / 1 skip. |
+| 2026-10-27 | **Build 4 closed (owner, interactive)** | Wave 4-6 unblocked: app `voteIds` deployed, votes `644eff17`/`4f81557c` marked processed through the app, idempotency run `885100203138696` (no feedback -> no branch). `feedback_pipeline.job.yml` default `repo_path` -> `semanticGroundTruth-feedback`; infra deploy + `post_deploy_setup` run `1115453808467683` (`author_feedback_branch` genie_task, new `configuration_id` `…/20536fcd…`: setup makes a new automation every run, follow-up 1). Follow-ups: `../docs/requests/2026-10-27_build-4-follow-ups.md`. Session: `../docs/sessions/2026-10-27_build-4-unblock-and-close.md`. |
 
 ---
 

@@ -17,6 +17,8 @@ env:
     valueFrom: job
   - name: LAKEBASE_ENDPOINT
     valueFrom: postgres
+  # DATABRICKS_VOLUME_AGENT_SKILLS is set in resources/app.app.yml config.env
+  # (valueFrom: agents-skills left the agents plugin without a volume path).
 
   # ── RBAC bootstrap ──
   # M2M SPN client_id from the m2m-client-id secret resource (resources/app.app.yml).
@@ -26,9 +28,11 @@ env:
   - name: GT_ADMIN_EMAILS
     value: matthew.giglia@databricks.com
 
-  # ── Runtime config (set by deploy.sh --var exec_dashboard_url=<url>) ──
+  # ── Runtime config ──
+  # Overridden at deploy time by app.app.yml config.env → ${var.exec_dashboard_url}.
+  # deploy.sh resolves the URL from the infra bundle's executive dashboard resource.
   - name: GT_EXEC_DASHBOARD_URL
-    value: "https://fevm-hls-fde.cloud.databricks.com/dashboardsv3/01f1cf0b38d31b7cbac5bdac6cafe3eb/published"
+    value: ""
 
   # ── OpenTelemetry ──
   # Record every trace unconditionally. Without this, the default parent-based

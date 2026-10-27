@@ -30,6 +30,9 @@ variables:
     description: "Key in the secret scope for the M2M SPN client_id"
   m2m_client_secret_key:
     description: "Key in the secret scope for the M2M SPN client_secret"
+  agents_skills_path:
+    description: "Full name (catalog.schema.volume) of the agent skills UC volume created by ground-truth-infra"
+    default: ${var.catalog}.${var.schema_name}.agent_skills
   exec_dashboard_url:
     description: "Executive AI/BI dashboard published URL (https://...). Mapped to env GT_EXEC_DASHBOARD_URL in app.yaml. Session 23 supplies the real URL via deploy.sh --var."
     default: ""
@@ -62,6 +65,10 @@ targets:
       agents_mlflow_experiment_experimentId: "1698842789305538"
       m2m_client_id_key: m2m_client_id_dev
       m2m_client_secret_key: m2m_client_secret_dev
+      # Real value, not a placeholder: published URL of the infra bundle's executive dashboard
+      # (resources.dashboards.executive, id 01f1cf0b38d31b7cbac5bdac6cafe3eb, verified 2026-10-26).
+      # A plain `bundle deploy` uses it; deploy.sh rebuilds the same URL from the infra bundle.
+      # Update it if the infra dashboard is ever recreated (new id).
       exec_dashboard_url: "https://fevm-hls-fde.cloud.databricks.com/dashboardsv3/01f1cf0b38d31b7cbac5bdac6cafe3eb/published"
       # ↑ These are also resolved at deploy time by deploy.sh --var passthrough.
 

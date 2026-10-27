@@ -3,16 +3,17 @@
 
 import type { Application } from 'express';
 import type { Services } from '../services';
-import { asyncRoute, parseQuery } from '../lib/http';
-import { getUser, requireRole } from '../lib/context';
+import { asyncRoute } from '../lib/http';
+import { validate, validated } from '../lib/validate';
+import { requireRoleMiddleware } from '../middleware';
 import { LeaderboardQuerySchema } from '../../shared/contracts/api';
 
-export function registerLeaderboardRoutes(app: Application, services: Services): void {
-  app.get('/api/leaderboard', asyncRoute(async (req, res) => {
-    const user = getUser(res);
-    requireRole(user, 'reviewer');
+const LEADERBOARD = { query: LeaderboardQuerySchema };
 
-    const query = parseQuery(LeaderboardQuerySchema, req.query);
+export function registerLeaderboardRoutes(app: Application, services: Services): void {
+  // GET /api/leaderboard (entries include skippedCount for the period)
+  app.get('/api/leaderboard', requireRoleMiddleware('reviewer'), validate(LEADERBOARD), asyncRoute(async (_req, res) => {
+    const { query } = validated(res, LEADERBOARD);
     const entries = await services.review.getLeaderboard(query.period, query.limit);
     res.json(entries);
   }));

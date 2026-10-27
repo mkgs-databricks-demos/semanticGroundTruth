@@ -5,6 +5,29 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-27 | 4-6..4-9 | owner | [Build 4 unblock and close: app voteIds deploy, votes processed via the app, manual idempotency run, repairs to BUILD_PASSED, repo_path default + contract-test retries closed](2026-10-27_build-4-unblock-and-close.md) | interactive | done | `mg-genie-build-4` |
+| 2026-10-26 | 4-9 | 41 | [Build 4 summary — skips, steward APIs, MCP App, contract tests, feedback pipeline](2026-10-26_build-4-summary.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-26 | 4-9 | 41 | [Docs, project memory, gap status (build 4) (run 655172288447819, w4-9 repair)](2026-10-26_w4-9-41-docs-project-memory.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-26 | 4-8 | 40 | [Converge app: live contract tests at 100% — 147 pass, 0 fail, coverage 100%, attempts 2-3 stable (run 655172288447819)](2026-10-26_w4-8-40-app-converge-contract-tests.md) | converge | pass | `mg-genie-build-4` |
+| 2026-10-26 | 4-7 | 39 | [Converge agent: operations dashboard published, 17/17 datasets execute, agent_verification 29/29, Genie probes 2/2 — attempt 1 stable (run 655172288447819)](2026-10-26_w4-7-39-agent-converge-ops-dashboard.md) | converge | pass | `mg-genie-build-4` |
+| 2026-10-26 | 4-6 | 38 | [Converge infra: feedback pipeline — attempt 2 stable, votes marked processed, idempotency run created no branch (run 655172288447819, w4-6 repair)](2026-10-26_w4-6-38-infra-converge-feedback-pipeline.md) | converge | pass | `mg-genie-build-4` |
+| 2026-10-26 | 4-6 | 38 | [Converge infra: feedback pipeline branch pushed and registered; votes not marked processed (run 655172288447819)](2026-10-26_w4-6-38-infra-converge-feedback-pipeline.md) | converge | blocked | `mg-genie-build-4` |
+| 2026-10-26 | 4-5 | 37 | [Converge infra: skips through CDF, bronze, metric views; G10 cleanup deployed (run 655172288447819)](2026-10-26_w4-5-37-infra-converge-skips-cdf.md) | converge | pass | `mg-genie-build-4` |
+| 2026-10-26 | 4-4 | 36 | [Converge app: session 35 defects fixed, attempt 1 stable (run 655172288447819)](2026-10-26_w4-4-36-app-converge-stable.md) | converge | pass | `mg-genie-build-4` |
+| 2026-10-26 | 4-4 | owner | [Agent skills UC volume, OTel table grants, wave 4-4 unblock](2026-10-26_agent-skills-volume-otel-grants.md) | interactive | done | `mg-genie-build-4` |
+| 2026-10-26 | 4-4 | 36 | [Converge app: migration 009, skip/settings/steward APIs, MCP App](2026-10-26_w4-4-36-app-converge.md) | converge | blocked | `mg-genie-build-4` |
+| 2026-10-26 | 4-3 | 35 | [Contract tests for every REST route and MCP tool](2026-10-26_w4-3-35-contract-tests.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-25 | 4-2 | 34 | [MCP: review_skip_card tool + interactive review card as an MCP App](2026-10-25_w4-2-34-mcp-skip-tool-mcp-app.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-1 | 33 | [Server: skip endpoint, user settings, steward triage APIs (G6 backend)](2026-10-24_w4-1-33-server-skip-settings-steward-api.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 32 | [UI design review + Figma Make brief + UI test strategy](2026-10-24_w4-0-32-ui-design-review-figma-brief.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 31 | [MCP App design for the review card](2026-10-24_w4-0-31-mcp-app-review-card-design.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 30 | [Research: Slack MCP notifications (G5)](2026-10-24_w4-0-30-slack-mcp-notifications-research.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 29 | [Agent bundle AI/BI operations dashboard](2026-10-24_w4-0-29-agent-operations-dashboard.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 28 | [Skip metrics in the data plane + G10 infra cleanup](2026-10-24_w4-0-28-skip-metrics-g10-cleanup.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 27 | [Feedback pipeline as a Genie Code task with a versioned skill (G4)](2026-10-24_w4-0-27-feedback-pipeline-genie-task.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 26 | [Node toolchain proof, new dependencies, security audit](2026-10-24_w4-0-26-toolchain-deps-audit.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | 4-0 | 25 | [Contracts + migration 009 (skips, user settings, steward triage)](2026-10-24_w4-0-25-contracts-migration-009.md) | edit | pass | `mg-genie-build-4` |
+| 2026-10-24 | — | — | [**Build 4 planning: sessions 25-41, one consolidated manifest, Node toolchain re-test**](2026-10-24_build-4-planning.md) | interactive (planning) | planned, not run | `mg-genie-build-4` |
 | 2026-10-24 | all | — | [**Brand + gaps build summary: run 745271774924215, wave 5 repair, real brand assets, history squash**](2026-10-24_brand-gaps-build-summary.md) | orchestration + interactive | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-24 | 6 | 24 | [Project memory, READMEs, gap status, brand runbook](2026-10-24_w6-24-docs-project-memory.md) | edit | pass | `mg-genie-ui-brand-and-gaps` |
 | 2026-10-23 | 5 | 23 | [Converge app: branded UI, runtime config, clean runtime gate](2026-10-23_w5-23-converge-app.md) | converge | pass (repair: status file reconciled, fixes in 6771630) | `mg-genie-ui-brand-and-gaps` |

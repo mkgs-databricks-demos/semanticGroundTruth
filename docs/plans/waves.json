@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "description": "Semantic Ground Truth — next build (2026-10, DRAFT, not yet run; converge waves split to one runtime target each on 2026-10-23): Databricks-branded UI (tokens, light/dark, DM Sans/Mono, assets, WCAG 2.1 AA), MCP card brand, runtime config for the executive dashboard, app secret-scope ACL fix, scheduled bronze refresh, executive AI/BI dashboard. Scoped from docs/plans/gap_analysis_2026-10.md and docs/plans/ui_brand_plan.md. Bundle-only, git-editor build; no masking. The root build (waves 0-5, sessions 01-15) shipped in PR #6 (main fbc552b); its manifest is in git history. The app bundle's own manifest (ground-truth-app/docs/plans/waves.json) is left untouched.",
+  "description": "Semantic Ground Truth — consolidated root manifest (2026-10-24). One manifest for all builds of all three bundles. Waves are '<build>-<n>'. Builds 1-3 are archived history (\"archived\": true; build 1 = app bundle sessions app-01..app-20, frozen copy docs/plans/manifests/build-1_app.json; build 2 = root sessions 01-15, PR #6, docs/plans/manifests/build-2_root.json; build 3 = brand + gaps sessions 16-24, PR #7 / run 745271774924215, docs/plans/manifests/build-3_brand_gaps.json). Build 4 (waves 4-0..4-9, sessions 25-41) is active: skip tracking + user settings, steward triage APIs, feedback pipeline as a Genie Code task, operations dashboard, MCP App review card, contract tests for every route and tool, Slack MCP and UI research, Figma Make brief. Run build 4 with run-now only=<w4-* task keys> until genie-build-waves skips archived waves. See docs/plans/INDEX.md.",
   "workflow": {"mode": "git"},
   "repo_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth",
   "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth",
-  "branch": "mg-genie-ui-brand-and-gaps",
+  "branch": "mg-genie-build-4",
   "bundle_target": "dev",
   "status_dir": ".build-status",
   "plans_dir": "docs/plans",
@@ -12,7 +12,10 @@
   "context_files": [
     "docs/plans/build_conventions.md",
     "PROJECT_MEMORY.md",
-    "ground-truth-app/docs/plans/build_conventions.md",
+    "docs/plans/app/build_conventions.md",
+    "docs/runbooks/node_toolchain_genie_code.md",
+    "docs/design/L200-C4_mcp_server.md",
+    "docs/design/L200-C6_feedback_pipeline.md",
     "ground-truth-app/PROJECT_MEMORY.md",
     "ground-truth-infra/PROJECT_MEMORY.md",
     "ground-truth-agent/PROJECT_MEMORY.md",
@@ -51,6 +54,8 @@
         {"path": "/api/me", "expect_status": 200, "response_regex": "\"roles\":\\[[^\\]]*\"admin\""},
         {"path": "/api/campaigns", "expect_status": 200},
         {"path": "/api/config", "expect_status": 200, "response_regex": "\"executive_dashboard_url\":\"https://"},
+        {"path": "/api/me/settings", "expect_status": 200, "response_regex": "\"theme\":\"(system|light|dark)\""},
+        {"path": "/api/review/stats/me", "expect_status": 200, "response_regex": "\"skippedCount\":\\d+"},
         {"path": "/fonts/dm-sans-regular.ttf", "expect_status": 200},
         {"path": "/mcp", "method": "POST", "mcp_initialize": true}
       ]
@@ -97,7 +102,8 @@
       "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-infra",
       "deploy_commands": ["bundle deploy --target dev --var=run_setup=false"],
       "warehouse_id": "0ea84986a23a47c3",
-      "execute_datasets": true
+      "execute_datasets": true,
+      "require_fresh_deployment": false
     },
     "agent_space": {
       "type": "genie_space",
@@ -118,12 +124,96 @@
       "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-agent",
       "resource_key": "agent_verification",
       "deploy_commands": ["bundle deploy --target dev", "bundle run agent_verification --target dev"]
+    },
+    "infra_setup_cdf": {
+      "type": "job",
+      "name": "[dev matthew_giglia] Semantic Ground Truth — Setup Lakebase CDF",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-infra",
+      "resource_key": "setup_lakebase_cdf",
+      "deploy_commands": ["bundle deploy --target dev --var=run_setup=false", "bundle run setup_lakebase_cdf --target dev"]
+    },
+    "infra_metric_view_deploy": {
+      "type": "job",
+      "name": "[dev matthew_giglia] Semantic Ground Truth — Deploy Metric Views",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-infra",
+      "resource_key": "metric_view_deploy",
+      "deploy_commands": ["bundle deploy --target dev --var=run_setup=false", "bundle run metric_view_deploy --target dev"]
+    },
+    "lb_votes_history": {
+      "type": "table",
+      "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.lb_votes_history",
+      "required_columns": ["_pg_change_type", "_pg_lsn", "_pg_xid", "_timestamp", "_sort_by", "id", "asset_id", "user_id", "vote_type"],
+      "min_rows": 1,
+      "require_fresh_deployment": false
+    },
+    "lb_assets_history": {
+      "type": "table",
+      "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.lb_assets_history",
+      "required_columns": ["_pg_change_type", "_sort_by", "id", "asset_type", "name", "status"],
+      "min_rows": 1,
+      "require_fresh_deployment": false
+    },
+    "mv_review_activity": {
+      "type": "table",
+      "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_review_activity"
+    },
+    "lb_review_skips_history": {
+      "type": "table",
+      "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.lb_review_skips_history",
+      "required_columns": ["_pg_change_type", "_sort_by", "id", "user_id", "asset_id", "campaign_id", "reason", "source", "created_at"],
+      "min_rows": 1,
+      "require_fresh_deployment": false
+    },
+    "feedback_pipeline": {
+      "type": "job",
+      "name": "[dev matthew_giglia] Semantic Ground Truth — Feedback Pipeline",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-infra",
+      "resource_key": "feedback_pipeline",
+      "deploy_commands": ["bundle deploy --target dev --var=run_setup=false", "bundle run feedback_pipeline --target dev"]
+    },
+    "agent_ops_dashboard": {
+      "type": "dashboard",
+      "name": "[dev matthew_giglia] Semantic Ground Truth — Operations",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-agent",
+      "deploy_commands": ["bundle deploy --target dev"],
+      "warehouse_id": "0ea84986a23a47c3",
+      "execute_datasets": true
+    },
+    "api_contract_tests": {
+      "type": "job",
+      "name": "[dev matthew_giglia] dev-semantic-ground-truth-api-contract-tests",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-app",
+      "resource_key": "api_contract_tests",
+      "deploy_commands": ["bundle deploy --target dev", "bundle run api_contract_tests --target dev"]
+    },
+    "api_contract_results": {
+      "type": "table",
+      "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.api_contract_results",
+      "required_columns": ["run_id", "check_id", "kind", "method", "path_or_tool", "expected", "actual", "status", "duration_ms", "ts"],
+      "min_rows": 1
     }
   },
 
   "waves": [
+    {"wave_id": "1-0", "name": "Contracts and server foundation", "archived": true, "build": "1", "gate": ["Archived (build 1)"], "sessions": [{"session_id": "app-01", "title": "Shared domain contracts", "plan_file": "app/01_shared_contracts.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/shared/contracts/**", "ground-truth-app/tsconfig.client.json"]}, {"session_id": "app-02", "title": "Server foundation library + dependencies", "plan_file": "app/02_server_foundation.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/lib/**", "ground-truth-app/package.json"]}]},
+    {"wave_id": "1-1", "name": "Data model and cross-cutting server modules", "archived": true, "build": "1", "gate": ["Archived (build 1)"], "sessions": [{"session_id": "app-03", "title": "Lakebase migrations", "plan_file": "app/03_lakebase_migrations.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/migrations/**"], "depends_on": ["app-02"]}, {"session_id": "app-04", "title": "Auth and middleware", "plan_file": "app/04_middleware.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/middleware/**"], "depends_on": ["app-01", "app-02"]}, {"session_id": "app-05", "title": "Asset registry, metric view reader, dev seed", "plan_file": "app/05_asset_registry_metric_views.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/services/asset/**", "ground-truth-app/server/services/metricView/**", "ground-truth-app/server/seed/**"], "depends_on": ["app-01", "app-02"]}]},
+    {"wave_id": "1-2", "name": "Domain services", "archived": true, "build": "1", "gate": ["Archived (build 1)"], "sessions": [{"session_id": "app-06", "title": "Review Engine", "plan_file": "app/06_review_engine.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/services/review/**"], "depends_on": ["app-03", "app-05"]}, {"session_id": "app-07", "title": "Campaign Manager", "plan_file": "app/07_campaign_manager.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/services/campaign/**"], "depends_on": ["app-03"]}, {"session_id": "app-08", "title": "Notification Service", "plan_file": "app/08_notification_service.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/services/notification/**"], "depends_on": ["app-03"]}]},
+    {"wave_id": "1-3", "name": "HTTP surface and client API layer", "archived": true, "build": "1", "gate": ["Archived (build 1)"], "sessions": [{"session_id": "app-09", "title": "REST routes and composition root", "plan_file": "app/09_rest_routes_wiring.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/routes/**", "ground-truth-app/server/server.ts", "ground-truth-app/server/services/index.ts", "ground-truth-app/server/mcp/index.ts"], "depends_on": ["app-04", "app-05", "app-06", "app-07", "app-08"]}, {"session_id": "app-10", "title": "Client API layer", "plan_file": "app/10_client_api_layer.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/client/src/lib/api/**"], "depends_on": ["app-01", "app-02"]}]},
+    {"wave_id": "1-4", "name": "Interfaces: MCP, UI, agents", "archived": true, "build": "1", "gate": ["Archived (build 1)"], "sessions": [{"session_id": "app-11", "title": "MCP server at /mcp", "plan_file": "app/11_mcp_server.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/mcp/**"], "depends_on": ["app-09"]}, {"session_id": "app-12", "title": "App shell and card-swipe review experience", "plan_file": "app/12_client_review_experience.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/client/src/App.tsx", "ground-truth-app/client/src/main.tsx", "ground-truth-app/client/src/components/layout/**", "ground-truth-app/client/src/components/review/**", "ground-truth-app/client/src/pages/review/**"], "depends_on": ["app-10"]}, {"session_id": "app-13", "title": "Leaderboard, steward, admin, executive pages", "plan_file": "app/13_client_secondary_pages.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/client/src/components/leaderboard/**", "ground-truth-app/client/src/components/steward/**", "ground-truth-app/client/src/components/admin/**", "ground-truth-app/client/src/components/executive/**", "ground-truth-app/client/src/pages/leaderboard/**", "ground-truth-app/client/src/pages/steward/**", "ground-truth-app/client/src/pages/admin/**", "ground-truth-app/client/src/pages/executive/**"], "depends_on": ["app-10"]}, {"session_id": "app-14", "title": "Ground Truth agents", "plan_file": "app/14_agents.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/agents/**"], "depends_on": ["app-06", "app-09"]}]},
+    {"wave_id": "1-5", "name": "Tests, cleanup, docs", "archived": true, "build": "1", "gate": ["Archived (build 1)"], "sessions": [{"session_id": "app-15", "title": "Tests and scaffold cleanup", "plan_file": "app/15_tests_and_cleanup.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/client/src/pages/**", "ground-truth-app/server/**/*.test.ts", "ground-truth-app/shared/contracts/api.test.ts"], "depends_on": ["app-11", "app-12", "app-13", "app-14"]}, {"session_id": "app-16", "title": "App README and first-deploy runbook", "plan_file": "app/16_docs_and_runbook.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/README.md", "ground-truth-app/docs/runbooks/**"], "depends_on": ["app-11", "app-12", "app-13", "app-14"]}]},
+    {"wave_id": "1-6", "name": "Known compile fixes (parallel, static gate)", "archived": true, "build": "1", "gate": ["Archived (build 1)"], "sessions": [{"session_id": "app-17", "title": "Fix ErrorCode casts and UPSTREAM mismatch", "plan_file": "app/17_fix_error_code_casts.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/lib/errors.ts"]}, {"session_id": "app-18", "title": "Campaign completed_at + RBAC consistency", "plan_file": "app/18_campaign_completed_at_rbac.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/shared/contracts/entities.ts", "ground-truth-app/server/services/campaign/**", "ground-truth-app/server/routes/campaigns.ts"]}]},
+    {"wave_id": "1-7", "name": "Converge: app builds, starts, stays up, post-deploy succeeds", "archived": true, "build": "1", "gate": ["Archived (build 1)"], "runtime_gate": ["app"], "sessions": [{"session_id": "app-19", "title": "Deploy app and post-deploy job, fix until stable", "plan_file": "app/19_converge_app.md", "mode": "converge", "scope": "Archived.", "owned_paths": ["ground-truth-app/**"], "depends_on": ["app-17", "app-18"], "runtime_targets": ["app"]}]},
+    {"wave_id": "1-8", "name": "Converge: deploy verification job passes", "archived": true, "build": "1", "gate": ["Archived (build 1)"], "runtime_gate": ["app_deploy_verification"], "sessions": [{"session_id": "app-20", "title": "Deploy verification job, fix until all checks pass", "plan_file": "app/20_converge_deploy_verification.md", "mode": "converge", "scope": "Archived.", "owned_paths": ["ground-truth-app/src/notebooks/deploy_verification.ipynb", "ground-truth-app/resources/jobs/deploy_verification.job.yml"], "depends_on": ["app-19"], "runtime_targets": ["app_deploy_verification"]}]},
+    {"wave_id": "2-0", "name": "Contracts, infra data plane, agent bundle", "archived": true, "build": "2", "gate": ["Archived (build 2)"], "sessions": [{"session_id": "01", "title": "App shared contracts: RBAC groups, sources, import", "plan_file": "01_app_contracts_rbac_sources.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/shared/contracts/**"]}, {"session_id": "02", "title": "Infra: Lakebase CDF setup job", "plan_file": "02_infra_lakebase_cdf_setup.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-infra/src/notebooks/setup_cdf_config.py", "ground-truth-infra/src/lib/lakebase_cdf.py", "ground-truth-infra/resources/jobs/setup_lakebase_cdf.job.yml"]}, {"session_id": "03", "title": "Infra: CDF to bronze Spark Declarative Pipeline", "plan_file": "03_infra_cdf_bronze_pipeline.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-infra/fixtures/pipelines/**", "ground-truth-infra/src/lib/cdf_bronze/**", "ground-truth-infra/src/pipelines/**", "ground-truth-infra/resources/pipelines/**"]}, {"session_id": "04", "title": "Infra: metric views over bronze", "plan_file": "04_infra_metric_views_over_bronze.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-infra/fixtures/metric_views/**", "ground-truth-infra/src/notebooks/deploy_metric_view.py", "ground-truth-infra/src/notebooks/list_fixtures.py", "ground-truth-infra/resources/jobs/metric_view_deploy.job.yml"]}, {"session_id": "05", "title": "Agent bundle config + Genie space resource", "plan_file": "05_agent_genie_space.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-agent/databricks.yml", "ground-truth-agent/ground_truth_ops.geniespace.json", "ground-truth-agent/resources/ground_truth_ops.genie_space.yml"]}, {"session_id": "06", "title": "Agent verification job", "plan_file": "06_agent_verification_job.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-agent/src/**", "ground-truth-agent/resources/jobs/**"]}]},
+    {"wave_id": "2-1", "name": "App features: migration, RBAC, import, client, bundle jobs", "archived": true, "build": "2", "gate": ["Archived (build 2)"], "sessions": [{"session_id": "07", "title": "App migration 007: CDF readiness, app groups, asset sources", "plan_file": "07_app_migration_007.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/migrations/**"], "depends_on": ["01"]}, {"session_id": "08", "title": "App RBAC from Lakebase app groups + member admin API", "plan_file": "08_app_rbac_membership.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/middleware/**", "ground-truth-app/server/services/membership/**", "ground-truth-app/server/routes/admin.ts"], "depends_on": ["01"]}, {"session_id": "09", "title": "App catalog browsing, source registration, import", "plan_file": "09_app_asset_import_sources.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/server/services/sources/**", "ground-truth-app/server/services/asset/**", "ground-truth-app/server/routes/assets.ts"], "depends_on": ["01"]}, {"session_id": "10", "title": "App client: import wizard + members page", "plan_file": "10_app_client_import_members.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/client/**"], "depends_on": ["01"]}, {"session_id": "11", "title": "App bundle: permissions, bootstrap env, M2M verification, demo seed job", "plan_file": "11_app_bundle_jobs_demo_seed.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["ground-truth-app/resources/**", "ground-truth-app/src/**", "ground-truth-app/app.yaml", "ground-truth-app/databricks.yml"]}]},
+    {"wave_id": "2-2", "name": "Converge: app", "archived": true, "build": "2", "gate": ["Archived (build 2)"], "runtime_gate": ["app", "app_deploy_verification", "demo_campaign_seed"], "sessions": [{"session_id": "12", "title": "Converge app: deploy, RBAC bootstrap, demo campaign", "plan_file": "12_app_converge.md", "mode": "converge", "scope": "Archived.", "owned_paths": ["ground-truth-app/**"], "depends_on": ["07", "08", "09", "10", "11"], "runtime_targets": ["app", "app_deploy_verification", "demo_campaign_seed"]}]},
+    {"wave_id": "2-3", "name": "Converge: Lakebase CDF, bronze, metric views", "archived": true, "build": "2", "gate": ["Archived (build 2)"], "runtime_gate": ["infra_setup_cdf", "cdf_bronze_pipeline", "infra_metric_view_deploy", "lb_votes_history", "lb_assets_history", "bronze_lakebase_cdf", "mv_review_activity"], "sessions": [{"session_id": "13", "title": "Converge infra data plane: CDF, bronze, metric views", "plan_file": "13_infra_converge_data_plane.md", "mode": "converge", "scope": "Archived.", "owned_paths": ["ground-truth-infra/**"], "depends_on": ["02", "03", "04", "12"], "runtime_targets": ["infra_setup_cdf", "cdf_bronze_pipeline", "infra_metric_view_deploy"]}]},
+    {"wave_id": "2-4", "name": "Converge: Genie agent", "archived": true, "build": "2", "gate": ["Archived (build 2)"], "runtime_gate": ["agent_space", "agent_verification"], "sessions": [{"session_id": "14", "title": "Converge Genie agent + verification", "plan_file": "14_agent_converge.md", "mode": "converge", "scope": "Archived.", "owned_paths": ["ground-truth-agent/**"], "depends_on": ["05", "06", "13"], "runtime_targets": ["agent_space", "agent_verification"]}]},
+    {"wave_id": "2-5", "name": "Docs and project memory", "archived": true, "build": "2", "gate": ["Archived (build 2)"], "sessions": [{"session_id": "15", "title": "Project memory, runbooks, READMEs", "plan_file": "15_root_docs_project_memory.md", "mode": "edit", "scope": "Archived.", "owned_paths": ["PROJECT_MEMORY.md", "README.md", "docs/runbooks/**"], "depends_on": ["12", "13", "14"]}]},
     {
-      "wave_id": "0",
+      "wave_id": "3-0",
+      "archived": true,
+      "build": "3",
       "name": "Edit: brand foundation, MCP card, runtime config, infra fixes, executive dashboard",
       "concurrency": 5,
       "gate": [
@@ -190,7 +280,9 @@
       ]
     },
     {
-      "wave_id": "1",
+      "wave_id": "3-1",
+      "archived": true,
+      "build": "3",
       "name": "Edit: branded components, accessibility, Logic View",
       "concurrency": 1,
       "gate": [
@@ -218,7 +310,9 @@
       ]
     },
     {
-      "wave_id": "2",
+      "wave_id": "3-2",
+      "archived": true,
+      "build": "3",
       "name": "Converge: infra secret ACL + scheduled bronze refresh",
       "gate": [
         "Session 22a status is pass with a final attempt classified stable",
@@ -232,7 +326,7 @@
         {
           "session_id": "22a",
           "title": "Converge infra: secret ACL + bronze refresh job",
-          "plan_file": "22_converge_infra.md",
+          "plan_file": "22a_infra_converge_secret_acl_bronze_refresh.md",
           "mode": "converge",
           "scope": "Deploy infra (run_setup=false) with the app SPN variable, confirm the scope ACL keeps app READ after deploy, and run cdf_bronze_refresh (which runs the cdf_bronze pipeline) cleanly with 0 failed/dropped records. Single runtime target: cdf_bronze_refresh; the gate also checks the pipeline update and the bronze table this produces. Do not work on the executive dashboard (session 22b) or the agent (session 22c).",
           "runtime_targets": ["cdf_bronze_refresh"],
@@ -246,7 +340,9 @@
       ]
     },
     {
-      "wave_id": "3",
+      "wave_id": "3-3",
+      "archived": true,
+      "build": "3",
       "name": "Converge: executive AI/BI dashboard",
       "gate": [
         "Session 22b status is pass with a final attempt classified stable",
@@ -260,7 +356,7 @@
         {
           "session_id": "22b",
           "title": "Converge infra: executive dashboard publishes with every dataset executing",
-          "plan_file": "22b_converge_executive_dashboard.md",
+          "plan_file": "22b_infra_converge_executive_dashboard.md",
           "mode": "converge",
           "scope": "Deploy infra (run_setup=false, same app SPN variable as 22a so the scope ACL is preserved), publish the executive dashboard, and fix any dataset that fails LIMIT 1 execution. Record the dashboard id and published URL in the session summary for session 23.",
           "runtime_targets": ["executive_dashboard"],
@@ -272,7 +368,9 @@
       ]
     },
     {
-      "wave_id": "4",
+      "wave_id": "3-4",
+      "archived": true,
+      "build": "3",
       "name": "Converge: agent regression",
       "gate": [
         "Session 22c status is pass with a final attempt classified stable"
@@ -282,7 +380,7 @@
         {
           "session_id": "22c",
           "title": "Converge agent regression: agent_verification after infra changes",
-          "plan_file": "22c_converge_agent_regression.md",
+          "plan_file": "22c_agent_converge_regression.md",
           "mode": "converge",
           "scope": "Regression only: run agent_verification after the infra changes in waves 2-3. This build does not change the agent bundle. If a check fails because of an infra change, fix it in ground-truth-infra; if it would need an agent edit, stop as blocked with the failing check.",
           "runtime_targets": ["agent_verification"],
@@ -295,7 +393,9 @@
       ]
     },
     {
-      "wave_id": "5",
+      "wave_id": "3-5",
+      "archived": true,
+      "build": "3",
       "name": "Converge: app (brand, Logic View, runtime config)",
       "gate": [
         "Session 23 status is pass with a final attempt classified stable"
@@ -308,7 +408,7 @@
         {
           "session_id": "23",
           "title": "Converge app: branded UI, runtime config, clean runtime gate",
-          "plan_file": "23_converge_app.md",
+          "plan_file": "23_app_converge.md",
           "mode": "converge",
           "scope": "Deploy the app with waves 0-1 changes and exec_dashboard_url from session 22b's summary, make the Apps build (tsc + vitest prebuild) pass, and keep the runtime gate clean: zero ERROR/FATAL or level=error/fatal lines, all probes passing. Single runtime target: app. After the final stable deploy, run deploy_verification once (bundle run deploy_verification) because the wave gate also checks app_deploy_verification for a successful run started during this build.",
           "runtime_targets": ["app"],
@@ -322,7 +422,9 @@
       ]
     },
     {
-      "wave_id": "6",
+      "wave_id": "3-6",
+      "archived": true,
+      "build": "3",
       "name": "Docs and project memory",
       "gate": [
         "All wave 6 sessions have status done",
@@ -333,11 +435,324 @@
         {
           "session_id": "24",
           "title": "Project memory, READMEs, gap status, brand runbook",
-          "plan_file": "24_docs_project_memory.md",
+          "plan_file": "24_root_docs_project_memory.md",
           "mode": "edit",
           "scope": "Update root and bundle PROJECT_MEMORY/README files, mark gap statuses in gap_analysis_2026-10.md, add docs/runbooks/ui_theming.md (token table, how to add a component, contrast test).",
           "owned_paths": ["PROJECT_MEMORY.md", "README.md", "docs/runbooks/**", "docs/plans/gap_analysis_2026-10.md", "ground-truth-infra/PROJECT_MEMORY.md", "ground-truth-infra/README.md", "ground-truth-app/README.md", "ground-truth-app/PROJECT_MEMORY.md"],
           "depends_on": ["22a", "22b", "22c", "23"]
+        }
+      ]
+    },
+    {
+      "wave_id": "4-0",
+      "build": "4",
+      "archived": true,
+      "name": "Edit: contracts + migration 009, toolchain + deps, feedback pipeline, skip metrics + G10, ops dashboard, research (Slack MCP, MCP App, UI)",
+      "concurrency": 8,
+      "gate": [
+        "All wave 4-0 sessions have status done",
+        "ground-truth-app/shared/contracts/values.ts VOTE_TYPES does not contain 'skip' and REVIEW_ACTIONS contains 'skip'",
+        "ground-truth-app/server/migrations/009_skips_settings_triage.ts exists, creates app.review_skips and app.user_settings, and is registered in ground-truth-app/server/migrations/index.ts",
+        "ground-truth-app/shared/contracts/schemas.ts exports ROUTE_CONTRACTS and MCP_TOOL_CONTRACTS, and ground-truth-app/shared/contracts/generated/contracts.schema.json exists",
+        "ground-truth-app/package.json pins @modelcontextprotocol/ext-apps to 1.7.5 and has @testing-library/react and jsdom in devDependencies",
+        "ground-truth-infra/fixtures/skills/ground-truth-feedback-author/SKILL.md exists with version 1.0.0 and no file under ground-truth-infra creates a branch name that does not start with mg-genie-feedback-",
+        "grep NotImplementedError under ground-truth-infra/src returns nothing and ground-truth-infra/resources/secrets has no git_token, slack_webhook or teams_webhook secret YAML",
+        "ground-truth-infra/fixtures/metric_views/mv_review_activity.yaml defines measures skips and skip_rate",
+        "ground-truth-agent/resources/ops_dashboard.dashboard.yml and ground-truth-agent/src/dashboards/operations.lvdash.json exist",
+        "docs/research/05_slack_mcp_notifications.md, docs/design/L300-17_mcp_app_review_card.md, docs/design/ui/figma_make_brief.md and docs/design/ui/ui_test_strategy.md exist"
+      ],
+      "validate_bundles": [
+        {"root": "ground-truth-infra", "target": "dev"},
+        {"root": "ground-truth-agent", "target": "dev"},
+        {"root": "ground-truth-app", "target": "dev"}
+      ],
+      "sessions": [
+        {
+          "session_id": "25",
+          "title": "Contracts + migration 009: skips, user settings, steward triage",
+          "plan_file": "25_app_contracts_skip_settings_migration.md",
+          "mode": "edit",
+          "scope": "Remove 'skip' from VOTE_TYPES; add skip, user settings and steward triage types, zod schemas for every route and MCP tool (ROUTE_CONTRACTS, MCP_TOOL_CONTRACTS), generated JSON Schema, and idempotent Lakebase migration 009 (app.review_skips, app.user_settings, user_activity skip counters, feedback_batches and votes triage columns, skip_cooldown_hours config).",
+          "owned_paths": ["ground-truth-app/shared/contracts/**", "ground-truth-app/server/migrations/**"],
+          "timeout_minutes": 120
+        },
+        {
+          "session_id": "26",
+          "title": "Node toolchain proof, MCP Apps + UI test dependencies, security audit",
+          "plan_file": "26_app_toolchain_deps_audit.md",
+          "mode": "edit",
+          "scope": "Prove docs/runbooks/node_toolchain_genie_code.md inside a genie_task; add @modelcontextprotocol/ext-apps 1.7.5 and Testing Library/jsdom/axe dev deps; fix semver-compatible high/critical pnpm audit findings; vitest projects with a jsdom client environment and one smoke component test. Sole owner of package.json and pnpm-lock.yaml.",
+          "owned_paths": ["ground-truth-app/package.json", "ground-truth-app/pnpm-lock.yaml", "ground-truth-app/vitest.config.ts", "ground-truth-app/client/src/test/**", "docs/runbooks/node_toolchain_genie_code.md"],
+          "timeout_minutes": 120
+        },
+        {
+          "session_id": "27",
+          "title": "Feedback pipeline as a Genie Code task with a versioned skill (G4)",
+          "plan_file": "27_infra_feedback_pipeline_genie_task.md",
+          "mode": "edit",
+          "scope": "Versioned skill ground-truth-feedback-author 1.0.0; automation without schedule/trigger; job tasks collect_feedback -> check_has_feedback -> author_feedback_branch (genie_task, patched by setup_job_params) -> register_feedback_branch (POST /api/steward/feedback-branches); branch names mg-genie-feedback-<yyyymmdd>; helper unit tests.",
+          "owned_paths": ["ground-truth-infra/resources/jobs/feedback_pipeline.job.yml", "ground-truth-infra/src/notebooks/collect_feedback.py", "ground-truth-infra/src/notebooks/create_feature_branch.py", "ground-truth-infra/src/notebooks/register_feedback_branch.py", "ground-truth-infra/src/notebooks/setup_genie_automation.py", "ground-truth-infra/src/notebooks/setup_job_params.py", "ground-truth-infra/fixtures/prompts/**", "ground-truth-infra/fixtures/skills/**", "ground-truth-infra/tests/test_feedback_pipeline.py"],
+          "timeout_minutes": 120
+        },
+        {
+          "session_id": "28",
+          "title": "Skip metrics through CDF, bronze, metric views, executive dashboard + G10 cleanup",
+          "plan_file": "28_infra_skip_metrics_g10_cleanup.md",
+          "mode": "edit",
+          "scope": "Ensure review_skips and user_settings reach bronze; add skips, skip_rate, skip_reason to mv_review_activity and total_skips to mv_user_leaderboard (additions only); two skip widgets on the executive dashboard; delete setup_gateway_connection.py, setup_app_role_sp.py, their post_deploy_setup tasks and the three empty secret YAMLs.",
+          "owned_paths": ["ground-truth-infra/fixtures/metric_views/**", "ground-truth-infra/src/pipelines/**", "ground-truth-infra/src/lib/lakebase_cdf.py", "ground-truth-infra/src/notebooks/setup_cdf_config.py", "ground-truth-infra/src/notebooks/setup_gateway_connection.py", "ground-truth-infra/src/notebooks/setup_app_role_sp.py", "ground-truth-infra/src/dashboards/**", "ground-truth-infra/resources/jobs/post_deploy_setup.job.yml", "ground-truth-infra/resources/secrets/**", "ground-truth-infra/databricks.yml", "ground-truth-infra/README.md", "ground-truth-infra/PROJECT_MEMORY.md"],
+          "timeout_minutes": 120
+        },
+        {
+          "session_id": "29",
+          "title": "Agent bundle AI/BI operations dashboard",
+          "plan_file": "29_agent_operations_dashboard.md",
+          "mode": "edit",
+          "scope": "Dashboard resource 'Semantic Ground Truth — Operations' in ground-truth-agent over the metric views (review queue health incl. skips, campaigns, feedback loop, app health) plus a dashboard check in agent_verification.",
+          "owned_paths": ["ground-truth-agent/**"],
+          "exclude_paths": ["ground-truth-agent/docs/plans/**", "ground-truth-agent/.databricks/**"],
+          "timeout_minutes": 120
+        },
+        {
+          "session_id": "30",
+          "title": "Research: app notifications through the workspace Slack MCP (G5)",
+          "plan_file": "30_root_research_slack_mcp_notifications.md",
+          "mode": "edit",
+          "scope": "Docs only. Answer the six questions in the plan with sources (UC external MCP connection path, OAUTH_U2M_MAPPING with app SPN vs OBO, tools/list, job usage, own bot connection, Unity Gateway) and recommend a G5 design. Never send a Slack message or change connections, grants or secrets.",
+          "owned_paths": ["docs/research/05_slack_mcp_notifications.md", "docs/research/INDEX.md"],
+          "timeout_minutes": 90
+        },
+        {
+          "session_id": "31",
+          "title": "MCP App design for the review card",
+          "plan_file": "31_root_research_mcp_app_design.md",
+          "mode": "edit",
+          "scope": "Docs only. Design the review card as an MCP App with @modelcontextprotocol/ext-apps 1.7.5 from the local mcp-ext-apps clone (host matrix, resource, tool _meta, view behaviour, auth, testing) and a numbered acceptance list for session 34.",
+          "owned_paths": ["docs/design/L300-17_mcp_app_review_card.md"],
+          "timeout_minutes": 90
+        },
+        {
+          "session_id": "32",
+          "title": "UI design review from scratch + Figma Make brief + UI test strategy",
+          "plan_file": "32_root_ui_design_review_figma_brief.md",
+          "mode": "edit",
+          "scope": "Docs only. Screen inventory (6 routes + Settings, Feedback queue, Conflicts, Feedback branches), Figma Make brief (global + per-screen prompts, bold Databricks brand, Databricks icons, light/dark, export instructions), UI test strategy, build-5 outline. No client code.",
+          "owned_paths": ["docs/design/ui/**"],
+          "timeout_minutes": 120
+        }
+      ]
+    },
+    {
+      "wave_id": "4-1",
+      "build": "4",
+      "archived": true,
+      "name": "Edit: server skip, settings and steward triage APIs",
+      "gate": [
+        "All wave 4-1 sessions have status done",
+        "ground-truth-app/server/routes registers POST /api/review/skip, GET and PUT /api/me/settings and the five /api/steward/* routes",
+        "ground-truth-app/server/lib/validate.ts exists and every route file uses validate(",
+        "no file under ground-truth-app/client/src sends voteType 'skip'"
+      ],
+      "validate_bundles": [{"root": "ground-truth-app", "target": "dev"}],
+      "sessions": [
+        {
+          "session_id": "33",
+          "title": "Server: skip endpoint, user settings, steward triage APIs (G6 backend)",
+          "plan_file": "33_app_server_skip_settings_steward_api.md",
+          "mode": "edit",
+          "scope": "Request validation for every route from ROUTE_CONTRACTS; skip service (never touches votes or scores) with queue cooldown; 8 new routes; skipCooldownHours admin config; client skip call switched to the skip endpoint; vitest coverage incl. RBAC.",
+          "owned_paths": ["ground-truth-app/server/**", "ground-truth-app/client/src/lib/api/**", "ground-truth-app/client/src/components/review/CardStack.tsx", "ground-truth-app/client/src/components/review/SwipeActions.tsx"],
+          "exclude_paths": ["ground-truth-app/server/mcp/**", "ground-truth-app/server/migrations/**"],
+          "depends_on": ["25", "26"],
+          "timeout_minutes": 150
+        }
+      ]
+    },
+    {
+      "wave_id": "4-2",
+      "build": "4",
+      "archived": true,
+      "name": "Edit: MCP review_skip_card + MCP App review card",
+      "gate": [
+        "All wave 4-2 sessions have status done",
+        "ground-truth-app/server/mcp registers 13 tools including review_skip_card",
+        "the review card resource is registered with the MCP Apps MIME type and at least one tool declares _meta.ui.resourceUri"
+      ],
+      "validate_bundles": [{"root": "ground-truth-app", "target": "dev"}],
+      "sessions": [
+        {
+          "session_id": "34",
+          "title": "MCP: review_skip_card tool + interactive review card as an MCP App",
+          "plan_file": "34_app_mcp_skip_tool_mcp_app.md",
+          "mode": "edit",
+          "scope": "Implement docs/design/L300-17_mcp_app_review_card.md: review_skip_card, input/output validation for all 13 tools, self-contained MCP App card (ext-apps 1.7.5) with text fallback, vitest coverage.",
+          "owned_paths": ["ground-truth-app/server/mcp/**"],
+          "depends_on": ["25", "26", "31", "33"],
+          "timeout_minutes": 150
+        }
+      ]
+    },
+    {
+      "wave_id": "4-3",
+      "build": "4",
+      "archived": true,
+      "name": "Edit: contract tests (in-process + live job)",
+      "gate": [
+        "All wave 4-3 sessions have status done",
+        "ground-truth-app/tests/contract has a coverage test over ROUTE_CONTRACTS and MCP_TOOL_CONTRACTS and ground-truth-app/tests/contract/manifest.json exists",
+        "ground-truth-app/resources/jobs/api_contract_tests.job.yml references src/notebooks/api_contract_tests.ipynb and that file exists"
+      ],
+      "validate_bundles": [{"root": "ground-truth-app", "target": "dev"}],
+      "sessions": [
+        {
+          "session_id": "35",
+          "title": "Contract tests for every REST route and MCP tool",
+          "plan_file": "35_app_contract_tests.md",
+          "mode": "edit",
+          "scope": "In-process vitest contract suite with fixtures and a coverage test; manifest.json; live api_contract_tests job (M2M) that seeds, asserts exact values and schemas, cleans up and writes api_contract_results.",
+          "owned_paths": ["ground-truth-app/tests/contract/**", "ground-truth-app/src/notebooks/api_contract_tests.ipynb", "ground-truth-app/resources/jobs/api_contract_tests.job.yml", "ground-truth-app/databricks.yml"],
+          "depends_on": ["25", "33", "34"],
+          "timeout_minutes": 150
+        }
+      ]
+    },
+    {
+      "wave_id": "4-4",
+      "build": "4",
+      "name": "Converge: app",
+      "gate": [
+        "Session 36 status is pass with a final attempt classified stable",
+        "Integrator runs the app checks in a copy of ground-truth-app (/tmp/gt-gate-4-4/, excluding node_modules, dist, .databricks) with the Node toolchain from docs/runbooks/node_toolchain_genie_code.md (nodeenv Node 22.16.0 + npm install -g pnpm@11.0.8, then pnpm install --frozen-lockfile). Check vitest = pnpm exec vitest run exits 0. Check tsc = pnpm exec tsc -b tsconfig.server.json and pnpm exec tsc -b tsconfig.client.json both exit 0. Report them in checks with names exactly vitest and tsc."
+      ],
+      "required_checks": ["tsc", "vitest"],
+      "runtime_gate": ["app", "app_deploy_verification"],
+      "sessions": [
+        {
+          "session_id": "36",
+          "title": "Converge app: migration 009, skip/settings/steward APIs, MCP App",
+          "plan_file": "36_app_converge.md",
+          "mode": "converge",
+          "scope": "Deploy the app bundle, run the app, fix until the runtime gate (10-minute soak, 0 errors, probes incl. /api/me/settings and /api/review/stats/me) and deploy_verification pass.",
+          "runtime_targets": ["app"],
+          "owned_paths": ["ground-truth-app/**"],
+          "exclude_paths": ["ground-truth-app/.build-status/**", "ground-truth-app/.databricks/**"],
+          "max_attempts": 4,
+          "timeout_minutes": 180,
+          "depends_on": ["25", "26", "33", "34", "35"]
+        }
+      ]
+    },
+    {
+      "wave_id": "4-5",
+      "build": "4",
+      "name": "Converge: infra skips through CDF, bronze, metric views",
+      "gate": ["Session 37 status is pass with a final attempt classified stable"],
+      "runtime_gate": ["infra_metric_view_deploy", "lb_review_skips_history", "bronze_lakebase_cdf", "executive_dashboard"],
+      "sessions": [
+        {
+          "session_id": "37",
+          "title": "Converge infra: skips through CDF, bronze, metric views; G10 cleanup deployed",
+          "plan_file": "37_infra_converge_metric_views_skips.md",
+          "mode": "converge",
+          "scope": "Deploy ground-truth-infra (run_setup=false), refresh CDF config if changed, run cdf_bronze and metric_view_deploy until lb_review_skips_history, bronze rows for review_skips, the new measures and the executive dashboard all check out.",
+          "runtime_targets": ["infra_metric_view_deploy"],
+          "owned_paths": ["ground-truth-infra/**"],
+          "exclude_paths": ["ground-truth-infra/docs/plans/**", "ground-truth-infra/.databricks/**"],
+          "max_attempts": 3,
+          "timeout_minutes": 120,
+          "depends_on": ["28", "36"]
+        }
+      ]
+    },
+    {
+      "wave_id": "4-6",
+      "build": "4",
+      "name": "Converge: feedback pipeline",
+      "gate": ["Session 38 status is pass with a final attempt classified stable"],
+      "runtime_gate": ["feedback_pipeline"],
+      "sessions": [
+        {
+          "session_id": "38",
+          "title": "Converge infra: feedback pipeline creates a mg-genie-feedback-<yyyymmdd> branch",
+          "plan_file": "38_infra_converge_feedback_pipeline.md",
+          "mode": "converge",
+          "scope": "Deploy, patch the genie_task, run feedback_pipeline end to end (branch pushed, registered in the app, votes processed), then prove the no-feedback run creates no branch. Never merge or delete feedback branches.",
+          "runtime_targets": ["feedback_pipeline"],
+          "owned_paths": ["ground-truth-infra/**"],
+          "exclude_paths": ["ground-truth-infra/docs/plans/**", "ground-truth-infra/.databricks/**"],
+          "max_attempts": 3,
+          "timeout_minutes": 150,
+          "depends_on": ["27", "36", "37"]
+        }
+      ]
+    },
+    {
+      "wave_id": "4-7",
+      "build": "4",
+      "name": "Converge: agent operations dashboard + regression",
+      "gate": ["Session 39 status is pass with a final attempt classified stable"],
+      "runtime_gate": ["agent_ops_dashboard", "agent_verification", "agent_space"],
+      "sessions": [
+        {
+          "session_id": "39",
+          "title": "Converge agent: operations dashboard + agent_verification",
+          "plan_file": "39_agent_converge_operations_dashboard.md",
+          "mode": "converge",
+          "scope": "Deploy ground-truth-agent; the operations dashboard publishes with every dataset executing; agent_verification (incl. the dashboard check) and Genie space probes pass.",
+          "runtime_targets": ["agent_ops_dashboard"],
+          "owned_paths": ["ground-truth-agent/**"],
+          "exclude_paths": ["ground-truth-agent/docs/plans/**", "ground-truth-agent/.databricks/**"],
+          "max_attempts": 3,
+          "timeout_minutes": 90,
+          "depends_on": ["29", "37"]
+        }
+      ]
+    },
+    {
+      "wave_id": "4-8",
+      "build": "4",
+      "name": "Converge: live contract tests at 100%",
+      "gate": [
+        "Session 40 status is pass with a final attempt classified stable",
+        "Integrator runs the app checks in a copy of ground-truth-app (/tmp/gt-gate-4-8/, excluding node_modules, dist, .databricks) with the Node toolchain from docs/runbooks/node_toolchain_genie_code.md (nodeenv Node 22.16.0 + npm install -g pnpm@11.0.8, then pnpm install --frozen-lockfile). Check vitest = pnpm exec vitest run exits 0. Check tsc = pnpm exec tsc -b tsconfig.server.json and pnpm exec tsc -b tsconfig.client.json both exit 0. Report them in checks with names exactly vitest and tsc."
+      ],
+      "required_checks": ["tsc", "vitest"],
+      "runtime_gate": ["api_contract_tests", "api_contract_results", "app"],
+      "sessions": [
+        {
+          "session_id": "40",
+          "title": "Converge app: live contract tests at 100%",
+          "plan_file": "40_app_converge_contract_tests.md",
+          "mode": "converge",
+          "scope": "Run api_contract_tests until 0 fail rows and 100% coverage; fix the server, never the contract or the checks (403 role checks may be skipped_live only).",
+          "runtime_targets": ["api_contract_tests"],
+          "owned_paths": ["ground-truth-app/**"],
+          "exclude_paths": ["ground-truth-app/.build-status/**", "ground-truth-app/.databricks/**"],
+          "max_attempts": 4,
+          "timeout_minutes": 180,
+          "depends_on": ["35", "36", "38"]
+        }
+      ]
+    },
+    {
+      "wave_id": "4-9",
+      "build": "4",
+      "name": "Docs and project memory",
+      "gate": [
+        "All wave 4-9 sessions have status done",
+        "docs/plans/gap_analysis_2026-10.md updates G4, G5, G6, G9, G10 and G17 with evidence links",
+        "PROJECT_MEMORY.md has a status log entry for build 4"
+      ],
+      "sessions": [
+        {
+          "session_id": "41",
+          "title": "Docs, project memory, gap status (build 4)",
+          "plan_file": "41_root_docs_project_memory.md",
+          "mode": "edit",
+          "scope": "Update root and bundle PROJECT_MEMORY/README files, gap statuses, INDEX status column, runbooks contract_tests.md and feedback_pipeline.md, build-4 summary.",
+          "owned_paths": ["PROJECT_MEMORY.md", "README.md", "ground-truth-app/PROJECT_MEMORY.md", "ground-truth-app/README.md", "ground-truth-infra/PROJECT_MEMORY.md", "ground-truth-infra/README.md", "ground-truth-agent/PROJECT_MEMORY.md", "ground-truth-agent/README.md", "docs/runbooks/**", "docs/sessions/**", "docs/plans/INDEX.md", "docs/plans/gap_analysis_2026-10.md"],
+          "depends_on": ["36", "37", "38", "39", "40"],
+          "timeout_minutes": 90
         }
       ]
     }

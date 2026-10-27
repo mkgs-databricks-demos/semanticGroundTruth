@@ -78,7 +78,7 @@ export class AssetRegistry {
       await this.db.query(
         `UPDATE app.assets
          SET version_hash = $1, yaml_content = $2, description = $3,
-             plain_english_logic = $4, display_name = $5,
+             plain_english_logic = $4, display_name = COALESCE($5, display_name, name),
              domain = $6, subdomain = $7,
              status = 'PENDING', updated_at = NOW()
          WHERE id = $8`,
@@ -115,7 +115,7 @@ export class AssetRegistry {
       [
         input.assetType,
         input.name,
-        input.displayName ?? null,
+        input.displayName ?? input.name,
         input.description ?? null,
         input.plainEnglishLogic ?? null,
         input.yamlContent,
@@ -185,7 +185,7 @@ export class AssetRegistry {
       [assetId],
     );
     if (!row) throw notFound(`Asset not found: ${assetId}`);
-    return rowToAsset(row);
+    return rowToAsset(row, await this.listSynonyms(assetId));
   }
 
   async list(q: ReviewableQuery): Promise<Paged<Asset>> {
@@ -218,15 +218,24 @@ export class AssetRegistry {
       [...params, limit, offset],
     );
 
+    const synonymsByAsset = await this.synonymsFor(rows.map((r) => String(r.id)));
+
     return {
-      items: rows.map(rowToAsset),
+      items: rows.map((r) => rowToAsset(r, synonymsByAsset.get(String(r.id)) ?? [])),
       total,
       limit,
       offset,
     };
   }
 
+  /** 404 for an unknown asset id, before any read or write that would otherwise hit a FK error or return []. */
+  private async requireAsset(assetId: string): Promise<void> {
+    const row = await this.db.one<{ id: string }>('SELECT id FROM app.assets WHERE id = $1', [assetId]);
+    if (!row) throw notFound(`Asset not found: ${assetId}`);
+  }
+
   async listVersions(assetId: string): Promise<AssetVersion[]> {
+    await this.requireAsset(assetId);
     const rows = await this.db.query(
       'SELECT * FROM app.asset_versions WHERE asset_id = $1 ORDER BY version DESC',
       [assetId],
@@ -248,7 +257,31 @@ export class AssetRegistry {
     return rows.map(rowToSynonym);
   }
 
+  /** Active synonyms for many assets in one query (Asset.synonyms on list pages). */
+  private async synonymsFor(assetIds: string[]): Promise<Map<string, AssetSynonym[]>> {
+    const byAsset = new Map<string, AssetSynonym[]>();
+    if (assetIds.length === 0) return byAsset;
+    const rows = await this.db.query(
+      `SELECT s.*,
+              COALESCE(SUM(CASE WHEN sv.action = 'approve' THEN 1 ELSE 0 END), 0)::int AS approvals,
+              COALESCE(SUM(CASE WHEN sv.action = 'reject' THEN 1 ELSE 0 END), 0)::int AS rejections
+       FROM app.asset_synonyms s
+       LEFT JOIN app.synonym_votes sv ON sv.synonym_id = s.id
+       WHERE s.asset_id = ANY($1::uuid[]) AND s.is_active = TRUE
+       GROUP BY s.id`,
+      [assetIds],
+    );
+    for (const row of rows) {
+      const syn = rowToSynonym(row);
+      const list = byAsset.get(syn.assetId) ?? [];
+      list.push(syn);
+      byAsset.set(syn.assetId, list);
+    }
+    return byAsset;
+  }
+
   async listExamples(assetId: string): Promise<ExampleQuestion[]> {
+    await this.requireAsset(assetId);
     const rows = await this.db.query(
       'SELECT * FROM app.example_questions WHERE asset_id = $1 ORDER BY created_at',
       [assetId],
@@ -261,6 +294,7 @@ export class AssetRegistry {
     synonym: string,
     userId: string,
   ): Promise<void> {
+    await this.requireAsset(assetId);
     await this.db.query(
       `INSERT INTO app.asset_synonyms (asset_id, synonym, proposed_by)
        VALUES ($1, $2, $3)
@@ -292,6 +326,7 @@ export class AssetRegistry {
   }
 
   async removeSynonym(assetId: string, synonym: string): Promise<void> {
+    await this.requireAsset(assetId);
     await this.db.query(
       `UPDATE app.asset_synonyms SET is_active = FALSE
        WHERE asset_id = $1 AND synonym = $2`,
@@ -304,6 +339,7 @@ export class AssetRegistry {
     questionText: string,
     userId: string,
   ): Promise<void> {
+    await this.requireAsset(assetId);
     await this.db.query(
       `INSERT INTO app.example_questions (asset_id, question_text, proposed_by)
        VALUES ($1, $2, $3)`,

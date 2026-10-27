@@ -1,16 +1,31 @@
 // client/src/components/review/SwipeActions.tsx — always-visible vote buttons
 // Session 17 · Wave 1 · semantic tokens, visible labels, ≥ 44 × 44 px targets
+// Session 33 · Wave 4-1 · Skip is not a vote: it calls onSkip (POST /api/review/skip)
 
+import { createContext, useContext } from 'react';
 import { Button } from '@databricks/appkit-ui/react';
 import { Check, Pencil, SkipForward, X } from 'lucide-react';
 import type { VoteType } from '../../../../shared/contracts';
 
+/**
+ * Skip handler supplied by CardStack, so the Skip button works without every
+ * card wrapper threading an extra prop. `null` hides nothing: the button is
+ * disabled when no handler is available.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export const SkipActionContext = createContext<(() => void) | null>(null);
+
 interface SwipeActionsProps {
+  /** approve / reject / edit only; skip goes through onSkip. */
   onVote: (type: VoteType) => void;
+  /** Overrides the SkipActionContext handler. */
+  onSkip?: () => void;
   disabled?: boolean;
 }
 
-export function SwipeActions({ onVote, disabled }: SwipeActionsProps) {
+export function SwipeActions({ onVote, onSkip, disabled }: SwipeActionsProps) {
+  const contextSkip = useContext(SkipActionContext);
+  const skip = onSkip ?? contextSkip;
   return (
     <div className="flex items-center justify-center gap-3 py-4">
       <Button
@@ -46,8 +61,8 @@ export function SwipeActions({ onVote, disabled }: SwipeActionsProps) {
       <Button
         variant="ghost"
         className="min-h-[44px] min-w-[44px] gap-1.5 rounded-full text-vote-skip hover:bg-vote-skip/10"
-        onClick={() => onVote('skip')}
-        disabled={disabled}
+        onClick={() => skip?.()}
+        disabled={disabled || !skip}
         aria-label="Skip (S key)"
       >
         <SkipForward className="h-4 w-4" />

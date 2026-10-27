@@ -3,7 +3,7 @@
 **Wave 0 · edit · owns `ground-truth-app/shared/contracts/**`**
 
 ## Context
-* Read `docs/plans/build_conventions.md` §3–§5 (root) and `ground-truth-app/docs/plans/build_conventions.md` (app contract style: `as const` arrays, zod schemas next to DTOs, no `enum`/`namespace`).
+* Read `docs/plans/build_conventions.md` §3–§5 (root) and `docs/plans/app/build_conventions.md` (moved from `ground-truth-app/docs/plans/` on 2026-10-24; app contract style: `as const` arrays, zod schemas next to DTOs, no `enum`/`namespace`).
 * Existing files: `shared/contracts/{values,entities,review,api,mcp,errors,index}.ts`. `ASSET_TYPES` already contains `page`; `ROLES = ['reviewer','steward','admin']`.
 
 ## Steps

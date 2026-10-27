@@ -3,7 +3,7 @@
 **Wave 0 · edit · owns `ground-truth-agent/databricks.yml`, `ground-truth-agent/ground_truth_ops.geniespace.json`, `ground-truth-agent/resources/ground_truth_ops.genie_space.yml`**
 
 ## Context
-* Supersedes `ground-truth-agent/docs/plans/01_bundle_config_and_genie_resource.md` (read it for the original intent). Differences: data sources are the 7 metric views from plan 04 plus `semantic_ground_truth_otel_logs` / `_spans`; no `lb_*_history` tables.
+* Supersedes `docs/plans/agent/01_bundle_config_and_genie_resource.md` (read it for the original intent). Differences: data sources are the 7 metric views from plan 04 plus `semantic_ground_truth_otel_logs` / `_spans`; no `lb_*_history` tables.
 * Design: `docs/design/L200-C9_operational_genie_agent.md`, `docs/design/L300-14_genie_agent_creation.md`.
 * Verify the bundle `genie_spaces` resource schema with `databricks bundle schema` before writing YAML (fields for warehouse, title, description, file/serialized space, permissions).
 

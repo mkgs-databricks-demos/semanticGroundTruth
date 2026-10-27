@@ -3,7 +3,7 @@
 **Wave 0 · edit · owns `ground-truth-agent/src/**`, `ground-truth-agent/resources/jobs/**`**
 
 ## Context
-* Supersedes the verification half of `ground-truth-agent/docs/plans/02_metric_views_and_deploy_jobs.md`. Metric view deployment moved to infra (plan 04) — do not create `deploy_metric_views` here.
+* Supersedes the verification half of `docs/plans/agent/02_metric_views_and_deploy_jobs.md`. Metric view deployment moved to infra (plan 04) — do not create `deploy_metric_views` here.
 
 ## Steps
 1. `src/notebooks/agent_verification.ipynb`: first cell **Install latest Databricks SDK**; widgets `catalog`, `schema`, `warehouse_id`, `space_title`. Checks, each reported in a result table and failing the run on any failure:

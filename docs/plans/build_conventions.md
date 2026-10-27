@@ -4,7 +4,21 @@ Read this before every session in `docs/plans/waves.json`. If a plan file and th
 
 Decisions below were made by the project owner on 2026-10-22 and are not open for redesign inside a session.
 
-## 0. Next build overrides (brand UI + gaps, sessions 16–24)
+## 0. Build 4 overrides (sessions 25–41, waves `4-0`..`4-9`)
+
+Where this section and later sections (including §0b) disagree, this section wins for sessions 25–41.
+
+* **Branch:** `mg-genie-build-4` (holds the plan commit; the build commits on top of it, as in build 3). Feedback-pipeline branches use `mg-genie-feedback-<yyyymmdd>`; never `feedback/<date>`.
+* **Node toolchain is available.** Follow [`docs/runbooks/node_toolchain_genie_code.md`](../runbooks/node_toolchain_genie_code.md) (nodeenv Node 22.16.0 + pnpm 11.0.8 in `/tmp/node2216`). Any app session may run `pnpm install --frozen-lockfile`, `pnpm exec vitest run` and `pnpm exec tsc -b` and should do so before writing its status file. **Parallel sessions never install inside the repo folder:** copy `ground-truth-app/` to `/tmp/gt-<session_id>/` (exclude `node_modules`, `.venv`, `dist`, `.databricks`), run the toolchain there, and bring back only files you own (e.g. generated schemas). Only session 26 installs in the repo and changes `package.json` / `pnpm-lock.yaml`; others record a `request`. Never commit `node_modules/`. This replaces the "No Node toolchain in sessions" rule in [`app/build_conventions.md`](app/build_conventions.md) §1 and the §0b "no new npm dependencies" rule for build 4.
+* **Skip is not a vote.** `skip` leaves `VOTE_TYPES`. Skips are stored in `app.review_skips`, are counted (per user, per asset, per campaign) and never change `confidence_scores`, Wilson inputs or certification. See plan 25.
+* **Contracts are executable.** Every REST request/response and MCP tool input/output has a zod schema in `ground-truth-app/shared/contracts/schemas.ts` (plan 25). Server routes validate requests with them; contract tests (plan 35) validate responses with them.
+* **MCP Apps:** pin `@modelcontextprotocol/ext-apps@1.7.5` (peer `@modelcontextprotocol/sdk ^1.29`, current 1.32.1). 2.x needs the MCP TypeScript SDK v2 split packages; that migration is out of scope unless session 31 shows 1.7.5 cannot render in Genie One. The MCP Apps preview is enabled in this workspace.
+* **G5 external notifications are deferred.** No Slack/Teams webhook is available. Session 30 researches using the workspace Slack MCP connection instead; no session sends to Slack in this build.
+* **UI redesign waits for Figma Make.** Build 4 writes the brief (session 32); the owner runs Figma Make and commits the export to `docs/design/ui/figma/`; build 5 implements it. Build 4 sessions change the client only where a contract change forces it (skip call, settings types).
+* **Deletions approved by the owner (2026-10-24):** G10 scaffolds (`setup_gateway_connection.py`, `setup_app_role_sp.py`, their `post_deploy_setup` tasks) and the three empty secret YAMLs (`git_token`, `slack_webhook`, `teams_webhook`).
+* **Plan files are planner-owned.** No session edits `docs/plans/**` except session 41 (`INDEX.md` status column and `gap_analysis_2026-10.md` only).
+
+## 0b. Build 3 overrides (brand UI + gaps, sessions 16–24, historical)
 
 Where this section and later sections disagree, this section wins for sessions 16–24.
 
@@ -21,7 +35,7 @@ Where this section and later sections disagree, this section wins for sessions 1
 
 * **Git editor + bundle assets only.** Every deliverable is a file in this repo that a Declarative Automation Bundle deploys: apps, jobs, pipelines, Genie spaces, dashboards. Anything with no bundle resource type (Lakebase CDF config, metric views, grants, demo data) is a **bundle job** that a converge session runs with `bundle run`. No ad-hoc notebook runs, no UI clicks, no SQL editor work.
 * **Sessions are `edit` or `converge` only.** No `execute` / `configure`.
-* **Leave the app bundle's own build untouched:** never edit `ground-truth-app/docs/plans/**` or `ground-truth-app/.build-status/**`.
+* **Leave the app bundle's own build history untouched:** never edit `docs/plans/app/**`, `docs/plans/agent/**`, `docs/plans/manifests/**` or `ground-truth-app/.build-status/**`.
 * **No masking / ABAC / governed tags in this build.** Deferred until the data model is stable.
 * **Deploy order:** app converge (wave 2) → infra converge (wave 3) → agent converge (wave 4). The infra bundle is already deployed; wave 3 redeploys it with the new CDF/pipeline/metric-view assets.
 * Never commit to `main`. Branch: `mg-genie-agent-build`.

@@ -171,6 +171,13 @@ export class SourceService {
     const updated: string[] = [];
     const skipped: { ref: string; reason: string }[] = [];
 
+    // Every referenced source must exist before anything is written: an unknown
+    // sourceId is a 404 for the whole request, not a per-term skip.
+    const sourceIds = new Set<string>();
+    if (body.sourceId) sourceIds.add(body.sourceId);
+    for (const gt of body.glossaryTerms ?? []) sourceIds.add(gt.sourceId);
+    for (const id of sourceIds) await this.getSource(id);
+
     // ── Metric view imports ───────────────────────────────────────────
     if (body.metricViews && body.metricViews.length > 0) {
       // Look up source for linking if provided

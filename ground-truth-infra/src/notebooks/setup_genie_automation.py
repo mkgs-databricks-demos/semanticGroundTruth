@@ -1,13 +1,18 @@
 # Databricks notebook source
+# DBTITLE 1,Setup Genie Code Automation
 # MAGIC %md
 # MAGIC # Setup Genie Code Automation
-# MAGIC Creates or updates the Genie Code automation (scheduled insight) for the feedback pipeline.
+# MAGIC Creates or updates the Genie Code automation used by the `feedback_pipeline` task `author_feedback_branch` (a `genie_task`).
 # MAGIC
-# MAGIC **Design source:** `docs/plans/post_deploy_automation_plan.md` Task 1, `docs/research/03_genie_code_workflow_tasks.md` §2–3
+# MAGIC * **Idempotent by display name** `Ground Truth Feedback Author (<target>)`. Created once with **no schedule and no trigger** (the job drives it). Its `user_prompt` is the § Automation Prompt block of `fixtures/prompts/feedback_loop_prompt.md` with the skill version filled in, and is updated only when it changes (i.e. when the skill version or the prompt fixture changes).
+# MAGIC * The rules live in the versioned skill `fixtures/skills/ground-truth-feedback-author/SKILL.md`; Genie Code reads it at the bundle-deployed path passed as `{{skill_path}}`.
+# MAGIC * If the owner's `/Workspace/Users/<owner>/.assistant/skills/` folder exists, the skill is also copied to `ground-truth-feedback-author/SKILL.md` there, unless that copy has the same or a newer `version`.
 # MAGIC
-# MAGIC **API:** `POST /api/2.0/alerts-internal/scheduled-insights`
+# MAGIC **Design source:** `docs/plans/27_infra_feedback_pipeline_genie_task.md`, `docs/plans/post_deploy_automation_plan.md` Task 1, `docs/research/03_genie_code_workflow_tasks.md` §2–3
 # MAGIC
-# MAGIC **Outputs:** `dbutils.jobs.taskValues.set(key="configuration_id", value=<id>)`
+# MAGIC **API:** `/api/2.0/alerts-internal/scheduled-insights` (list, create, patch, get)
+# MAGIC
+# MAGIC **Outputs (task values):** `configuration_id` (full `genie_code/users/<uid>/scheduled_insights/<id>` name), `skill_version`. Pure helpers are unit-tested in `tests/test_feedback_pipeline.py`.
 
 # COMMAND ----------
 
@@ -19,174 +24,161 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## Parameters
-
-# COMMAND ----------
-
+# DBTITLE 1,Parameters
 dbutils.widgets.text("catalog", "", "Target catalog")
 dbutils.widgets.text("schema", "", "Target schema")
-dbutils.widgets.text("git_folder_id", "", "Git folder ID for the YAML fixtures repo")
-dbutils.widgets.text("prompt_path", "fixtures/prompts/feedback_loop_prompt.md", "Path to prompt fixture (relative to bundle root)")
+dbutils.widgets.text("git_folder_id", "", "Git folder ID of the repo (informational)")
+dbutils.widgets.text("bundle_target", "", "Bundle target (default: parsed from the bundle root path)")
+dbutils.widgets.text("prompt_path", "fixtures/prompts/feedback_loop_prompt.md", "Prompt fixture (relative to bundle root)")
+dbutils.widgets.text("skill_path", "fixtures/skills/ground-truth-feedback-author/SKILL.md", "Skill file (relative to bundle root)")
 
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
-git_folder_id = dbutils.widgets.get("git_folder_id")
-prompt_path = dbutils.widgets.get("prompt_path")
-
-print(f"catalog={catalog}, schema={schema}, git_folder_id={git_folder_id}")
-print(f"prompt_path={prompt_path}")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Initialize SDK and resolve paths
+bundle_target_param = dbutils.widgets.get("bundle_target").strip()
+prompt_path = dbutils.widgets.get("prompt_path").strip()
+skill_rel_path = dbutils.widgets.get("skill_path").strip()
+print(f"catalog={catalog}, schema={schema}, bundle_target={bundle_target_param or '<from path>'}")
+print(f"prompt_path={prompt_path}, skill_path={skill_rel_path}")
 
 # COMMAND ----------
 
-from databricks.sdk import WorkspaceClient
+# DBTITLE 1,Pure helpers
+# --- pure helpers (stdlib only; unit-tested in tests/test_feedback_pipeline.py) ---
 import re
 
+SKILL_NAME = "ground-truth-feedback-author"
+PROMPT_PREFIX = "You are the Semantic Ground Truth feedback author"
+REQUIRED_PLACEHOLDERS = (
+    "{{run_date}}", "{{batch_id}}", "{{branch_prefix}}", "{{feedback_table}}",
+    "{{skill_path}}", "{{repo_path}}", "{{base_branch}}",
+)
+
+
+def parse_skill_version(text):
+    """`version:` from a SKILL.md YAML frontmatter, or None."""
+    m = re.match(r"^---\s*\n(.*?)\n---\s*(\n|$)", text or "", re.DOTALL)
+    if not m:
+        return None
+    v = re.search(r"^version:\s*['\"]?([0-9]+(?:\.[0-9]+)*)['\"]?\s*$", m.group(1), re.MULTILINE)
+    return v.group(1) if v else None
+
+
+def version_tuple(version):
+    return tuple(int(x) for x in version.split("."))
+
+
+def should_copy_skill(source_version, existing_version):
+    """Copy only when there is no copy, the copy has no version, or it is strictly older."""
+    if existing_version is None:
+        return True
+    return version_tuple(source_version) > version_tuple(existing_version)
+
+
+def target_from_bundle_root(bundle_root):
+    """<root_path>/.bundle/<bundle name>/<target>/files -> <target>, else None."""
+    parts = [p for p in (bundle_root or "").split("/") if p]
+    if ".bundle" in parts:
+        i = parts.index(".bundle")
+        if len(parts) > i + 2:
+            return parts[i + 2]
+    return None
+
+
+def automation_display_name(target):
+    return f"Ground Truth Feedback Author ({target})"
+
+
+def extract_automation_prompt(markdown):
+    """The ```text block under `## Automation Prompt` in the prompt fixture."""
+    m = re.search(r"^## Automation Prompt\s*\n+```text\n(.*?)\n```", markdown or "", re.DOTALL | re.MULTILINE)
+    if not m:
+        raise ValueError("No '## Automation Prompt' ```text block found in the prompt fixture")
+    return m.group(1).strip()
+
+
+def render_prompt(template, skill_version):
+    if not template.startswith(PROMPT_PREFIX):
+        raise ValueError(f"Automation prompt must start with {PROMPT_PREFIX!r}")
+    missing = [p for p in REQUIRED_PLACEHOLDERS if p not in template]
+    if missing:
+        raise ValueError(f"Automation prompt is missing placeholders: {missing}")
+    if "__SKILL_VERSION__" not in template:
+        raise ValueError("Automation prompt must contain __SKILL_VERSION__")
+    return template.replace("__SKILL_VERSION__", skill_version)
+
+# COMMAND ----------
+
+# DBTITLE 1,Resolve paths, read the skill and the prompt
+from databricks.sdk import WorkspaceClient
+
 w = WorkspaceClient()
-uid = w.current_user.me().id
-print(f"Current user ID: {uid}")
+me = w.current_user.me()
+uid = me.id
+print(f"Owner: {me.user_name} (id {uid})")
 
-# Resolve bundle root from notebook context.
-# Notebook is at <bundle_root>/src/notebooks/<name> — go up 3 path segments.
+# Notebook is at <bundle_root>/src/notebooks/<name>; go up 3 path segments.
 ctx = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
-notebook_ws_path = ctx.notebookPath().get()
-bundle_root = "/".join(notebook_ws_path.split("/")[:-3])
-print(f"Bundle root (workspace): {bundle_root}")
+bundle_root = "/".join(ctx.notebookPath().get().split("/")[:-3])
+fs_root = bundle_root if bundle_root.startswith("/Workspace/") else f"/Workspace{bundle_root}"
+print(f"Bundle root: {fs_root}")
+
+bundle_target = bundle_target_param or target_from_bundle_root(bundle_root)
+if not bundle_target:
+    raise ValueError("Cannot infer the bundle target from the notebook path; pass the bundle_target parameter")
+AUTOMATION_DISPLAY_NAME = automation_display_name(bundle_target)
+
+with open(f"{fs_root}/{skill_rel_path}") as f:
+    skill_text = f.read()
+skill_version = parse_skill_version(skill_text)
+if not skill_version:
+    raise ValueError(f"{skill_rel_path} has no 'version:' in its frontmatter")
+
+with open(f"{fs_root}/{prompt_path}") as f:
+    user_prompt = render_prompt(extract_automation_prompt(f.read()), skill_version)
+
+print(f"Automation: {AUTOMATION_DISPLAY_NAME}; skill {SKILL_NAME} {skill_version}; prompt {len(user_prompt)} chars")
+print(user_prompt)
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## Read prompt fixture and extract Skill Prompt section
+# DBTITLE 1,Copy the skill to the owner's Genie Code skills (never downgrade)
+import os
+
+user_skills_root = f"/Workspace/Users/{me.user_name}/.assistant/skills"
+if os.path.isdir(user_skills_root):
+    dest = f"{user_skills_root}/{SKILL_NAME}/SKILL.md"
+    existing_version = None
+    if os.path.exists(dest):
+        with open(dest) as f:
+            existing_version = parse_skill_version(f.read())
+    if should_copy_skill(skill_version, existing_version):
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        with open(dest, "w") as f:
+            f.write(skill_text)
+        print(f"Copied skill {skill_version} to {dest} (was {existing_version or 'absent'})")
+    else:
+        print(f"Kept {dest}: version {existing_version} >= {skill_version}")
+else:
+    print(f"{user_skills_root} does not exist; not copying the skill")
 
 # COMMAND ----------
 
-prompt_full_path = f"/Workspace{bundle_root}/{prompt_path}"
-print(f"Reading prompt from: {prompt_full_path}")
-
-with open(prompt_full_path, "r") as f:
-    prompt_file_content = f.read()
-
-# Extract the "## Skill Prompt" section — everything from that header to the next
-# "---" separator line. This is the YAML generation rules block.
-match = re.search(
-    r"## Skill Prompt\n\n(.+?)(?=\n---\n)",
-    prompt_file_content,
-    re.DOTALL,
-)
-if not match:
-    raise ValueError(f"Could not find '## Skill Prompt' section in {prompt_path}")
-
-skill_rules = match.group(1).strip()
-print(f"Extracted skill rules ({len(skill_rules)} chars)")
-print(f"Preview: {skill_rules[:200]}...")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Build composite prompt template
-
-# COMMAND ----------
-
-AUTOMATION_DISPLAY_NAME = "Ground Truth Feedback Loop"
-
-GIT_FIXTURES_PATH = (
-    "/Users/matthew.giglia@databricks.com/semanticGroundTruth"
-    "/ground-truth-infra/fixtures/metric_views/"
-)
-
-# Prompt template with __PLACEHOLDER__ tokens for safe substitution.
-# {{catalog}} and {{schema}} are Genie Code runtime parameter placeholders
-# (NOT Python format strings) — they stay as literal text in the final prompt.
-PROMPT_TEMPLATE = """\
-You are a metric view YAML editor for the Semantic Ground Truth App.
-
-Read the feedback staging table at {{catalog}}.{{schema}}.feedback_staging.
-For each asset with REJECT or EDIT votes:
-1. Read the current fixture YAML from the Git folder at
-   __GIT_FIXTURES_PATH__
-2. Generate an updated YAML that addresses the reviewer feedback
-3. Create a feature branch named `feedback/YYYY-MM-DD-<asset_name>`
-4. Commit the proposed YAML changes to the branch
-5. Write a summary of changes to {{catalog}}.{{schema}}.feedback_results
-
-If the staging table is empty or has 0 rows, exit with message "No feedback to process."
-
-Follow these YAML generation rules:
----
-__SKILL_RULES__"""
-
-user_prompt = (
-    PROMPT_TEMPLATE
-    .replace("__GIT_FIXTURES_PATH__", GIT_FIXTURES_PATH)
-    .replace("__SKILL_RULES__", skill_rules)
-)
-
-print(f"Composite prompt ({len(user_prompt)} chars):")
-print("-" * 60)
-print(user_prompt[:800])
-if len(user_prompt) > 800:
-    print("...")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## List existing automations and find by display_name
-
-# COMMAND ----------
-
-existing_resp = w.api_client.do(
+# DBTITLE 1,Create or update the automation (no schedule, no trigger)
+existing = w.api_client.do(
     "GET",
     "/api/2.0/alerts-internal/scheduled-insights-list/GENIE_CODE",
     query={"parent_asset_name": f"users/{uid}"},
-)
-existing = existing_resp.get("scheduled_insights", [])
-print(f"Found {len(existing)} existing GENIE_CODE automations")
+).get("scheduled_insights", [])
+print(f"Found {len(existing)} GENIE_CODE automations")
+if any(a.get("display_name") == "Ground Truth Feedback Loop" for a in existing):
+    print("note: the pre-build-4 automation 'Ground Truth Feedback Loop' still exists; it is no longer used")
 
-automation = next(
-    (a for a in existing if a.get("display_name") == AUTOMATION_DISPLAY_NAME),
-    None,
-)
-if automation:
-    print(f"Matched: {automation['name']} (etag={automation['etag']})")
-else:
-    print(f"No automation named '{AUTOMATION_DISPLAY_NAME}' — will create new")
+matches = [a for a in existing if a.get("display_name") == AUTOMATION_DISPLAY_NAME]
+if len(matches) > 1:
+    raise RuntimeError(f"{len(matches)} automations named {AUTOMATION_DISPLAY_NAME!r}; delete the extras")
+automation = matches[0] if matches else None
 
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Create or update the automation
-
-# COMMAND ----------
-
-if automation:
-    # --- Update existing automation ---
-    configuration_id = automation["name"]
-    insight_id = configuration_id.split("/")[-1]
-    etag = automation["etag"]
-
-    w.api_client.do(
-        "PATCH",
-        f"/api/2.0/alerts-internal/scheduled-insights/{insight_id}",
-        body={
-            "insight_id": insight_id,
-            "update_mask": "user_prompt,display_name",
-            "etag": etag,
-            "scheduled_insight": {
-                "name": configuration_id,
-                "user_prompt": user_prompt,
-                "display_name": AUTOMATION_DISPLAY_NAME,
-            },
-        },
-    )
-    print(f"Updated automation: {configuration_id}")
-    print(f"  Prompt length: {len(user_prompt)} chars")
-else:
-    # --- Create new automation (no schedule, no trigger — job-driven only) ---
+if automation is None:
     resp = w.api_client.do(
         "POST",
         "/api/2.0/alerts-internal/scheduled-insights",
@@ -200,73 +192,53 @@ else:
         },
     )
     configuration_id = resp["name"]
-    print(f"Created automation: {configuration_id}")
+    print(f"Created automation {configuration_id}")
+else:
+    configuration_id = automation["name"]
+    insight_id = configuration_id.split("/")[-1]
+    current = w.api_client.do(
+        "GET", f"/api/2.0/alerts-internal/scheduled-insights/{insight_id}", query={"name": configuration_id}
+    )
+    current = current.get("scheduled_insight", current)
+    if (current.get("user_prompt") or automation.get("user_prompt")) == user_prompt:
+        print(f"Automation {configuration_id} is up to date (skill {skill_version})")
+    else:
+        w.api_client.do(
+            "PATCH",
+            f"/api/2.0/alerts-internal/scheduled-insights/{insight_id}",
+            body={
+                "insight_id": insight_id,
+                "update_mask": "user_prompt",
+                "etag": current.get("etag") or automation["etag"],
+                "scheduled_insight": {"name": configuration_id, "user_prompt": user_prompt},
+            },
+        )
+        print(f"Updated user_prompt of {configuration_id} (skill {skill_version})")
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## Validate
-
-# COMMAND ----------
-
+# DBTITLE 1,Validate
 insight_id = configuration_id.split("/")[-1]
-raw_validation = w.api_client.do(
-    "GET",
-    f"/api/2.0/alerts-internal/scheduled-insights/{insight_id}",
-    query={"name": configuration_id},
+raw = w.api_client.do(
+    "GET", f"/api/2.0/alerts-internal/scheduled-insights/{insight_id}", query={"name": configuration_id}
 )
+v = raw.get("scheduled_insight", raw) if isinstance(raw, dict) else {}
 
-# The GET response may nest the insight under a key or return it flat.
-# Log the top-level keys so we can see the actual shape.
-print(f"Validation response keys: {list(raw_validation.keys()) if isinstance(raw_validation, dict) else type(raw_validation)}")
-
-# Unwrap if the response nests the insight under "scheduled_insight"
-validation = (
-    raw_validation.get("scheduled_insight", raw_validation)
-    if isinstance(raw_validation, dict)
-    else raw_validation
-)
-
-v_insight_type = validation.get("insight_type")
-v_display_name = validation.get("display_name")
-v_user_prompt = validation.get("user_prompt", "")
-v_etag = validation.get("etag")
-
-if v_insight_type:
-    assert v_insight_type == "GENIE_CODE", (
-        f"Expected GENIE_CODE, got {v_insight_type}"
-    )
-else:
-    print("  warn: insight_type not in response — skipping assertion")
-
-if v_display_name:
-    assert v_display_name == AUTOMATION_DISPLAY_NAME, (
-        f"Display name mismatch: {v_display_name}"
-    )
-else:
-    print("  warn: display_name not in response — skipping assertion")
-
-if v_user_prompt:
-    assert v_user_prompt.startswith("You are a metric view YAML editor"), (
-        "Prompt content mismatch — does not start with expected text"
-    )
-else:
-    print("  warn: user_prompt not in response — skipping assertion")
-
-print("Validation passed:")
-print(f"  configuration_id: {configuration_id}")
-print(f"  insight_type:     {v_insight_type}")
-print(f"  display_name:     {v_display_name}")
-print(f"  prompt length:    {len(v_user_prompt)} chars")
-print(f"  etag:             {v_etag}")
+assert configuration_id.startswith("genie_code/users/"), f"Unexpected configuration_id {configuration_id}"
+if v.get("insight_type"):
+    assert v["insight_type"] == "GENIE_CODE", f"Expected GENIE_CODE, got {v['insight_type']}"
+if v.get("display_name"):
+    assert v["display_name"] == AUTOMATION_DISPLAY_NAME, f"Display name mismatch: {v['display_name']}"
+if v.get("user_prompt"):
+    assert v["user_prompt"].startswith(PROMPT_PREFIX), "user_prompt does not start with the feedback author prompt"
+    assert f"expected skill version: {skill_version}" in v["user_prompt"], "user_prompt has a stale skill version"
+for key in ("schedule", "trigger", "cron_schedule"):
+    assert not v.get(key), f"Automation must have no {key} (the feedback_pipeline job drives it): {v.get(key)}"
+print(f"Validation passed: {configuration_id} ({AUTOMATION_DISPLAY_NAME}, skill {skill_version})")
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## Emit outputs
-
-# COMMAND ----------
-
+# DBTITLE 1,Emit outputs
 dbutils.jobs.taskValues.set(key="configuration_id", value=configuration_id)
-print(f"taskValues.set(configuration_id={configuration_id})")
-print("setup_genie_automation complete")
+dbutils.jobs.taskValues.set(key="skill_version", value=skill_version)
+print(f"taskValues: configuration_id={configuration_id}, skill_version={skill_version}")

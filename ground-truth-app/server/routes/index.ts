@@ -13,6 +13,7 @@ import { registerNotificationRoutes } from './notifications';
 import { registerAdminRoutes } from './admin';
 import { registerMetricViewRoutes } from './metricViews';
 import { registerConfigRoutes } from './config';
+import { registerStewardRoutes } from './steward';
 
 export function registerRoutes(app: Application, services: Services): void {
   registerHealthRoutes(app, services);
@@ -25,4 +26,5 @@ export function registerRoutes(app: Application, services: Services): void {
   registerAdminRoutes(app, services);
   registerMetricViewRoutes(app, services);
   registerConfigRoutes(app, services);
+  registerStewardRoutes(app, services);
 }

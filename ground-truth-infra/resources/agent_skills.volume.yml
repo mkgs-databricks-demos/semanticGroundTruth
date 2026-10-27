@@ -1,0 +1,19 @@
+# resources/agent_skills.volume.yml
+# Managed UC volume holding the app's catalog-sourced agent skills
+# (AppKit agents plugin, DATABRICKS_VOLUME_AGENT_SKILLS).
+#
+# Layout: /Volumes/<catalog>/<schema>/agent_skills/<skill>/SKILL.md (+ bundled files)
+# Contents are owned by ground-truth-app: its sync_agent_skills job mirrors
+# ground-truth-app/agent_skills/ into this volume. Do not edit files here by hand.
+# The app gets READ VOLUME through its `agents-skills` uc_securable resource.
+
+resources:
+  volumes:
+    agent_skills:
+      catalog_name: ${resources.schemas.ground_truth_schema.catalog_name}
+      schema_name: ${resources.schemas.ground_truth_schema.name}
+      name: agent_skills
+      volume_type: MANAGED
+      comment: "Agent skills for the Ground Truth app (mirrored from ground-truth-app/agent_skills by sync_agent_skills)"
+      lifecycle:
+        prevent_destroy: true

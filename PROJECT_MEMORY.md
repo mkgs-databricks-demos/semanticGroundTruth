@@ -28,7 +28,7 @@ Three-bundle monorepo. Deploy order: infra → app → agent (agent can parallel
 
 | Target | Mode | Status |
 |--------|------|--------|
-| `dev` | development (default) | **Infra deployed** ✅; **App scaffolded** (AppKit Node.js + React); Agent scaffolded |
+| `dev` | development (default) | All three bundles deployed ✅ (build 4, 2026-10-26: app deployment `01f1d180ccfa147db429fdda372aea06`, ops dashboard `01f1d17bf9531f5ba79f838a0da0df35`) |
 | `prod` | production | Scaffolded (all bundles) |
 | `staging` | — | Not yet added (L300-01 proposed it; add when needed) |
 
@@ -42,8 +42,8 @@ From L300-01 spec. **Infra bundle has these configured.** App and Agent bundles 
 | `schema` | Per-target in `databricks.yml` | dev: `ground_truth` (deploys as `dev_matthew_giglia_ground_truth`), prod: `semantic_ground_truth` |
 | `warehouse_id` | Replaced by `${resources.sql_warehouses.infra_warehouse.id}` | DAB substitution — no raw variable needed |
 | `lakebase_project_id` | Replaced by `${resources.postgres_projects.ground_truth_project.id}` | DAB substitution — no raw variable needed |
-| `notification_slack_webhook` | UC Secret (`ground-truth-infra` scope) | Manual post-deploy step |
-| `notification_teams_webhook` | UC Secret (`ground-truth-infra` scope) | Manual post-deploy step |
+| `notification_slack_webhook` | Not used | Webhook secret YAMLs deleted in build 4 (G10); Slack via `system.ai.slack` is planned (G5, research 05) |
+| `notification_teams_webhook` | Not used | Same |
 
 > **Critical:** Dev catalog is `hls_fde_dev` (workspace convention), NOT `dev_ground_truth` as originally proposed in L300-01. The `dev_ground_truth` catalog does not exist in this workspace.
 
@@ -75,7 +75,7 @@ From L300-01 spec. **Infra bundle has these configured.** App and Agent bundles 
 - **MCP:** Streamable HTTP via `@modelcontextprotocol/server` v2; registered as Unity Gateway connection
 - **Deployment:** Three-bundle DAB pattern (this repo)
 - **Observability:** OpenTelemetry → Unity Catalog tables (via `telemetry_export_destinations` in DAB) + MLflow 3 experiment for agent traces
-- **Notifications:** Databricks notification destinations (Slack webhook, Teams, generic webhook)
+- **Notifications:** In-app inbox today. Webhook destinations are deferred; research 05 recommends a user-initiated "Share to Slack" through the workspace Slack MCP (`system.ai.slack`) for a later build
 - **Secrets:** UC Secrets (`catalog.schema.secret`)
 - **Compliance:** HIPAA (AWS us-east-1); 28/35 features GA+HIPAA, 7 Beta with documented fallbacks
 
@@ -115,12 +115,20 @@ From L300-01 spec. **Infra bundle has these configured.** App and Agent bundles 
 - `docs/design/L300-14_genie_agent_creation.md` — Genie Agent creation
 - `docs/design/L300-15_bundle3_deploy.md` — Bundle 3 deploy
 - `docs/design/L300-16_integration_validation.md` — Integration validation
+- `docs/design/L300-17_mcp_app_review_card.md` — MCP App review card (build 4)
+
+### UI (build 4)
+- `docs/design/ui/` — UI review, screen inventory, Figma Make brief and build-5 outline (session 32)
 
 ### Research
 - `docs/research/01_uc_semantics_api_surface.md` — UC Semantics API surface (metric views, Pages, Domains)
 - `docs/research/02_wilson_score_and_lakebase_cdf.md` — Wilson score interval + Lakebase CDF
 - `docs/research/03_genie_code_workflow_tasks.md` — Genie Code `genie_task` for Lakeflow Jobs: API surface, deploy pattern, feedback pipeline implications
 - `docs/research/04_dab_secrets_jobruns_mcp.md` — New DAB resource types: UC secrets, job_run (deploy hooks), secret_scope, mcp_service; revised post-deploy architecture
+- `docs/research/05_slack_mcp_notifications.md` — Slack through the workspace Slack MCP instead of webhooks (G5, build 4). Index: `docs/research/INDEX.md`
+
+### Runbooks (`docs/runbooks/`)
+- `contract_tests.md`, `feedback_pipeline.md`, `deploy_order_and_permissions.md`, `cdf_bronze_operations.md`, `node_toolchain_genie_code.md`, `ui_theming.md`, `onboarding_users.md` (and others in the folder)
 
 ### Semantics
 - `docs/semantics/01_ground_truth_app_core_terms.md` — Core terminology (10 terms, tagging priorities)
@@ -173,6 +181,8 @@ All open questions from the L300 specs were resolved during Bundle 1 implementat
 | 2026-10-23 | **Root build run complete — 6/6 waves** ✅ | Build run `713417549836954` (job `1079028753739581`) 24/24 tasks green. The wave 2 gate needed 5 repairs: missing status file, wrong job default params on repair, files_changed mismatch, then redeploy log noise (`ELIFECYCLE`, `App did not respect SIGTERM timeout`). Fixed by moving those to `ignore_patterns` (`940d812`) because the gate counts any severity ERROR line. Build job parameter defaults updated to the root branch/paths. Summary: `docs/sessions/2026-10-23_root-build-waves-summary.md`. PR draft: `docs/PR-mg-genie-agent-build.md`. Open: SIGTERM graceful shutdown in `server.ts`, `"level":"error"` gate pattern, prod deploy. |
 | 2026-10-23 | **Post-build review + brand UI plan** | Branch `mg-genie-ui-brand-and-gaps`. Fixed (`4ff3074`): graceful SIGTERM shutdown (`server/lib/shutdown.ts`; `app.yaml` runs node directly; `Shutdown complete` in 5 ms), `"level":"error"` gate pattern + 5xx logged at error, `deploy.sh --agent` / `--verify`. Found P0: app SPN lacks READ on `semantic_ground_truth_credentials` (infra scope `permissions` block is authoritative). Wrote `docs/plans/gap_analysis_2026-10.md` (G1–G17), `docs/plans/ui_brand_plan.md` (WCAG-verified tokens; D1 pending), next build draft in `docs/plans/waves.json` (sessions 16–24, not run). Build job `1079028753739581` branch default still `mg-genie-agent-build`. Session: `docs/sessions/2026-10-23_post-build-review-brand-plan.md`. |
 | 2026-10-24 | **Brand + gaps build run `745271774924215` — waves 0–5 PASS, wave 6 docs** ✅ | Job `1079028753739581`, branch `mg-genie-ui-brand-and-gaps` (manifest `docs/plans/waves.json`, sessions 16–24). **G1** app SPN READ on `semantic_ground_truth_credentials` via infra var `app_service_principal_id` (dev default `9f3db838-9415-46fe-9722-9654a6856ecc`; `deploy.sh` resolves the live SPN from `apps get`) — ACL verified in waves 2–3. **G2** hourly `cdf_bronze_refresh` job (`703274109872341`, PAUSED in dev mode; run `950875080561148` SUCCESS, bronze 774 rows). **G3** executive AI/BI dashboard in infra (`01f1cf0b38d31b7cbac5bdac6cafe3eb`, 9/9 datasets execute); app `GET /api/config` serves `executive_dashboard_url` (`deploy.sh` → `--var exec_dashboard_url` → `app.app.yml` `config.env`, commit `6771630`). **G7/G8** Databricks brand tokens (light + `.dark`), `ThemeProvider` + `MotionConfig`, self-hosted DM Sans/DM Mono, 0 hard-coded palette classes, contrast + static a11y tests; D1 = Lava 700 primary. **G6** `LogicView` on the review card. **G9** MCP card light/dark tokens. **G17** `prebuild` runs vitest (21 files green in the Apps build). App stable on deployment `01f1cf13577d1d66a5fb26679855e41d` with all 6 probes; `agent_verification` regression green. Wave 5 gate needed one repair (`w5_integrate`, 2026-10-24) for a `files_changed` mismatch. Post-build (`05e8c1a`, `d3aefe3`, `bd45836`): real brandfolder symbol SVGs + favicons, placeholder check, dev `exec_dashboard_url` default; app redeployed `01f1cf6c934d17048daca183beca9788` (G7 Done). Open: manual Lighthouse/keyboard/toggle checks, `votes.vote_type` CHECK lacks `skip`, steward triage (G6), G4/G5/G10–G12 deferred. Gap status: `docs/plans/gap_analysis_2026-10.md` §5. Theming: `docs/runbooks/ui_theming.md`. |
+| 2026-10-26 | **Build 4 — waves 4-0..4-9 (runs `110489694161084` + `655172288447819`)** ✅ | Job `1079028753739581`, branch `mg-genie-build-4`, sessions 25–41. **G6 (backend)** migration 009: `app.review_skips` (a skip is not a vote; 24 h cooldown, 0–720; reasons `not_sure`/`not_my_area`/`need_context`/`other`), `app.user_settings`, steward triage columns; `POST /api/review/skip`, `GET/PUT /api/me/settings`, steward feedback queue / conflicts / feedback branches — 50 routes in `ROUTE_CONTRACTS`. **G9** 13 contract-validated MCP tools (new `review_skip_card`) + MCP App review card `ui://ground-truth/review-card` (ext-apps 1.7.5). **G17** contract tests: in-process `tests/contract/**` + live `api_contract_tests` job `443124502254957` (run `687515436484443`: 147 pass / 0 fail / 176 `skipped_live` / 100% coverage) writing `api_contract_results`. **G4** feedback pipeline as a Genie Code task with skill `ground-truth-feedback-author` 1.0.0; branches `mg-genie-feedback-<yyyymmdd>` (first: `mg-genie-feedback-20261026`, safe to reject); dedicated Git folder `semanticGroundTruth-feedback`. **G10** removed `setup_gateway_connection`, `setup_app_role_sp`, `check_m2m_secret_present` tasks + empty secret YAMLs. **G11 (partial)** ops dashboard `01f1d17bf9531f5ba79f838a0da0df35` (17 datasets, 5 pages), `agent_verification` 29/29. Skip measures in `mv_review_activity` / `mv_user_leaderboard` and on the executive dashboard (11 datasets). **G5** researched only. Owner changes: agent skills on a UC volume (`agent_skills`, `sync_agent_skills` job), OTel `TABLE` app resources for catalog/schema grants. Node toolchain proven in a build task (`docs/runbooks/node_toolchain_genie_code.md`). App deployment `01f1d180ccfa147db429fdda372aea06`, 932 vitest tests. Summary: `docs/sessions/2026-10-26_build-4-summary.md`. Next: build 5 UI (Settings, steward screens). |
+| 2026-10-27 | **Build 4 closed — `BUILD_PASSED` (6 wave gates)** ✅ | Run `655172288447819` after 3 repairs. Wave 4-6 unblocked interactively: app deploy with `e7c8736` (`voteIds`), votes processed by re-registering `mg-genie-feedback-20261026` through the app, idempotency run `885100203138696` (no branch). Gotcha: repairing `w<w>_sessions` does NOT re-run a session whose `for_each` iteration succeeded (a blocked session still ends SUCCESS); finish its step, update `<id>.json`, repair from `w<w>_integrate`. Session 41 hit the Genie Code step limit; owner resumed it. Commits `fe061da` (4-6), `6d26b3f` (4-7), `e5156d4` (4-8), `c62d428` (4-9). Closed: `feedback_pipeline` default `repo_path` -> `semanticGroundTruth-feedback`, `api_contract_tests` `max_retries: 0`. Deferred: ops dashboard UUID ids (import blocked by the safety layer). Follow-ups (12, 3 P1): `docs/requests/2026-10-27_build-4-follow-ups.md`. Session: `docs/sessions/2026-10-27_build-4-unblock-and-close.md`. |
 
 ---
 
@@ -189,7 +199,9 @@ Declared in `ground-truth-app/databricks.yml` via `telemetry_export_destinations
 **Dev location:** `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_*`
 **Prod location:** `prod_ground_truth.semantic_ground_truth.semantic_ground_truth_otel_*`
 
-Queryable via SQL alongside the Lakebase Lakehouse Sync tables (`lb_*_history`), now configured and active — 21 history tables feeding into `bronze_lakebase_cdf` via the SDP pipeline.
+Queryable via SQL alongside the Lakebase Lakehouse Sync tables (`lb_*_history`), now configured and active — 23 history tables feeding into `bronze_lakebase_cdf` via the SDP pipeline (21 + `review_skips`, `user_settings` since build 4).
+
+The app also declares the three OTel tables as `uc_securable` `TABLE` resources (`MODIFY`); this is how the app SPN gets `USE CATALOG` / `USE SCHEMA` (the `account users` catalog grant was removed 2026-10-24). The deployer needs `MANAGE` on the catalog.
 
 ---
 
@@ -291,3 +303,6 @@ Phase 2 (app deploy) passes these as `--var` to `deploy_bundle`. Phase 2 flow:
 - **Schema references in YAML:** Always `${resources.schemas.<name>.*}` — never raw `${var.schema}` except in the schema resource itself.
 - **Notebook paths in YAML:** Must match actual file extension on disk. Verify with directory listing before writing.
 - **Collaboration:** Check `hi_genie/` at solution root for pending Polly/Isaac recommendations before substantive work.
+- **Feedback branches:** `mg-genie-feedback-<yyyymmdd>[-n]`, created only by the `feedback_pipeline` job in the dedicated Git folder `/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth-feedback`; stewards merge or reject them (`docs/runbooks/feedback_pipeline.md`).
+- **API changes:** contract first (`shared/contracts/schemas.ts`), then contract cases, then regenerate `tests/contract/manifest.json` (`docs/runbooks/contract_tests.md`).
+- **Unattended app deploys:** `bundle run app`, not `bundle deploy` (Invalid delegation claim) — `docs/runbooks/deploy_order_and_permissions.md`.

@@ -46,6 +46,24 @@
       "schema": "dev_matthew_giglia_semantic_ground_truth"
     },
     {
+      "name": "ds_skipped_cards",
+      "displayName": "KPI: Skipped Cards",
+      "queryLines": [
+        "SELECT MEASURE(`skips`) AS skipped_cards, MEASURE(`skip_rate`) AS skip_rate FROM mv_review_activity"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
+      "name": "ds_skip_rate_trend",
+      "displayName": "Skip Rate by Day",
+      "queryLines": [
+        "SELECT vote_date, MEASURE(`skip_rate`) AS skip_rate, MEASURE(`skips`) AS skips FROM mv_review_activity GROUP BY vote_date ORDER BY vote_date"
+      ],
+      "catalog": "hls_fde_dev",
+      "schema": "dev_matthew_giglia_semantic_ground_truth"
+    },
+    {
       "name": "ds_campaign_progress",
       "displayName": "Campaign Progress",
       "queryLines": [
@@ -368,6 +386,107 @@
         },
         {
           "widget": {
+            "name": "w_skipped_cards",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_skipped_cards",
+                  "fields": [
+                    {
+                      "name": "skipped_cards",
+                      "expression": "`skipped_cards`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "skipped_cards",
+                  "displayName": "Skipped Cards"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Skipped Cards",
+                "showDescription": true,
+                "description": "Cards reviewers skipped. Skips are not votes."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "w_skip_rate_trend",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_skip_rate_trend",
+                  "fields": [
+                    {
+                      "name": "vote_date",
+                      "expression": "`vote_date`"
+                    },
+                    {
+                      "name": "skip_rate",
+                      "expression": "`skip_rate`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "vote_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Date"
+                },
+                "y": {
+                  "fieldName": "skip_rate",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Skip Rate"
+                },
+                "color": {
+                  "value": "#5A6F77"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Skip Rate by Day",
+                "showDescription": true,
+                "description": "skips / (votes + skips)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 7,
+            "width": 9,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
             "name": "w_asset_status",
             "queries": [
               {
@@ -423,7 +542,7 @@
           },
           "position": {
             "x": 0,
-            "y": 7,
+            "y": 12,
             "width": 4,
             "height": 5
           }
@@ -480,7 +599,7 @@
           },
           "position": {
             "x": 4,
-            "y": 7,
+            "y": 12,
             "width": 4,
             "height": 5
           }
@@ -537,7 +656,7 @@
           },
           "position": {
             "x": 8,
-            "y": 7,
+            "y": 12,
             "width": 4,
             "height": 5
           }

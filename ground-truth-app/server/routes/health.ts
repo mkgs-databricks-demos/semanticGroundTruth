@@ -5,9 +5,33 @@ import type { Application } from 'express';
 import type { Services } from '../services';
 import { asyncRoute } from '../lib/http';
 import { logger } from '../lib/logger';
+import { validate } from '../lib/validate';
+
+interface RouterLayer {
+  route?: { path?: unknown; methods?: Record<string, boolean> };
+}
+
+/**
+ * AppKit's server plugin registers its own `GET /health` ({ status: 'ok' })
+ * before `appkit.server.extend()` callbacks run, so it would shadow this route
+ * and the contract fields (db, migrations, version) would never be served.
+ * Remove any earlier GET /health route so the contract handler below answers.
+ * Express 4 keeps the route stack on `app._router.stack`.
+ */
+export function removeEarlierHealthRoutes(app: Application): number {
+  const router = (app as unknown as { _router?: { stack?: RouterLayer[] } })._router;
+  const stack = router?.stack;
+  if (!Array.isArray(stack)) return 0;
+  const before = stack.length;
+  const kept = stack.filter((layer) => !(layer.route?.path === '/health' && layer.route.methods?.get));
+  stack.splice(0, stack.length, ...kept);
+  return before - kept.length;
+}
 
 export function registerHealthRoutes(app: Application, services: Services): void {
-  app.get('/health', asyncRoute(async (_req, res) => {
+  removeEarlierHealthRoutes(app);
+  // Public (no role middleware); no request input.
+  app.get('/health', validate({}), asyncRoute(async (_req, res) => {
     let dbOk = false;
     let migrationCount = 0;
 
