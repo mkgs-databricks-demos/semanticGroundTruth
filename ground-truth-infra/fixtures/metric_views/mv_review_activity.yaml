@@ -7,6 +7,10 @@
 #   Latest row per _record_key (same pattern as the other CDF views): Lakehouse Sync resnapshots
 #   (e.g. after a migration ALTERs a table) and updates re-emit rows that must not count twice.
 # Measures: Total Votes, Unique Reviewers, Approval Rate, Reject Count, Edit Count, skips, skip_rate
+# Ids: asset_id / campaign_id are Postgres UUIDs stored as BINARY in the bronze VARIANT, so
+#   data:<col>::STRING holds the raw 16 bytes. The dimensions format them as canonical lowercase
+#   8-4-4-4-12 strings (same text as bronze _record_key); the source columns and measures keep
+#   the raw value (build 5, session 47, follow-up 4).
 
 name: mv_review_activity
 
@@ -63,9 +67,9 @@ sql: |
     comment: Review activity metrics over the semantic ground truth vote history.
     dimensions:
       - name: asset_id
-        expr: asset_id
+        expr: "regexp_replace(lower(hex(asset_id)), '^(.{8})(.{4})(.{4})(.{4})(.{12})$', '$1-$2-$3-$4-$5')"
         display_name: Asset ID
-        comment: Unique identifier of the reviewed asset
+        comment: Unique identifier of the reviewed asset (lowercase UUID string)
       - name: vote_type
         expr: vote_type
         display_name: Vote Type
@@ -89,9 +93,9 @@ sql: |
           - source
           - channel
       - name: campaign_id
-        expr: campaign_id
+        expr: "regexp_replace(lower(hex(campaign_id)), '^(.{8})(.{4})(.{4})(.{4})(.{12})$', '$1-$2-$3-$4-$5')"
         display_name: Campaign ID
-        comment: Campaign that prompted the vote (nullable)
+        comment: Campaign that prompted the vote (lowercase UUID string, nullable)
       - name: vote_date
         expr: vote_date
         display_name: Vote Date

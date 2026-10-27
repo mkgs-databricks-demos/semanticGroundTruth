@@ -4,13 +4,15 @@
 # MAGIC # Setup Genie Code Automation
 # MAGIC Creates or updates the Genie Code automation used by the `feedback_pipeline` task `author_feedback_branch` (a `genie_task`).
 # MAGIC
-# MAGIC * **Idempotent by display name** `Ground Truth Feedback Author (<target>)`. Created once with **no schedule and no trigger** (the job drives it). Its `user_prompt` is the § Automation Prompt block of `fixtures/prompts/feedback_loop_prompt.md` with the skill version filled in, and is updated only when it changes (i.e. when the skill version or the prompt fixture changes).
+# MAGIC * **One automation per target** (build 5, follow-up 1). The automation to reuse is, in order: the `configuration_id` on `feedback_pipeline.author_feedback_branch` (when it still exists), `previous_configuration_id` (the id `deploy.sh` read from that task just before the infra deploy reset it), the id recorded in `<root_path>/setup_state/genie_automation.json` (written by this notebook, outside the synced `files/` so `bundle deploy` keeps it), the newest listed automation named `Ground Truth Feedback Author (<target>)`. It is **updated in place** (prompt and display name); one is created only when none exists. An unscheduled automation is not returned by the list API and the create call does not keep its display name, which is why the name lookup alone created a new automation on every run. Selection logic: `genie_automation_lib.py` (pure, `tests/test_genie_automation_lib.py`).
+# MAGIC * **`cleanup_duplicates`** (default `true`): deletes the other candidates (an older id on the job or in the state file, other automations with the same name) and any ids in `duplicate_ids`, logging each id. An id is deleted only if its prompt starts with the feedback-author prefix or it has the expected name.
+# MAGIC * Created with **no schedule and no trigger** (the job drives it). Its `user_prompt` is the § Automation Prompt block of `fixtures/prompts/feedback_loop_prompt.md` with the skill version filled in, and is updated only when it changes (i.e. when the skill version or the prompt fixture changes).
 # MAGIC * The rules live in the versioned skill `fixtures/skills/ground-truth-feedback-author/SKILL.md`; Genie Code reads it at the bundle-deployed path passed as `{{skill_path}}`.
 # MAGIC * If the owner's `/Workspace/Users/<owner>/.assistant/skills/` folder exists, the skill is also copied to `ground-truth-feedback-author/SKILL.md` there, unless that copy has the same or a newer `version`.
 # MAGIC
 # MAGIC **Design source:** `docs/plans/27_infra_feedback_pipeline_genie_task.md`, `docs/plans/post_deploy_automation_plan.md` Task 1, `docs/research/03_genie_code_workflow_tasks.md` §2–3
 # MAGIC
-# MAGIC **API:** `/api/2.0/alerts-internal/scheduled-insights` (list, create, patch, get)
+# MAGIC **API:** `/api/2.0/alerts-internal/scheduled-insights` (list, create, patch, get, delete); `GET /api/2.1/jobs/get` (read-only)
 # MAGIC
 # MAGIC **Outputs (task values):** `configuration_id` (full `genie_code/users/<uid>/scheduled_insights/<id>` name), `skill_version`. Pure helpers are unit-tested in `tests/test_feedback_pipeline.py`.
 
@@ -31,14 +33,23 @@ dbutils.widgets.text("git_folder_id", "", "Git folder ID of the repo (informatio
 dbutils.widgets.text("bundle_target", "", "Bundle target (default: parsed from the bundle root path)")
 dbutils.widgets.text("prompt_path", "fixtures/prompts/feedback_loop_prompt.md", "Prompt fixture (relative to bundle root)")
 dbutils.widgets.text("skill_path", "fixtures/skills/ground-truth-feedback-author/SKILL.md", "Skill file (relative to bundle root)")
+dbutils.widgets.text("feedback_job_id", "", "feedback_pipeline job ID (its author_feedback_branch configuration_id is reused)")
+dbutils.widgets.text("previous_configuration_id", "", "Automation id on the job before the deploy reset it (set by deploy.sh)")
+dbutils.widgets.text("cleanup_duplicates", "true", "Delete other feedback-author automations (true/false)")
+dbutils.widgets.text("duplicate_ids", "", "Extra automation ids to delete (comma-separated; one-time cleanup)")
 
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
 bundle_target_param = dbutils.widgets.get("bundle_target").strip()
 prompt_path = dbutils.widgets.get("prompt_path").strip()
 skill_rel_path = dbutils.widgets.get("skill_path").strip()
+feedback_job_id = dbutils.widgets.get("feedback_job_id").strip()
+previous_configuration_id = dbutils.widgets.get("previous_configuration_id").strip()
+cleanup_duplicates_param = dbutils.widgets.get("cleanup_duplicates")
+duplicate_ids_param = dbutils.widgets.get("duplicate_ids")
 print(f"catalog={catalog}, schema={schema}, bundle_target={bundle_target_param or '<from path>'}")
 print(f"prompt_path={prompt_path}, skill_path={skill_rel_path}")
+print(f"feedback_job_id={feedback_job_id or '<none>'}, previous_configuration_id={previous_configuration_id or '<none>'}, cleanup_duplicates={cleanup_duplicates_param}, duplicate_ids={duplicate_ids_param or '<none>'}")
 
 # COMMAND ----------
 
@@ -164,21 +175,86 @@ else:
 # COMMAND ----------
 
 # DBTITLE 1,Create or update the automation (no schedule, no trigger)
-existing = w.api_client.do(
-    "GET",
-    "/api/2.0/alerts-internal/scheduled-insights-list/GENIE_CODE",
-    query={"parent_asset_name": f"users/{uid}"},
-).get("scheduled_insights", [])
-print(f"Found {len(existing)} GENIE_CODE automations")
+import os
+import sys
+from datetime import datetime, timezone
+
+from databricks.sdk.errors import NotFound
+
+# genie_automation_lib.py sits next to this notebook (a plain .py file, so it stays importable).
+nb_dir = f"{fs_root}/src/notebooks"
+if nb_dir not in sys.path:
+    sys.path.insert(0, nb_dir)
+import genie_automation_lib as gal
+
+INSIGHTS = "/api/2.0/alerts-internal/scheduled-insights"
+
+
+def get_automation(cid):
+    """The automation, or None when it no longer exists."""
+    try:
+        raw = w.api_client.do("GET", f"{INSIGHTS}/{gal.insight_id(cid)}", query={"name": cid})
+    except NotFound:
+        return None
+    return raw.get("scheduled_insight", raw) if isinstance(raw, dict) else None
+
+
+def list_automations():
+    items, token = [], None
+    while True:
+        query = {"parent_asset_name": f"users/{uid}"}
+        if token:
+            query["page_token"] = token
+        resp = w.api_client.do("GET", f"{INSIGHTS}-list/GENIE_CODE", query=query)
+        items.extend(resp.get("scheduled_insights", []))
+        token = resp.get("next_page_token")
+        if not token:
+            return items
+
+
+# 1. The id on the feedback_pipeline job (gone after a bundle deploy resets the task to the placeholder)
+job_cid = None
+if feedback_job_id:
+    job = w.api_client.do("GET", "/api/2.1/jobs/get", query={"job_id": feedback_job_id})
+    job_cid = gal.configuration_id_on_job(job.get("settings"))
+print(f"id on {gal.TASK_KEY}: {job_cid or '<none: placeholder or no job id>'}")
+
+# 2. The id recorded by the previous run
+state_path = gal.state_file_path(fs_root)
+recorded_cid = None
+if os.path.exists(state_path):
+    with open(state_path) as f:
+        recorded_cid = gal.read_state(f.read())
+print(f"id in {state_path}: {recorded_cid or '<none>'}")
+
+# 3. Listed automations (unscheduled ones are usually not listed)
+existing = list_automations()
+print(f"Listed {len(existing)} GENIE_CODE automations")
 if any(a.get("display_name") == "Ground Truth Feedback Loop" for a in existing):
     print("note: the pre-build-4 automation 'Ground Truth Feedback Loop' still exists; it is no longer used")
 
-matches = [a for a in existing if a.get("display_name") == AUTOMATION_DISPLAY_NAME]
-if len(matches) > 1:
-    raise RuntimeError(f"{len(matches)} automations named {AUTOMATION_DISPLAY_NAME!r}; delete the extras")
-automation = matches[0] if matches else None
+cleanup_duplicates = gal.parse_bool(cleanup_duplicates_param, default=True)
+extra_ids = [gal.configuration_id_for(i, uid) for i in gal.parse_id_list(duplicate_ids_param)]
+fetched = {}
 
-if automation is None:
+
+def exists(cid):
+    fetched[cid] = get_automation(cid)
+    return fetched[cid] is not None
+
+
+plan = gal.resolve_automation(
+    AUTOMATION_DISPLAY_NAME,
+    job_configuration_id=job_cid,
+    recorded_configuration_id=recorded_cid,
+    previous_configuration_id=gal.configuration_id_for(previous_configuration_id, uid) if previous_configuration_id else None,
+    listed=existing,
+    exists=exists,
+    extra_duplicate_ids=extra_ids,
+)
+print(f"plan: {plan['action']} (source {plan['source']}); duplicates {plan['duplicates']}; stale {plan['stale']}")
+
+if plan["action"] == "create":
     resp = w.api_client.do(
         "POST",
         "/api/2.0/alerts-internal/scheduled-insights",
@@ -194,26 +270,49 @@ if automation is None:
     configuration_id = resp["name"]
     print(f"Created automation {configuration_id}")
 else:
-    configuration_id = automation["name"]
-    insight_id = configuration_id.split("/")[-1]
-    current = w.api_client.do(
-        "GET", f"/api/2.0/alerts-internal/scheduled-insights/{insight_id}", query={"name": configuration_id}
-    )
-    current = current.get("scheduled_insight", current)
-    if (current.get("user_prompt") or automation.get("user_prompt")) == user_prompt:
+    configuration_id = plan["configuration_id"]
+    insight_id = gal.insight_id(configuration_id)
+    current = fetched.get(configuration_id) or get_automation(configuration_id) or {}
+    fields = gal.update_mask(current, user_prompt, AUTOMATION_DISPLAY_NAME)
+    if not fields:
         print(f"Automation {configuration_id} is up to date (skill {skill_version})")
     else:
         w.api_client.do(
             "PATCH",
-            f"/api/2.0/alerts-internal/scheduled-insights/{insight_id}",
+            f"{INSIGHTS}/{insight_id}",
             body={
                 "insight_id": insight_id,
-                "update_mask": "user_prompt",
-                "etag": current.get("etag") or automation["etag"],
-                "scheduled_insight": {"name": configuration_id, "user_prompt": user_prompt},
+                "update_mask": ",".join(fields),
+                "etag": current.get("etag"),
+                "scheduled_insight": {
+                    "name": configuration_id,
+                    "user_prompt": user_prompt,
+                    "display_name": AUTOMATION_DISPLAY_NAME,
+                },
             },
         )
-        print(f"Updated user_prompt of {configuration_id} (skill {skill_version})")
+        print(f"Updated {fields} of {configuration_id} in place (skill {skill_version})")
+
+# Record the id outside the synced bundle files, so the next run reuses it even after a bundle deploy.
+os.makedirs(os.path.dirname(state_path), exist_ok=True)
+with open(state_path, "w") as f:
+    f.write(gal.state_json(configuration_id, AUTOMATION_DISPLAY_NAME, skill_version,
+                           datetime.now(timezone.utc).isoformat()))
+print(f"Recorded {configuration_id} in {state_path}")
+
+# Duplicates: only feedback-author automations are ever deleted.
+if plan["duplicates"] and not cleanup_duplicates:
+    print(f"cleanup_duplicates=false: leaving {len(plan['duplicates'])} duplicate(s): {plan['duplicates']}")
+elif plan["duplicates"]:
+    for dup in plan["duplicates"]:
+        current_dup = fetched.get(dup) or get_automation(dup)
+        if current_dup is None:
+            print(f"duplicate {dup}: already gone")
+        elif not gal.is_feedback_author(current_dup, PROMPT_PREFIX, AUTOMATION_DISPLAY_NAME):
+            print(f"duplicate {dup}: NOT deleted (not a feedback-author automation: {current_dup.get('display_name')!r})")
+        else:
+            w.api_client.do("DELETE", f"{INSIGHTS}/{gal.insight_id(dup)}", query={"name": dup})
+            print(f"duplicate {dup}: deleted")
 
 # COMMAND ----------
 

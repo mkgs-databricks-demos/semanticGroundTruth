@@ -22,13 +22,13 @@ Lakebase (Postgres)          Lakehouse Sync (CDF)          Bronze (SDP)         
 |---|---|---|
 | `_source_table` | STRING | Postgres table name, e.g. `votes` |
 | `_source_history_table` | STRING | History table name, e.g. `lb_votes_history` |
-| `_record_key` | STRING | Composite PK as JSON, e.g. `{"id": 42}` |
+| `_record_key` | STRING | PK text: UUID/BINARY keys as lowercase 8-4-4-4-12, composite keys joined with `\|` |
 | `_pg_change_type` | STRING | `INSERT`, `UPDATE`, `DELETE` |
 | `_pg_lsn` | LONG | Postgres Log Sequence Number |
 | `_pg_xid` | LONG | Postgres transaction id |
 | `_timestamp` | TIMESTAMP_NTZ | CDF capture timestamp |
 | `_sort_by` | LONG | Ordering within a batch |
-| `_ingested_at` | TIMESTAMP_NTZ | Pipeline ingestion time |
+| `_ingested_at` | TIMESTAMP | Pipeline ingestion time |
 | `data` | VARIANT | Full row payload (all non-metadata columns) |
 
 ---
@@ -144,6 +144,12 @@ All query `bronze_lakebase_cdf` filtered by `_source_table` and extract fields f
 | `mv_otel_error_rate` | (OTel logs table) | Error Count, Total Logs, Error Rate |
 | `mv_otel_request_latency` | (OTel spans table) | p50/p95/p99 Latency |
 
+**UUID ids.** Postgres `UUID` columns are BINARY inside `data`, so `data:<col>::STRING` holds the raw 16 bytes (unreadable, and they break pandas/Arrow conversion). Every metric view dimension over such a column formats it as a lowercase UUID string with the same name, e.g. `mv_review_activity.asset_id` / `campaign_id`:
+
+`regexp_replace(lower(hex(<col>)), '^(.{8})(.{4})(.{4})(.{4})(.{12})$', '$1-$2-$3-$4-$5')`
+
+The text equals bronze `_record_key` for the referenced row. Source columns and measures (`COUNT(DISTINCT id)`) keep the raw value. Consumers select the dimension by name and need no `hex()`. `ground-truth-infra/tests/test_metric_view_ids.py` enforces the rule for every fixture (UUID columns are read from the app migrations).
+
 ---
 
 ## 5. Troubleshooting
@@ -155,3 +161,35 @@ All query `bronze_lakebase_cdf` filtered by `_source_table` and extract fields f
 **Metric view deploy shows 0 iterations:** Check that `fixtures_path` in `metric_view_deploy.job.yml` is set to `${workspace.file_path}/fixtures/metric_views` (not an empty string).
 
 **Statement Execution API timeout:** The `deploy_metric_view.py` notebook caps `wait_timeout` at 50s and polls for longer-running statements.
+
+---
+
+## 6. Lakehouse Monitoring on bronze (G11)
+
+Resource: `ground-truth-infra/resources/monitors/bronze_lakebase_cdf.quality_monitor.yml` (`quality_monitors.bronze_lakebase_cdf`), deployed with the infra bundle.
+
+| Setting | Value |
+|---|---|
+| Monitored table | `<catalog>.<schema>.bronze_lakebase_cdf` (dev: `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth`) |
+| Profile | TimeSeries on `_timestamp` (CDF commit time), granularities `1 hour`, `1 day` |
+| Slices | `_source_table` (one slice per Postgres table, plus the whole table) |
+| Output schema | the project schema (same as the table) |
+| Assets | `${workspace.root_path}/monitoring/bronze_lakebase_cdf` (generated dashboard) |
+| Schedule | daily 06:00 UTC; **paused in dev** (development mode pauses all schedules, like `cdf_bronze_refresh`) |
+| Notifications | none |
+
+**Output tables** (created in the project schema on the first refresh):
+
+* `bronze_lakebase_cdf_profile_metrics`: per window, slice and column (`:table` for table-level): `count`, `num_nulls`, `percent_null`, distinct counts, min/max, etc.
+* `bronze_lakebase_cdf_drift_metrics`: consecutive-window drift per column (no baseline table is configured).
+
+Useful checks: rows per source table per hour (`column_name = ':table'`, `slice_key = '_source_table'`), and `percent_null` on `_record_key` (must stay 0).
+
+**Refresh by hand** (dev, or after a re-snapshot recovery, §1):
+
+* UI: Catalog Explorer, the table, **Quality** tab, **Refresh metrics**.
+* SDK: `w.quality_monitors.run_refresh(table_name="<catalog>.<schema>.bronze_lakebase_cdf")`, then `w.quality_monitors.list_refreshes(table_name=...)` until the refresh is `SUCCESS`.
+
+A refresh reads the whole table and runs on serverless; run it after `cdf_bronze_refresh` so the latest hour is present. If the monitor reports `timestamp_col` errors after a schema change, check that `_timestamp` is still a timestamp type (`TIMESTAMP_NTZ` is converted with `to_timestamp`); `_ingested_at` (`TIMESTAMP`) is the fallback.
+
+Deleting the monitor (`bundle destroy` is never used) does not drop the metric tables; drop them by hand only if you created them.

@@ -1,0 +1,31 @@
+# resources/monitors/bronze_lakebase_cdf.quality_monitor.yml
+# Lakehouse Monitoring (data profiling) on the Lakebase CDF bronze streaming table.
+# Design source: gap_analysis_2026-10.md G11; build 5 plan 47; build_conventions §7 (bronze schema).
+#
+# TimeSeries profile on the CDF commit timestamp (`_timestamp`, TIMESTAMP_NTZ; profiling accepts
+# any type to_timestamp converts), sliced by source Postgres table. Profile and drift metric
+# tables land in the project schema:
+#   bronze_lakebase_cdf_profile_metrics, bronze_lakebase_cdf_drift_metrics
+#
+# Schedule: daily at 06:00 UTC, after the hourly bronze refresh. Dev mode (mode: development)
+# pauses it, matching the paused cdf_bronze_refresh schedule; refresh by hand in dev
+# (docs/runbooks/cdf_bronze_operations.md §6). No notifications in dev.
+# Runtime proof: build 5 session 58 (deploy + first refresh).
+
+resources:
+  quality_monitors:
+    bronze_lakebase_cdf:
+      table_name: ${resources.schemas.ground_truth_schema.catalog_name}.${resources.schemas.ground_truth_schema.name}.bronze_lakebase_cdf
+      output_schema_name: ${resources.schemas.ground_truth_schema.catalog_name}.${resources.schemas.ground_truth_schema.name}
+      assets_dir: ${workspace.root_path}/monitoring/bronze_lakebase_cdf
+      warehouse_id: ${resources.sql_warehouses.infra_warehouse.id}
+      time_series:
+        timestamp_col: _timestamp
+        granularities:
+          - 1 hour
+          - 1 day
+      slicing_exprs:
+        - _source_table
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"  # Daily, 06:00 UTC
+        timezone_id: UTC
