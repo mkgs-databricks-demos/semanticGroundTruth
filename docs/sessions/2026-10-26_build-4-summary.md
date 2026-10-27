@@ -88,10 +88,12 @@ Full table: `docs/plans/gap_analysis_2026-10.md` §6.
 
 ## Open items for build 5
 
+> **Update 2026-10-27:** the build finished `BUILD_PASSED`. The `repo_path` default and `max_retries: 0` items below are closed; the rest moved to [`../plans/requests/2026-10-27_build-4-follow-ups.md`](../plans/requests/2026-10-27_build-4-follow-ups.md) ([close-out session](2026-10-27_build-4-unblock-and-close.md)).
+
 * UI: Settings page, steward Feedback queue / Conflicts / Feedback branches screens, `resurfacedFromSkip` on `ReviewCard`, branch URL on `FeedbackBranch` (sessions 32, 33).
-* `feedback_pipeline` `repo_path` default -> dedicated folder (session 38).
+* ~~`feedback_pipeline` `repo_path` default -> dedicated folder (session 38).~~ Done 2026-10-27.
 * `post_deploy_setup`: `setup_cdf_config` widget mismatch, optional `app_sp_client_id` cleanup, optional `bundle_target` param; check for duplicate Genie Code scheduled tasks.
-* Ops dashboard: `hex()` for BINARY ids (session 39). `api_contract_tests`: optional `max_retries: 0` (session 40).
+* Ops dashboard: `hex()` for BINARY ids (session 39; SQL tested, follow-up 4). ~~`api_contract_tests`: optional `max_retries: 0` (session 40).~~ Done 2026-10-27.
 * Manual: MCP App render check in Genie One / Genie Code; reject test branch `mg-genie-feedback-20261026`.
 * G11 Lakehouse Monitoring; G5 Slack sharing.
 

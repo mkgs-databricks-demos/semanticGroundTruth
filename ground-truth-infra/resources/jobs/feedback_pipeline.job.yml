@@ -31,9 +31,12 @@ resources:
         # true = stage + author, but do not register the branch with the app.
         - name: dry_run
           default: "false"
-        # Workspace Git folder of the semanticGroundTruth repo (Genie Code commits and pushes from here).
+        # Dedicated workspace Git folder (clone of the semanticGroundTruth repo) that Genie Code
+        # commits, branches and pushes from. Never the build/dev folder: the task switches branches
+        # in repo_path (owner decision, session 38). Create it once: Git folder
+        # /Workspace/Users/<you>/semanticGroundTruth-feedback on main.
         - name: repo_path
-          default: "/Workspace/Users/${workspace.current_user.userName}/semanticGroundTruth"
+          default: "/Workspace/Users/${workspace.current_user.userName}/semanticGroundTruth-feedback"
 
       environments:
         - environment_key: serverless

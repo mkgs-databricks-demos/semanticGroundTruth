@@ -72,7 +72,7 @@ collect_feedback ──▶ check_has_feedback ──(vote_count > 0)──▶ au
 
 * Daily 23:00 UTC (paused in dev), `max_concurrent_runs: 1`.
 * Run `post_deploy_setup` (`run_setup=true`) after every deploy: the deploy resets `author_feedback_branch` to a placeholder notebook, and `setup_job_params` patches it back to a `genie_task`.
-* Set `repo_path` to a dedicated Git folder (`/Workspace/Users/<you>/semanticGroundTruth-feedback`), never the folder you build in.
+* `repo_path` defaults to the dedicated Git folder `/Workspace/Users/<you>/semanticGroundTruth-feedback` (create it once as a Git folder of this repo on `main`). Never point it at the folder you build in.
 * A run with no new edit votes ends at `check_has_feedback` (idempotent).
 * Stewards review, merge or reject the branch: [Feedback pipeline runbook](../docs/runbooks/feedback_pipeline.md).
 

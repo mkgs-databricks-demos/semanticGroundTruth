@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-27 | 4-6..4-9 | owner | [Build 4 unblock and close: app voteIds deploy, votes processed via the app, manual idempotency run, repairs to BUILD_PASSED, repo_path default + contract-test retries closed](2026-10-27_build-4-unblock-and-close.md) | interactive | done | `mg-genie-build-4` |
 | 2026-10-26 | 4-9 | 41 | [Build 4 summary — skips, steward APIs, MCP App, contract tests, feedback pipeline](2026-10-26_build-4-summary.md) | edit | pass | `mg-genie-build-4` |
 | 2026-10-26 | 4-9 | 41 | [Docs, project memory, gap status (build 4) (run 655172288447819, w4-9 repair)](2026-10-26_w4-9-41-docs-project-memory.md) | edit | pass | `mg-genie-build-4` |
 | 2026-10-26 | 4-8 | 40 | [Converge app: live contract tests at 100% — 147 pass, 0 fail, coverage 100%, attempts 2-3 stable (run 655172288447819)](2026-10-26_w4-8-40-app-converge-contract-tests.md) | converge | pass | `mg-genie-build-4` |

@@ -52,6 +52,8 @@ Scoped with the owner on 2026-10-24 from [`gap_analysis_2026-10.md`](gap_analysi
 * After build 4: run the Figma Make brief (`docs/design/ui/figma_make_brief.md`), commit the export to `docs/design/ui/figma/`, then plan build 5 from `docs/design/ui/build5_outline.md`.
 * Review and merge or close the first `mg-genie-feedback-*` branch.
 
+**Result (2026-10-27):** run `655172288447819` `BUILD_PASSED` (6 wave gates, 3 repairs). Follow-ups: [`requests/2026-10-27_build-4-follow-ups.md`](requests/2026-10-27_build-4-follow-ups.md) (all request files: [`requests/README.md`](requests/README.md)).
+
 **Build 5 (outline, after the Figma Make export):** UI shell + Settings, review flow with skip reasons, steward Feedback queue / Conflicts / Feedback branches, admin/executive/leaderboard redesign, Databricks icons (EmptyState, nav), MCP App visual match, Testing Library + axe suite, converge app, manual Lighthouse + keyboard-only check.
 
 ## Build 3 — brand UI + gaps (COMPLETE, PR #7, run `745271774924215`)

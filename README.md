@@ -195,9 +195,9 @@ All bundles deployed and converged in `hls_fde_dev.dev_matthew_giglia_semantic_g
 
 **Brand + gaps build (run `745271774924215`, 2026-10-23/24):** gaps G1, G2, G3, G7, G8, G9, G17 Done (G7 after post-build brand-asset commits); G6 Partial. Executive dashboard `01f1cf0b38d31b7cbac5bdac6cafe3eb` (9/9 datasets execute). App stable on deployment `01f1cf13577d1d66a5fb26679855e41d` with all 6 probes (`/health`, `/api/me`, `/api/campaigns`, `/api/config`, `/fonts/dm-sans-regular.ttf`, `/mcp`). Details: [gap analysis §5](docs/plans/gap_analysis_2026-10.md).
 
-**Build 4 (runs `110489694161084` + `655172288447819`, 2026-10-24/26):** G4, G9, G10, G17 Done; G6 backend done (UI in build 5); G11 partial (operations dashboard); G5 researched. Details: [gap analysis §6](docs/plans/gap_analysis_2026-10.md) and the [build 4 summary](docs/sessions/2026-10-26_build-4-summary.md).
+**Build 4 (runs `110489694161084` + `655172288447819`, 2026-10-24/27, `BUILD_PASSED`):** G4, G9, G10, G17 Done; G6 backend done (UI in build 5); G11 partial (operations dashboard); G5 researched. Details: [gap analysis §6](docs/plans/gap_analysis_2026-10.md), the [build 4 summary](docs/sessions/2026-10-26_build-4-summary.md) and the [unblock and close session](docs/sessions/2026-10-27_build-4-unblock-and-close.md).
 
-**Known follow-ups:** build 5 UI (Settings page, steward Feedback queue / Conflicts / Feedback branches screens); manual MCP App render check in Genie One / Genie Code; Slack sharing (G5); Lakehouse Monitoring on bronze (G11); manual Lighthouse / keyboard / theme-toggle checks; the first feedback branch `mg-genie-feedback-20261026` is a test and can be rejected. `prod` targets are scaffolded but not deployed.
+**Known follow-ups:** tracked in [`docs/plans/requests/`](docs/plans/requests/README.md) ([build 4 follow-ups](docs/plans/requests/2026-10-27_build-4-follow-ups.md): idempotent `post_deploy_setup` automation, automatic `post_deploy_setup` after infra deploys, build-waves repair of blocked sessions, readable dashboard ids, then build 5 UI). The first feedback branch `mg-genie-feedback-20261026` is a test and can be rejected. The feedback pipeline needs the dedicated Git folder `/Workspace/Users/<you>/semanticGroundTruth-feedback` (job default `repo_path`). `prod` targets are scaffolded but not deployed.
 
 ## License
 

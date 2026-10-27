@@ -37,7 +37,7 @@ C9 — Operational Genie Agent. Conversational analytics over the Ground Truth A
 | Datasets | 17, only `MEASURE()` over the 7 metric views; skip measures `skips`, `skip_rate`, `skip_reason` (dim), `total_skips` from session 28 |
 | Verification | `agent_verification` cell "Verify operations dashboard…": exists + published, every dataset runs `SELECT * FROM (<q>) LIMIT 1` with RANGE defaults inlined (the wave gate skips RANGE-parameter datasets) |
 | Converge | Session 39 (wave 4-7): attempt 1 stable, no code changes needed; 17/17 datasets pass `EXPLAIN` (RANGE defaults inlined), `agent_verification` 29/29. Session 37 deployed the skip measures first |
-| Open (optional) | 3 datasets show raw BINARY ids (campaign id / asset id); wrap with `hex()` for readability (session 39 request) |
+| Open (follow-up 4) | 3 datasets (`ds_votes_skips_daily`, `ds_skips_by_campaign`, `ds_top_skipped_assets`) select raw BINARY `campaign_id` / `asset_id` (unreadable; also break pandas/Arrow). UUID-string SQL tested 2026-10-27 (identical results, same aliases, `asset_id` tie-break for the top 10) but not applied: the Workspace import with overwrite was blocked by the agent safety layer. SQL in `../docs/plans/requests/2026-10-27_build-4-follow-ups.md` |
 
 Known metric-view limits (dashboard shows the closest available view): `mv_review_activity` has no `asset_type`, so skip rate by asset type is not possible (the page shows the queue by asset type from `mv_coverage_metrics`); `mv_campaign_progress` has no campaign id / name, due date or reviewer assignment, so campaign rows are by type / domain / rule and per-campaign reviewers use `campaign_id` from `mv_review_activity`; `mv_feedback_pipeline` has no `branch_name` dimension, so the latest branch name is not shown (latest batches table shows asset counts).
 
@@ -90,6 +90,7 @@ Deployed by: the infra `metric_view_deploy` job (not this bundle). All read `bro
 - **2026-10-23:** Root build waves 0–4 complete. Genie space deployed, 9 data sources (7 metric views + 2 OTel tables), verification job passing (11/11 checks), 2/2 probe questions returning SQL.
 - **2026-10-24:** Brand + gaps build: `agent_verification` regression run `149451153256513` SUCCESS (session 22c).
 - **2026-10-26:** Build 4 complete for this bundle. Session 29 added the operations dashboard (G11 partial) and dashboard checks in `agent_verification`; session 39 deployed and verified it (29/29). Lakehouse Monitoring on bronze is still deferred.
+- **2026-10-27:** Build 4 `BUILD_PASSED` (run `655172288447819`; wave 4-7 commit `6d26b3f`). Dashboard id formatting deferred (follow-up 4); no agent bundle changes in the close-out session.
 
 ## Build Results (root manifest waves 0–4)
 

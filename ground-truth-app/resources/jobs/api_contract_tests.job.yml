@@ -26,6 +26,10 @@ resources:
           default: ${var.schema_name}
       tasks:
         - task_key: api_contract_tests
+          # No retries: a serverless retry keeps {{job.run_id}} and seeds on top of the failed
+          # attempt, doubling the fail rows in api_contract_results (session 40, run 3631302379538).
+          # Re-run the job instead.
+          max_retries: 0
           notebook_task:
             notebook_path: ../../src/notebooks/api_contract_tests.ipynb
             base_parameters:

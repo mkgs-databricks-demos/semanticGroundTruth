@@ -37,7 +37,7 @@ Job parameters (defaults from bundle variables): `app_name`, `secret_scope`, `cl
 
 The job seeds run-scoped data through the API (assets `contract_test_<run_id>_m1..m3`, domain `ContractTest`, campaign `contract-test-<run_id>`), archives both campaigns and restores settings at the end. Assets, votes, skips, synonyms and examples stay, because there is no delete API. It fails on any `fail` row or coverage below 100%.
 
-The task has no `max_retries: 0`. A serverless retry of a failed run reuses the same `run_id` and seeds on top of the first attempt, which doubles fail rows. Look at the first attempt's rows when that happens.
+The task sets `max_retries: 0` (since 2026-10-27). A serverless retry of a failed run reuses the same `run_id` and seeds on top of the first attempt, which doubles fail rows (seen in run `3631302379538`). Re-run the job instead of retrying; for runs before 2026-10-27, read the first attempt's rows.
 
 ## Read `api_contract_results`
 
