@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { BrandIcon, BrandIllustration, BrandLogo, BrandProductIcon } from '../components/BrandAssets'
 
 type ChatState = 'empty' | 'populated' | 'streaming' | 'error' | 'no-agent' | 'offline'
@@ -44,6 +44,9 @@ export default function App() {
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    if (state === 'populated') inputRef.current?.focus()
+  }, [state])
   const send = (text = input) => {
     const clean = text.trim()
     if (!clean || state === 'streaming' || state === 'offline') return
@@ -53,7 +56,6 @@ export default function App() {
     window.setTimeout(() => {
       setMessages(previous => [...previous, { role: 'assistant', text: 'I found the relevant semantic assets. Their confidence scores combine reviewer agreement, edit activity, and the number of completed votes.' }])
       setState('populated')
-      inputRef.current?.focus()
     }, 900)
   }
   const onComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {

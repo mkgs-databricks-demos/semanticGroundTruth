@@ -1,0 +1,976 @@
+{
+  "summary": {
+    "pass": 161,
+    "fail": 0,
+    "total": 161
+  },
+  "checks": [
+    {
+      "category": "testid",
+      "screen": "shell",
+      "requirement": "shell-header-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "shell",
+      "requirement": "shell-nav-link-review",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "shell",
+      "requirement": "shell-nav-link-leaderboard",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "shell",
+      "requirement": "shell-nav-link-assistant",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "shell",
+      "requirement": "shell-nav-link-steward",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "shell",
+      "requirement": "shell-nav-link-executive",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "shell",
+      "requirement": "shell-nav-link-admin",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "shell",
+      "requirement": "shell-bell-button",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "shell",
+      "requirement": "shell-bell-count",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "shell",
+      "requirement": "shell-theme-toggle",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "shell",
+      "requirement": "shell-user-menu-button",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "shell",
+      "requirement": "shell-offline-banner",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-filters-campaign",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-filters-asset-type",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-streak-badge",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-skip-counter",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-card-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-card-title",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-card-type-badge",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-card-status-badge",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-card-confidence",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-card-progress",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-card-synonyms",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-card-examples",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-card-logic-toggle",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-card-query-run",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-actions-reject",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-actions-edit",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-actions-approve",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-actions-skip",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-actions-skip-reason",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-skip-reason-option",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-edit-sheet-submit",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-reject-sheet-submit",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-empty-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-session-complete-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-error-retry",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "review",
+      "requirement": "review-live-region",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "leaderboard",
+      "requirement": "leaderboard-stats-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "leaderboard",
+      "requirement": "leaderboard-stats-rank",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "leaderboard",
+      "requirement": "leaderboard-stats-skipped",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "leaderboard",
+      "requirement": "leaderboard-period-tabs",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "leaderboard",
+      "requirement": "leaderboard-table-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "leaderboard",
+      "requirement": "leaderboard-table-row",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "leaderboard",
+      "requirement": "leaderboard-table-current-user",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "leaderboard",
+      "requirement": "leaderboard-empty-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "leaderboard",
+      "requirement": "leaderboard-error-retry",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "assistant",
+      "requirement": "assistant-chat-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "assistant",
+      "requirement": "assistant-chat-message",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "assistant",
+      "requirement": "assistant-starter-prompt",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "assistant",
+      "requirement": "assistant-composer-input",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "assistant",
+      "requirement": "assistant-composer-send",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "assistant",
+      "requirement": "assistant-error-retry",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-subnav-overview",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-subnav-feedback-queue",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-subnav-conflicts",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-subnav-feedback-branches",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-actions-import",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-actions-new-campaign",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-tabs-campaigns",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-tabs-assets",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-tabs-metric-views",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-campaign-row",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-campaign-status-menu",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-assets-search",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-assets-row",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-asset-detail-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-metric-view-validate",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-import-next",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-import-submit",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward",
+      "requirement": "steward-forbidden-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "executive",
+      "requirement": "executive-kpi-coverage",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "executive",
+      "requirement": "executive-kpi-certification",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "executive",
+      "requirement": "executive-kpi-active-reviewers",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "executive",
+      "requirement": "executive-kpi-votes",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "executive",
+      "requirement": "executive-kpi-active-campaigns",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "executive",
+      "requirement": "executive-kpi-total-assets",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "executive",
+      "requirement": "executive-dashboard-link",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "executive",
+      "requirement": "executive-empty-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "executive",
+      "requirement": "executive-forbidden-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "admin",
+      "requirement": "admin-members-group",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "admin",
+      "requirement": "admin-members-add-input",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "admin",
+      "requirement": "admin-members-add-submit",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "admin",
+      "requirement": "admin-members-remove",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "admin",
+      "requirement": "admin-scoring-skip-cooldown",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "admin",
+      "requirement": "admin-scoring-save",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "admin",
+      "requirement": "admin-maintenance-recompute",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "admin",
+      "requirement": "admin-maintenance-freshness",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "admin",
+      "requirement": "admin-forbidden-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-theme-light",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-theme-dark",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-theme-system",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-density-comfortable",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-density-compact",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-motion-system",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-motion-reduce",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-motion-full",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-review-default-campaign",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-review-default-asset-type",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-review-cards-per-session",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-review-keyboard-hints",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-notifications-row",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-footer-save",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "settings",
+      "requirement": "settings-footer-discard",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-queue",
+      "requirement": "steward-queue-filter-campaign",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-queue",
+      "requirement": "steward-queue-filter-asset-type",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-queue",
+      "requirement": "steward-queue-filter-status",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-queue",
+      "requirement": "steward-queue-search",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-queue",
+      "requirement": "steward-queue-row",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-queue",
+      "requirement": "steward-queue-resolve-link",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-queue",
+      "requirement": "steward-queue-empty-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-queue",
+      "requirement": "steward-queue-clear-filters",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-conflicts",
+      "requirement": "steward-conflicts-list-item",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-conflicts",
+      "requirement": "steward-conflicts-current",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-conflicts",
+      "requirement": "steward-conflicts-proposal",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-conflicts",
+      "requirement": "steward-conflicts-proposal-select",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-conflicts",
+      "requirement": "steward-conflicts-accept",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-conflicts",
+      "requirement": "steward-conflicts-keep",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-conflicts",
+      "requirement": "steward-conflicts-reject-all",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-conflicts",
+      "requirement": "steward-conflicts-note",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-conflicts",
+      "requirement": "steward-conflicts-empty-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-conflicts",
+      "requirement": "steward-conflicts-stale-refresh",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-branches",
+      "requirement": "steward-branches-card",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-branches",
+      "requirement": "steward-branches-name",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-branches",
+      "requirement": "steward-branches-copy",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-branches",
+      "requirement": "steward-branches-status",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-branches",
+      "requirement": "steward-branches-expand",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-branches",
+      "requirement": "steward-branches-mark-in-review",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-branches",
+      "requirement": "steward-branches-mark-merged",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-branches",
+      "requirement": "steward-branches-mark-rejected",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "steward-feedback-branches",
+      "requirement": "steward-branches-empty-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "fallback",
+      "requirement": "not-found-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "fallback",
+      "requirement": "not-found-home-link",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "fallback",
+      "requirement": "app-error-root",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "fallback",
+      "requirement": "app-error-reload",
+      "status": "pass"
+    },
+    {
+      "category": "testid",
+      "screen": "fallback",
+      "requirement": "app-error-details-toggle",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Main navigation",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Mobile navigation",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Notifications (2 unread)",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Switch to dark theme",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Account menu",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Skip to content",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Approve (A)",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Reject (R)",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Edit (E)",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Skip (S)",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Choose a skip reason",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Review progress 42 of 120",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Confidence 71%",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Leaderboard period",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Top reviewers, last 7 days",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Conversation",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Message the assistant",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Steward sections",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Steward views",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Open AI/BI dashboard (opens in a new tab)",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Feedback queue",
+      "status": "pass"
+    },
+    {
+      "category": "aria/source",
+      "screen": "global",
+      "requirement": "Proposed descriptions",
+      "status": "pass"
+    },
+    {
+      "category": "palette",
+      "screen": "global",
+      "requirement": "No hex outside \u00a71",
+      "status": "pass",
+      "observed": []
+    },
+    {
+      "category": "content",
+      "screen": "global",
+      "requirement": "No lorem ipsum",
+      "status": "pass"
+    },
+    {
+      "category": "styles",
+      "screen": "global",
+      "requirement": "No Tailwind palette classes",
+      "status": "pass"
+    }
+  ]
+}

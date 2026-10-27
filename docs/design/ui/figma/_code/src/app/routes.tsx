@@ -11,6 +11,7 @@ import AdminPage from '../pages/AdminPage'
 import SettingsPage from '../pages/SettingsPage'
 import DesignSystemPage from '../pages/DesignSystemPage'
 import FallbackPages from '../pages/FallbackPages'
+import ShellPage from '../pages/ShellPage'
 
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/review" replace /> },
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
   { path: '/admin', Component: AdminPage },
   { path: '/settings', Component: SettingsPage },
   { path: '/design-system', Component: DesignSystemPage },
+  { path: '/shell', Component: ShellPage },
   { path: '/app-error', element: <FallbackPages initialPage="app-error" /> },
   { path: '*', element: <FallbackPages initialPage="not-found" /> },
 ])
