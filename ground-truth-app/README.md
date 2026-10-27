@@ -21,7 +21,9 @@ graph LR
 | **Review Engine** | Wilson score confidence, weighted-random surfacing, gamification |
 | **Campaign Manager** | Automatic, manual, and freshness campaigns with RBAC scope |
 | **Notification Service** | In-app inbox; Slack/Teams/webhook when env vars set |
-| **MCP Server** | 12 tools via Streamable HTTP, registered in Unity Gateway |
+| **Skips + settings** | A skip is not a vote (`app.review_skips`, cooldown, reason); per-user settings (`app.user_settings`) |
+| **Steward triage APIs** | Feedback queue, edit conflicts, feedback branches from the feedback pipeline (UI in build 5) |
+| **MCP Server** | 13 contract-validated tools via Streamable HTTP, MCP App review card, registered in Unity Gateway |
 | **Agents** | review-assistant (markdown, default) + review-worker (code, read-only tools) |
 | **Card UI** | framer-motion drag, keyboard shortcuts, accessible buttons |
 
@@ -38,7 +40,7 @@ ground-truth-app/
 ├── server/
 │   ├── server.ts               # AppKit entry (plugins, migrations, services, routes, MCP)
 │   ├── lib/                    # db, errors, http, context, config, events, databricks, logger, deps
-│   ├── migrations/             # Idempotent runner + migrations 001-008 (007 app groups/sources/CDF, 008 votes.version_hash)
+│   ├── migrations/             # Idempotent runner + migrations 001-009 (007 app groups/sources/CDF, 008 votes.version_hash, 009 skips/settings/steward triage)
 │   ├── middleware/             # Identity (x-forwarded-*), roles, request logging
 │   ├── services/
 │   │   ├── asset/              # AssetRegistry (Lakebase CRUD)
@@ -48,9 +50,11 @@ ground-truth-app/
 │   │   ├── notification/       # NotificationService (inbox, digest, destinations)
 │   │   ├── membership/         # MembershipService (Lakebase app groups → roles, bootstrap admins)
 │   │   ├── sources/            # SourceService, glossary parser, workspace file reader (OBO + M2M)
+│   │   ├── settings/           # SettingsService (app.user_settings)
+│   │   ├── steward/            # StewardService (feedback queue, conflicts, feedback branches)
 │   │   └── index.ts            # createServices / getServices singleton
 │   ├── routes/                 # REST handlers (see Route Table below)
-│   ├── mcp/                    # Streamable HTTP MCP server (12 tools)
+│   ├── mcp/                    # Streamable HTTP MCP server (13 tools in tools/, views/ = markdown + MCP App card)
 │   ├── seed/                   # Dev seed (12 sample assets)
 │   └── agents/
 │       ├── review-assistant/   # Markdown agent (default)
@@ -70,7 +74,10 @@ ground-truth-app/
 │       │   └── executive/      # KpiCards, DashboardLink
 │       └── pages/              # ReviewPage, LeaderboardPage, StewardPage, AdminPage, ExecutivePage
 ├── shared/
-│   └── contracts/              # Domain types, zod schemas, API DTOs, MCP tool shapes, error codes
+│   └── contracts/              # Domain types, zod schemas, ROUTE_CONTRACTS (50), MCP_TOOL_CONTRACTS (13), error codes; generated/contracts.schema.json
+├── tests/contract/             # In-process contract suite + manifest.json (see Testing)
+├── agent_skills/               # review-guide, scoring-model, tracer-bullets (synced to the agent_skills UC volume)
+├── resources/                  # app.app.yml, MCP service, jobs/
 └── config/
     ├── queries/                # SQL query files
     └── metric-views/           # Metric view definitions
@@ -78,62 +85,85 @@ ground-truth-app/
 
 ## Route Table
 
-| Method | Path | Role | Purpose |
-| --- | --- | --- | --- |
-| GET | `/health` | — | Health check (DB + migration count) |
-| GET | `/api/me` | reviewer | Current user context |
-| GET | `/api/config` | reviewer | Runtime config: `executive_dashboard_url` (from `GT_EXEC_DASHBOARD_URL`) |
-| GET | `/api/review/next` | reviewer | Next review card (campaign/type filter) |
-| POST | `/api/review/vote` | reviewer | Submit vote (approve/reject/edit/skip) |
-| POST | `/api/review/synonym` | reviewer | Add/vote/remove synonym |
-| POST | `/api/review/example` | reviewer | Add/vote example question |
-| POST | `/api/review/run-query` | reviewer | Execute validation query (OBO) |
-| GET | `/api/review/stats/me` | reviewer | Personal stats + streak |
-| GET | `/api/leaderboard` | reviewer | Ranked reviewers (7d/30d/all) |
-| GET | `/api/assets` | reviewer | Paged asset list |
-| GET | `/api/assets/:assetId` | reviewer | Asset detail |
-| GET | `/api/assets/:assetId/versions` | reviewer | Asset version history |
-| POST | `/api/assets/register` | steward | Register/re-register asset |
-| POST | `/api/assets/import` | steward | Bulk import assets from metric views or a registered source |
-| GET | `/api/sources` | steward | List registered asset sources |
-| POST | `/api/sources` | steward | Register a source (UC schema or workspace glossary path) |
-| POST | `/api/sources/:id/scan` | steward | Scan a source for importable assets |
-| GET | `/api/catalog/catalogs` | steward | Browse UC catalogs (OBO) |
-| GET | `/api/catalog/schemas` | steward | Browse schemas in a catalog (OBO) |
-| GET | `/api/catalog/metric-views` | steward | Browse metric views in a schema (OBO) |
-| GET | `/api/campaigns` | reviewer | List campaigns (RBAC-filtered) |
-| POST | `/api/campaigns` | steward | Create campaign |
-| GET | `/api/campaigns/:campaignId` | reviewer | Campaign detail |
-| PATCH | `/api/campaigns/:campaignId/status` | steward | Transition campaign status |
-| POST | `/api/campaigns/freshness-check` | admin | Trigger freshness resurfacing |
-| GET | `/api/notifications` | reviewer | Notification inbox |
-| GET | `/api/notifications/unread-count` | reviewer | Unread badge count |
-| POST | `/api/notifications/read` | reviewer | Mark notifications read |
-| GET | `/api/notifications/preferences` | reviewer | Notification preferences |
-| PUT | `/api/notifications/preferences` | reviewer | Update preferences |
-| GET | `/api/admin/config` | admin | App scoring/role config |
-| PUT | `/api/admin/config` | admin | Update config |
-| GET | `/api/admin/summary` | steward | Executive coverage summary |
-| POST | `/api/admin/recompute/:assetId` | admin | Recompute confidence score |
-| GET | `/api/admin/groups` | admin | List app groups + members |
-| POST | `/api/admin/groups/:name/members` | admin | Add a member to an app group |
-| DELETE | `/api/admin/groups/:name/members/:memberId` | admin | Remove a member from an app group |
-| GET | `/api/metric-views` | reviewer | List metric views (OBO) |
-| GET | `/api/metric-views/:fullName` | reviewer | Metric view detail (OBO) |
-| POST | `/api/metric-views/:fullName/validate` | reviewer | Validate metric view (OBO) |
-| POST | `/mcp` | — | MCP Streamable HTTP endpoint |
+Generated from `ROUTE_CONTRACTS` (`tests/contract/manifest.json`, 50 routes: `GET /health` + 49 under `/api`). "Success" is the contract success status; "Errors" are the contract error statuses, each covered by a contract test case. Every route validates params/query/body with the contract zod schemas (400 `VALIDATION`).
 
-Full route details in [plan 09](docs/plans/09_rest_routes_wiring.md).
+| Method | Path | Role | Success | Errors | Purpose |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/health` | public | 200 | 500 | Health check: `{status, db, migrations, version}` |
+| GET | `/api/config` | reviewer | 200 | 401, 403, 500 | Runtime config: `executive_dashboard_url` (from `GT_EXEC_DASHBOARD_URL`) |
+| GET | `/api/me` | reviewer | 200 | 401, 403, 500 | Current user context |
+| GET | `/api/review/next` | reviewer | 200 | 400, 401, 403, 404, 500 | Next review card (campaign/type filter) |
+| POST | `/api/review/vote` | reviewer | 200 | 400, 401, 403, 404, 500 | Submit vote (approve/reject/edit; `skip` is rejected with 400) |
+| POST | `/api/review/synonym` | reviewer | 200 | 400, 401, 403, 404, 500 | Add/vote/remove synonym |
+| POST | `/api/review/example` | reviewer | 200 | 400, 401, 403, 404, 500 | Add/vote example question |
+| POST | `/api/review/run-query` | reviewer | 200 | 400, 401, 403, 404, 500, 502 | Execute validation query (OBO) |
+| GET | `/api/review/stats/me` | reviewer | 200 | 401, 403, 500 | Personal stats + streak |
+| GET | `/api/leaderboard` | reviewer | 200 | 400, 401, 403, 500 | Ranked reviewers (7d/30d/all) |
+| GET | `/api/assets` | reviewer | 200 | 400, 401, 403, 500 | Paged asset list |
+| GET | `/api/assets/:assetId` | reviewer | 200 | 400, 401, 403, 404, 500 | Asset detail |
+| GET | `/api/assets/:assetId/versions` | reviewer | 200 | 400, 401, 403, 404, 500 | Asset version history |
+| POST | `/api/assets/register` | steward | 201 | 400, 401, 403, 500 | Register/re-register asset |
+| POST | `/api/assets/import` | steward | 200 | 400, 401, 403, 404, 500, 502 | Bulk import assets from metric views or a registered source |
+| GET | `/api/sources` | steward | 200 | 401, 403, 500 | List registered asset sources |
+| POST | `/api/sources` | steward | 201 | 400, 401, 403, 409, 500, 502 | Register a source (UC schema or workspace glossary path) |
+| POST | `/api/sources/:id/scan` | steward | 200 | 400, 401, 403, 404, 500, 502 | Scan a source for importable assets |
+| GET | `/api/campaigns` | reviewer | 200 | 400, 401, 403, 500 | List campaigns (RBAC-filtered) |
+| POST | `/api/campaigns` | steward | 201 | 400, 401, 403, 500 | Create campaign |
+| GET | `/api/campaigns/:campaignId` | reviewer | 200 | 400, 401, 403, 404, 500 | Campaign detail |
+| PATCH | `/api/campaigns/:campaignId/status` | steward | 200 | 400, 401, 403, 404, 409, 500 | Transition campaign status |
+| POST | `/api/campaigns/freshness-check` | admin | 200 | 401, 403, 500 | Trigger freshness resurfacing |
+| GET | `/api/catalog/catalogs` | steward | 200 | 401, 403, 500, 502 | Browse UC catalogs (OBO) |
+| GET | `/api/catalog/schemas` | steward | 200 | 400, 401, 403, 404, 500, 502 | Browse schemas in a catalog (OBO) |
+| GET | `/api/catalog/metric-views` | steward | 200 | 400, 401, 403, 404, 500, 502 | Browse metric views in a schema (OBO) |
+| GET | `/api/metric-views` | reviewer | 200 | 400, 401, 403, 404, 500, 502 | List metric views (OBO) |
+| GET | `/api/metric-views/:fullName` | reviewer | 200 | 400, 401, 403, 404, 500, 502 | Metric view detail (OBO) |
+| POST | `/api/metric-views/:fullName/validate` | reviewer | 200 | 400, 401, 403, 404, 500, 502 | Validate metric view (OBO) |
+| GET | `/api/notifications` | reviewer | 200 | 400, 401, 403, 500 | Notification inbox |
+| GET | `/api/notifications/unread-count` | reviewer | 200 | 401, 403, 500 | Unread badge count |
+| POST | `/api/notifications/read` | reviewer | 200 | 400, 401, 403, 500 | Mark notifications read |
+| GET | `/api/notifications/preferences` | reviewer | 200 | 401, 403, 500 | Notification preferences |
+| PUT | `/api/notifications/preferences` | reviewer | 200 | 400, 401, 403, 500 | Update preferences |
+| GET | `/api/admin/config` | admin | 200 | 401, 403, 500 | App scoring/role config |
+| PUT | `/api/admin/config` | admin | 200 | 400, 401, 403, 500 | Update config |
+| GET | `/api/admin/summary` | steward | 200 | 401, 403, 500 | Executive coverage summary |
+| POST | `/api/admin/recompute/:assetId` | admin | 200 | 400, 401, 403, 404, 500 | Recompute confidence score |
+| GET | `/api/admin/groups` | admin | 200 | 401, 403, 500 | List app groups + members |
+| POST | `/api/admin/groups/:name/members` | admin | 200 | 400, 401, 403, 404, 500 | Add a member to an app group |
+| DELETE | `/api/admin/groups/:name/members/:memberId` | admin | 200 | 400, 401, 403, 404, 409, 500 | Remove a member from an app group |
+| POST | `/api/review/skip` | reviewer | 201 | 400, 401, 403, 404, 500 | Skip the current card (not a vote; cooldown, reason) |
+| GET | `/api/me/settings` | reviewer | 200 | 401, 403, 500 | Current user settings (migration defaults when unset) |
+| PUT | `/api/me/settings` | reviewer | 200 | 400, 401, 403, 404, 500 | Partial update of user settings |
+| GET | `/api/steward/feedback-queue` | steward | 200 | 400, 401, 403, 500 | Votes grouped by asset with pending edits and skips |
+| GET | `/api/steward/conflicts` | steward | 200 | 400, 401, 403, 500 | Assets with conflicting edit proposals |
+| POST | `/api/steward/conflicts/:assetId/resolve` | steward | 200 | 400, 401, 403, 404, 409, 500 | Resolve a conflict (`accept_edit` / `keep_current` / `reject_all`; 409 on a stale view) |
+| GET | `/api/steward/feedback-branches` | steward | 200 | 400, 401, 403, 500 | List `mg-genie-feedback-*` branches registered by the feedback pipeline |
+| POST | `/api/steward/feedback-branches` | admin | 201 | 400, 401, 403, 404, 500 | Register/upsert a feedback branch (feedback pipeline; `voteIds` marked processed) |
+| POST | `/api/steward/feedback-branches/:batchId/status` | steward | 200 | 400, 401, 403, 404, 409, 500 | Set branch review status (`in_review` / `merged` / `rejected`) |
+| POST | `/mcp` | — | — | — | MCP Streamable HTTP endpoint (not in `ROUTE_CONTRACTS`; covered by `MCP_TOOL_CONTRACTS`) |
+
+Regenerate this table when `ROUTE_CONTRACTS` changes (`pnpm exec tsx tests/contract/generate-manifest.ts > tests/contract/manifest.json`). Session plans for all routes are listed in [`../docs/plans/INDEX.md`](../docs/plans/INDEX.md); build-4 routes are in [plan 33](../docs/plans/33_app_server_skip_settings_steward_api.md).
 
 ## MCP Tools
 
-Registered in Unity Gateway as `semantic-ground-truth-mcp`. 12 tools across three domains:
+Registered in Unity Gateway as `semantic-ground-truth-mcp`. 13 tools, all registered from `MCP_TOOL_CONTRACTS` with `registerContractTool` (`server/mcp/tools/define.ts`): the contract input is the tool's `inputSchema`, and the output is checked before it is returned as `structuredContent` (always an object; lists are `{ items: [...] }`). Every tool also returns a text `content` fallback.
 
-| Domain | Tools |
-| --- | --- |
-| Review | `review_get_next`, `review_submit_vote`, `review_add_synonym`, `review_add_example`, `review_get_stats`, `review_run_query` |
-| Campaign | `campaign_list`, `campaign_create`, `campaign_update_status` |
-| Metric View | `metric_view_list`, `metric_view_get`, `metric_view_validate` |
+| Tool | Role | Review card UI |
+| --- | --- | --- |
+| `review_get_next` | reviewer | yes |
+| `review_submit_vote` | reviewer | yes |
+| `review_add_synonym` | reviewer | — |
+| `review_add_example` | reviewer | — |
+| `review_get_stats` | reviewer | yes |
+| `review_run_query` | reviewer | — |
+| `campaign_list` | reviewer | — |
+| `campaign_create` | steward | — |
+| `campaign_update_status` | steward | — |
+| `metric_view_list` | reviewer | — |
+| `metric_view_get` | reviewer | — |
+| `metric_view_validate` | reviewer | — |
+| `review_skip_card` | reviewer | yes |
+
+**MCP App review card** (build 4): resource `ui://ground-truth/review-card`, MIME `text/html;profile=mcp-app` (`@modelcontextprotocol/ext-apps` 1.7.5), a self-contained card with Approve / Reject / Edit / Skip and keyboard shortcuts A/R/E/S. Hosts without MCP Apps get the markdown text. Design: [L300-17](../docs/design/L300-17_mcp_app_review_card.md).
 
 ## Roles
 
@@ -213,6 +243,8 @@ The dev server starts at the port shown in console output. The `local` target in
 | Demo Campaign Seed | `demo_campaign_seed` | Grants, import from metric views, create campaign, cast votes, verify leaderboard |
 | App Post-Deploy Setup | `app_post_deploy_setup` | `CAN_USE` grants for users group + UC grants for M2M SPN + app SPN READ on the secret scope (idempotent) |
 | Create MCP Connection | `create_mcp_connection` | Schema-level HTTP connection for Unity Gateway |
+| API Contract Tests | `api_contract_tests` | Live contract run of every route and MCP tool in `tests/contract/manifest.json` as the M2M SPN; writes `api_contract_results`, fails on any `fail` or coverage < 100% |
+| Sync Agent Skills | `sync_agent_skills` | Mirrors `agent_skills/` into the infra `agent_skills` volume; triggered by `run_sync_agent_skills` when a skill file changes |
 
 ## Deploy
 
@@ -228,6 +260,8 @@ Subsequent deploys:
 databricks bundle deploy --target dev
 databricks bundle run app --target dev
 ```
+
+> **Unattended deploys:** from a scheduled Genie Code task or job, `bundle deploy` fails at `apps update` with `Invalid delegation claim present in Ctx`. Use `bundle run app --target dev` to ship code there; apply config changes from an interactive session. Do not use a plain `databricks apps deploy` (it builds with `NODE_ENV=production` and the client tests fail). See [Deploy order and permissions](../docs/runbooks/deploy_order_and_permissions.md).
 
 > **Restarting a stopped app:** `databricks apps start <APP_NAME>`.
 
@@ -248,7 +282,17 @@ pnpm run format:fix
 pnpm test             # vitest
 ```
 
-The Apps build runs the tests too: `prebuild` ends with `vitest run`, so a failing test fails the deploy. `vitest.config.ts` excludes `**/.venv/**` (the Apps container has a Python venv with unrelated tests).
+The Apps build runs the tests too: `prebuild` ends with `vitest run`, so a failing test fails the deploy. `vitest.config.ts` excludes `**/.venv/**` (the Apps container has a Python venv with unrelated tests), defines two projects (`node` for server/shared/tests, `client` with `jsdom`), and sets `silent: 'passed-only'` so passing error-path tests do not print error logs in the build.
+
+## Testing
+
+| Layer | What | How |
+| --- | --- | --- |
+| Unit + component | vitest `node` and `client` projects (932 tests after build 4) | `pnpm test` |
+| Contract (in-process) | `tests/contract/**`: every `ROUTE_CONTRACTS` route (success + each error status), all 13 MCP tools, coverage test, invariants | Part of `pnpm test` |
+| Contract (live) | `api_contract_tests` job against the deployed app | `databricks bundle run api_contract_tests --target dev`, then query `api_contract_results` |
+
+When you add a route or tool: add the contract, add cases in `tests/contract/routeCases.ts` or `toolCases.ts`, and regenerate `tests/contract/manifest.json` and `shared/contracts/generated/contracts.schema.json`. The coverage test fails until you do. Details: [Contract tests runbook](../docs/runbooks/contract_tests.md). Running Node/pnpm inside a Genie Code task: [Node toolchain runbook](../docs/runbooks/node_toolchain_genie_code.md).
 
 ## UI Theme and Accessibility
 
@@ -271,15 +315,15 @@ How to add a component with tokens: [UI theming runbook](../docs/runbooks/ui_the
 | Client | React 19, Vite, Tailwind CSS 4, react-router 7 |
 | Data queries | React Query v5 (`@tanstack/react-query`) |
 | Animations | framer-motion (card-swipe drag) |
-| MCP | `@modelcontextprotocol/sdk` (Streamable HTTP) |
+| MCP | `@modelcontextprotocol/sdk` (Streamable HTTP), `@modelcontextprotocol/ext-apps` 1.7.5 (MCP App card) |
 | Database | Lakebase (Postgres) — schema `app` |
 | Validation | zod v4 |
-| Testing | vitest |
+| Testing | vitest 4, Testing Library, jsdom, vitest-axe |
 | UI components | `@databricks/appkit-ui` + lucide-react icons |
 
 ## Observability
 
-OpenTelemetry signals are exported to Unity Catalog tables via `telemetry_export_destinations` in `databricks.yml`:
+OpenTelemetry signals are exported to Unity Catalog tables via `telemetry_export_destinations` in `databricks.yml`. The app also declares the three tables as `uc_securable` `TABLE` resources (`MODIFY`), which grants the app SPN `USE CATALOG` / `USE SCHEMA`; the deployer needs `MANAGE` on the catalog.
 
 | Signal | Table |
 | --- | --- |
@@ -297,4 +341,4 @@ Full architecture and component designs live in `../docs/design/`:
 - **L200-C1..C9** — Component designs (Asset Registry through Operational Agent)
 - **L300-09..L300-13** — Implementation specs for this bundle
 
-Build plans: [docs/plans/INDEX.md](docs/plans/INDEX.md) · Session summaries: [docs/sessions/](docs/sessions/)
+Build plans: [../docs/plans/INDEX.md](../docs/plans/INDEX.md) · Session summaries: [docs/sessions/](docs/sessions/)

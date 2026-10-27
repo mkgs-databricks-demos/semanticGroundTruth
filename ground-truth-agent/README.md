@@ -18,9 +18,9 @@ Bundle 3 of 3 for the **Semantic Ground Truth App**. Deploys the Ground Truth Op
 
 | Metric View | Source | Key Measures |
 |---|---|---|
-| `mv_review_activity` | votes | Total Votes, Unique Reviewers, Approval Rate |
+| `mv_review_activity` | votes, review_skips | Total Votes, Unique Reviewers, Approval Rate, Skips, Skip Rate (a skip is not a vote) |
 | `mv_coverage_metrics` | assets | Total Assets, Reviewed Count, Coverage Pct, Certification Pct |
-| `mv_user_leaderboard` | user_activity | Total Reviews, Edits Accepted, Current Streak |
+| `mv_user_leaderboard` | user_activity | Total Reviews, Edits Accepted, Current Streak, Total Skips |
 | `mv_feedback_pipeline` | feedback_batches | Total Batches, Success Rate, Avg Processing Time |
 | `mv_campaign_progress` | campaigns, campaign_assets | Active Campaigns, Completion Pct |
 
@@ -50,6 +50,10 @@ databricks bundle deploy --target dev
 # Run verification
 databricks bundle run agent_verification --target dev
 ```
+
+Dev IDs: Genie space `01f1ceb0506f1c5d9f2024bfc5f95943`, operations dashboard `01f1d17bf9531f5ba79f838a0da0df35` (open `<workspace>/dashboardsv3/01f1d17bf9531f5ba79f838a0da0df35/published`). Latest verification: run `312880880434652`, 29/29 checks (build 4, session 39).
+
+The metric views are deployed by the infra bundle (`metric_view_deploy`). If you add a measure the dashboard uses, deploy infra and run `metric_view_deploy` first, then deploy this bundle. Full order: [Deploy order and permissions](../docs/runbooks/deploy_order_and_permissions.md).
 
 ## Project Structure
 

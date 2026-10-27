@@ -14,32 +14,32 @@ One manifest for everything: [`waves.json`](waves.json) (genie-build-waves insta
 | 1 — app bundle (edit + first deploy) | 1-0..1-8 | app-01..app-20 | Complete, 2026-10-20/21 | [`manifests/build-1_app.json`](manifests/build-1_app.json) |
 | 2 — root: CDF, bronze, metric views, Genie agent, RBAC/import | 2-0..2-5 | 01..15 | Complete, PR #6, run `713417549836954`, main `fbc552b` | [`manifests/build-2_root.json`](manifests/build-2_root.json) |
 | 3 — brand UI + gaps | 3-0..3-6 | 16..24 | Complete, PR #7, run `745271774924215`, main `0741bc7` | [`manifests/build-3_brand_gaps.json`](manifests/build-3_brand_gaps.json) |
-| 4 — skips, settings, steward APIs, feedback loop, MCP App, contract tests, research | 4-0..4-9 | 25..41 | **Planned 2026-10-24, not run** | (this manifest) |
+| 4 — skips, settings, steward APIs, feedback loop, MCP App, contract tests, research | 4-0..4-9 | 25..41 | Waves 4-0..4-8 pass (runs `110489694161084` + `655172288447819`, last wave commit `e5156d4`); wave 4-9 (docs) in this run. See [build-4 summary](../sessions/2026-10-26_build-4-summary.md) | (this manifest) |
 | (agent bundle manifest) | — | agent 01..03 | Never run; replaced by build 2 sessions 05, 06, 14 | [`manifests/agent_superseded.json`](manifests/agent_superseded.json) |
 
 ## Build 4 (planned 2026-10-24, branch `mg-genie-build-4`)
 
 Scoped with the owner on 2026-10-24 from [`gap_analysis_2026-10.md`](gap_analysis_2026-10.md) and the build-3 follow-ups. Owner decisions: skip is tracked but is not a vote; feedback branches are `mg-genie-feedback-<yyyymmdd>`; Slack/Teams webhooks deferred (research Slack MCP instead); Node toolchain re-tested and documented ([runbook](../runbooks/node_toolchain_genie_code.md)); G10 deletions approved; UI redesign goes through Figma Make before build 5.
 
-| Wave | Session | Plan | Mode | Bundle | Gaps |
-|---|---|---|---|---|---|
-| 4-0 | 25 | [Contracts + migration 009: skips, settings, triage](25_app_contracts_skip_settings_migration.md) | edit | app | skip fix, G6, G17 |
-| 4-0 | 26 | [Node toolchain proof, deps, audit](26_app_toolchain_deps_audit.md) | edit | app | Dependabot, G17 |
-| 4-0 | 27 | [Feedback pipeline as a Genie Code task + skill](27_infra_feedback_pipeline_genie_task.md) | edit | infra | G4 |
-| 4-0 | 28 | [Skip metrics + G10 cleanup](28_infra_skip_metrics_g10_cleanup.md) | edit | infra | G10 |
-| 4-0 | 29 | [Operations dashboard](29_agent_operations_dashboard.md) | edit | agent | G11 (partial) |
-| 4-0 | 30 | [Research: Slack MCP notifications](30_root_research_slack_mcp_notifications.md) | edit (docs) | root | G5 |
-| 4-0 | 31 | [MCP App design](31_root_research_mcp_app_design.md) | edit (docs) | root | G9 |
-| 4-0 | 32 | [UI review + Figma Make brief + UI test strategy](32_root_ui_design_review_figma_brief.md) | edit (docs) | root | G6, G8 |
-| 4-1 | 33 | [Server: skip, settings, steward APIs](33_app_server_skip_settings_steward_api.md) | edit | app | G6 |
-| 4-2 | 34 | [MCP: review_skip_card + MCP App](34_app_mcp_skip_tool_mcp_app.md) | edit | app | G9 |
-| 4-3 | 35 | [Contract tests (in-process + live job)](35_app_contract_tests.md) | edit | app | G17 |
-| 4-4 | 36 | [Converge app](36_app_converge.md) | converge | app | — |
-| 4-5 | 37 | [Converge skips through CDF/bronze/MVs](37_infra_converge_metric_views_skips.md) | converge | infra | G10 |
-| 4-6 | 38 | [Converge feedback pipeline](38_infra_converge_feedback_pipeline.md) | converge | infra | G4 |
-| 4-7 | 39 | [Converge operations dashboard](39_agent_converge_operations_dashboard.md) | converge | agent | — |
-| 4-8 | 40 | [Converge live contract tests at 100%](40_app_converge_contract_tests.md) | converge | app | G17 |
-| 4-9 | 41 | [Docs + project memory](41_root_docs_project_memory.md) | edit | root | — |
+| Wave | Session | Plan | Mode | Bundle | Gaps | Status |
+|---|---|---|---|---|---|---|
+| 4-0 | 25 | [Contracts + migration 009: skips, settings, triage](25_app_contracts_skip_settings_migration.md) | edit | app | skip fix, G6, G17 | pass (`c4a634d`) |
+| 4-0 | 26 | [Node toolchain proof, deps, audit](26_app_toolchain_deps_audit.md) | edit | app | Dependabot, G17 | pass (`c4a634d`) |
+| 4-0 | 27 | [Feedback pipeline as a Genie Code task + skill](27_infra_feedback_pipeline_genie_task.md) | edit | infra | G4 | pass (`c4a634d`) |
+| 4-0 | 28 | [Skip metrics + G10 cleanup](28_infra_skip_metrics_g10_cleanup.md) | edit | infra | G10 | pass (`c4a634d`) |
+| 4-0 | 29 | [Operations dashboard](29_agent_operations_dashboard.md) | edit | agent | G11 (partial) | pass (`c4a634d`) |
+| 4-0 | 30 | [Research: Slack MCP notifications](30_root_research_slack_mcp_notifications.md) | edit (docs) | root | G5 | pass (`c4a634d`) |
+| 4-0 | 31 | [MCP App design](31_root_research_mcp_app_design.md) | edit (docs) | root | G9 | pass (`c4a634d`) |
+| 4-0 | 32 | [UI review + Figma Make brief + UI test strategy](32_root_ui_design_review_figma_brief.md) | edit (docs) | root | G6, G8 | pass (`c4a634d`) |
+| 4-1 | 33 | [Server: skip, settings, steward APIs](33_app_server_skip_settings_steward_api.md) | edit | app | G6 | pass (`e9e4748`, planner fixes `e14b56f`) |
+| 4-2 | 34 | [MCP: review_skip_card + MCP App](34_app_mcp_skip_tool_mcp_app.md) | edit | app | G9 | pass (`339425c`) |
+| 4-3 | 35 | [Contract tests (in-process + live job)](35_app_contract_tests.md) | edit | app | G17 | pass on retry (`914746f`) |
+| 4-4 | 36 | [Converge app](36_app_converge.md) | converge | app | — | blocked in run `110489694161084` (`8be12a8`); owner fixes `d634f99`/`dca8dc0`; pass in run `655172288447819` (`b83fd52`) |
+| 4-5 | 37 | [Converge skips through CDF/bronze/MVs](37_infra_converge_metric_views_skips.md) | converge | infra | G10 | pass, attempt 3 (`1a987a8`) |
+| 4-6 | 38 | [Converge feedback pipeline](38_infra_converge_feedback_pipeline.md) | converge | infra | G4 | blocked (`566e041`), app fix `e7c8736`, pass on repair (`fe061da`) |
+| 4-7 | 39 | [Converge operations dashboard](39_agent_converge_operations_dashboard.md) | converge | agent | — | pass, attempt 1 (`6d26b3f`) |
+| 4-8 | 40 | [Converge live contract tests at 100%](40_app_converge_contract_tests.md) | converge | app | G17 | pass, attempt 3 (`e5156d4`) |
+| 4-9 | 41 | [Docs + project memory](41_root_docs_project_memory.md) | edit | root | — | this run (`655172288447819`) |
 
 **How to run build 4** (until genie-build-waves can skip archived waves):
 

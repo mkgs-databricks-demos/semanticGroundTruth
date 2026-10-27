@@ -8,7 +8,10 @@
 - **Workspace:** `fevm-hls-fde` (`https://fevm-hls-fde.cloud.databricks.com`)
 - **Catalog (dev):** `hls_fde_dev`
 - **Schema (dev):** `dev_matthew_giglia_semantic_ground_truth`
-- **Feature branch:** `mg-genie-agent-build` (from main at `6af87be`)
+- **Feature branch:** current build branch `mg-genie-build-4` (earlier: `mg-genie-agent-build` from main at `6af87be`, `mg-genie-ui-brand-and-gaps`)
+- **Genie space id (dev):** `01f1ceb0506f1c5d9f2024bfc5f95943`
+- **Operations dashboard id (dev):** `01f1d17bf9531f5ba79f838a0da0df35` (published 2026-10-26 20:29 UTC)
+- **Verification job (dev):** `agent_verification` `930756362224750`; latest run `312880880434652` = 29/29 checks (session 39)
 
 ## Component
 C9 — Operational Genie Agent. Conversational analytics over the Ground Truth App’s own usage data. Executives and admins ask questions about reviewer activity, coverage progress, certification rates, and ROI. Backed by metric views over Lakehouse Sync CDF tables and OTel telemetry.
@@ -33,7 +36,8 @@ C9 — Operational Genie Agent. Conversational analytics over the Ground Truth A
 | Pages | Review Queue Health, Campaigns, Feedback Loop, App Health, global Filters (date range `date_range` RANGE parameter default `now-30d/d`..`now/d`; campaign and asset type field filters) |
 | Datasets | 17, only `MEASURE()` over the 7 metric views; skip measures `skips`, `skip_rate`, `skip_reason` (dim), `total_skips` from session 28 |
 | Verification | `agent_verification` cell "Verify operations dashboard…": exists + published, every dataset runs `SELECT * FROM (<q>) LIMIT 1` with RANGE defaults inlined (the wave gate skips RANGE-parameter datasets) |
-| Converge | Session 39 (wave 4-7) deploys and fixes; session 37 deploys the skip measures first |
+| Converge | Session 39 (wave 4-7): attempt 1 stable, no code changes needed; 17/17 datasets pass `EXPLAIN` (RANGE defaults inlined), `agent_verification` 29/29. Session 37 deployed the skip measures first |
+| Open (optional) | 3 datasets show raw BINARY ids (campaign id / asset id); wrap with `hex()` for readability (session 39 request) |
 
 Known metric-view limits (dashboard shows the closest available view): `mv_review_activity` has no `asset_type`, so skip rate by asset type is not possible (the page shows the queue by asset type from `mv_coverage_metrics`); `mv_campaign_progress` has no campaign id / name, due date or reviewer assignment, so campaign rows are by type / domain / rule and per-campaign reviewers use `campaign_id` from `mv_review_activity`; `mv_feedback_pipeline` has no `branch_name` dimension, so the latest branch name is not shown (latest batches table shows asset counts).
 
@@ -48,18 +52,19 @@ Known metric-view limits (dashboard shows the closest available view): `mv_revie
 
 ## Data Sources
 
-### Business metric views (4, from infra YAML fixtures)
+### Business metric views (5, from infra YAML fixtures)
 Source fixtures: `ground-truth-infra/fixtures/metric_views/mv_*.yaml`
-Deployed by: `deploy_metric_views` job in this bundle
+Deployed by: the infra `metric_view_deploy` job (not this bundle). All read `bronze_lakebase_cdf` filtered by `_source_table`.
 
-| Metric view | Source CDF table | Key measures |
+| Metric view | Source (`_source_table`) | Key measures |
 |---|---|---|
-| `mv_review_activity` | `lb_votes_history` | Total Votes, Unique Reviewers, Approval Rate |
-| `mv_coverage_metrics` | `lb_assets_history` | Total Assets, Reviewed Assets, Coverage Pct, Certification Pct |
-| `mv_user_leaderboard` | `lb_user_activity_history` | Total Reviews, Edits Accepted, Current Streak Days |
-| `mv_feedback_pipeline` | `lb_feedback_batches_history` | Total Batches, Success Rate, Avg Processing Time |
+| `mv_review_activity` | `votes` + `review_skips` (build 4) | Total Votes, Unique Reviewers, Approval Rate, `skips`, `skip_rate`; dim `skip_reason` |
+| `mv_coverage_metrics` | `assets` | Total Assets, Reviewed Assets, Coverage Pct, Certification Pct |
+| `mv_user_leaderboard` | `user_activity` | Total Reviews, Edits Accepted, Current Streak Days, `total_skips` |
+| `mv_feedback_pipeline` | `feedback_batches` | Total Batches, Success Rate, Avg Processing Time |
+| `mv_campaign_progress` | `campaigns`, `campaign_assets` | Active Campaigns, Completion Pct |
 
-### Operational metric views (2, new — created by this bundle)
+### Operational metric views (2, also infra fixtures)
 | Metric view | Source table | Key measures |
 |---|---|---|
 | `mv_otel_error_rate` | `semantic_ground_truth_otel_logs` | Error Count, Total Logs, Error Rate by severity/time |
@@ -83,6 +88,8 @@ Deployed by: `deploy_metric_views` job in this bundle
 ## Build Status
 - **2026-10-21:** Planning session complete. Feature branch `mg-genie-agent-build` created from main. Plan files written for sessions 01–03. Waves 0–1 manifest committed.
 - **2026-10-23:** Root build waves 0–4 complete. Genie space deployed, 9 data sources (7 metric views + 2 OTel tables), verification job passing (11/11 checks), 2/2 probe questions returning SQL.
+- **2026-10-24:** Brand + gaps build: `agent_verification` regression run `149451153256513` SUCCESS (session 22c).
+- **2026-10-26:** Build 4 complete for this bundle. Session 29 added the operations dashboard (G11 partial) and dashboard checks in `agent_verification`; session 39 deployed and verified it (29/29). Lakehouse Monitoring on bronze is still deferred.
 
 ## Build Results (root manifest waves 0–4)
 
@@ -96,8 +103,8 @@ The agent bundle was built as part of the root manifest (`docs/plans/waves.json`
 - `agent_verification.ipynb`: measure discovery via `columns.is_measure` (not `measures[]`); title matching via `endswith` (handles dev prefix); `space_id` and `attachment_id` API field names.
 
 ## Known Risks (updated)
-1. **Lakehouse Sync tables don’t exist yet** — require app to deploy and run migrations first.
-2. **Column drift** — infra metric view fixtures reference columns designed before app migrations were finalized. Converge session (03) must inspect actual `lb_*_history` schemas and fix.
+1. ~~**Lakehouse Sync tables don’t exist yet**~~ — resolved; 23 `lb_*_history` tables feed bronze (21 + `review_skips`, `user_settings` from build 4).
+2. **Column drift** — when an app migration changes a table, check the metric views and the dashboard datasets with `EXPLAIN` (the `agent_verification` dashboard cell does this).
 3. **Agent benchmarking (L300-15)** is a manual follow-up, not automated in this build.
 4. **Branch cross-contamination** — initial commit picked up 16 stray app code files from workspace git state when switching branches. Cleanup needed before PR.
 

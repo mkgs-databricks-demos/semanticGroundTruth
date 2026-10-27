@@ -33,21 +33,27 @@ Lakebase (Postgres)          Lakehouse Sync (CDF)          Bronze (SDP)         
 
 ---
 
-## 1. Full refresh of a single flow (CDF re-snapshot recovery)
+## 1. CDF re-snapshot recovery (reset the flow checkpoint)
 
-When a source schema changes (e.g., a new column on `app.votes`), Lakehouse Sync triggers a full re-snapshot of `lb_votes_history`. The bronze pipeline's incremental flow for that table may fail because the schema changed mid-stream.
+When a migration ALTERs a synced table (for example migration 009 on `app.votes` and `app.user_activity`, 2026-10-26 03:55 UTC), Lakehouse Sync re-snapshots its `lb_<table>_history` table. That is a non-append commit (`wal2delta.resnapshot`), so the bronze streaming flow fails with `DELTA_SOURCE_TABLE_IGNORE_CHANGES`.
 
-**Recovery steps:**
+> **Do not full refresh `bronze_lakebase_cdf`.** The re-snapshot drops the earlier change rows from the history table, so bronze is the only copy of those LSNs. A full refresh deletes them for good. Do not set `skipChangeCommits` either: it would drop the snapshot rows.
+
+**Recovery steps (session 37, build 4):**
 
 1. Wait for the Lakehouse Sync re-snapshot to complete.
-2. Trigger a **full refresh** of only the affected flow in the bronze pipeline:
+2. Find the failing flows in the pipeline event log (names `<catalog>.<schema>.bronze_from_<table>`).
+3. Start an update that resets the checkpoint of only those flows:
    ```bash
-   databricks pipelines start-update <pipeline-id> \
-     --full-refresh-selection "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.bronze_lakebase_cdf" \
-     --refresh-selection "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.flow_votes"
+   databricks pipelines start-update <cdf_bronze pipeline id> --json '{
+     "reset_checkpoint_selection": [
+       "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.bronze_from_votes",
+       "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.bronze_from_user_activity"
+     ]
+   }'
    ```
-   Or use `bundle run cdf_bronze --target dev` with `--full-refresh` for a full pipeline reset.
-3. Verify the update completes with 0 failed/dropped records.
+   The flows re-read the history table from the start and append it again, so bronze gets duplicate `(_record_key, _pg_lsn)` rows. That is expected: every CDF metric view keeps the latest row per `_record_key` (no `update_preimage`, no `delete`).
+4. Verify the update is `COMPLETED` with 0 failed/dropped records, every `_pg_lsn` in the history table is present in bronze, and the metric view measures match the history tables (for example `mv_review_activity` `Total Votes` = distinct vote ids).
 
 > **Never** enable Delta CDF, row filters, or column masks on `lb_*_history` tables.
 
@@ -100,7 +106,7 @@ databricks bundle deploy --target dev --var=run_setup=false
 databricks bundle run cdf_bronze --target dev
 ```
 
-The pipeline creates a new flow named `flow_<table>` that appends to `bronze_lakebase_cdf` with `_source_table = '<table>'`.
+The pipeline creates a new flow named `bronze_from_<table>` that appends to `bronze_lakebase_cdf` with `_source_table = '<table>'`.
 
 ### Step 5: Update metric views (if needed)
 
@@ -116,9 +122,9 @@ If the new table needs a metric view:
 
 ---
 
-## 3. Current CDF tables (as of 2026-10-23)
+## 3. Current CDF tables (as of 2026-10-23; build 4 adds 2)
 
-21 history tables, 13 distinct source tables in bronze (281 rows at last converge):
+21 history tables, 13 distinct source tables in bronze (281 rows at last converge). Build 4 (migration 009) adds `lb_review_skips_history` and `lb_user_settings_history`, and both are in `fixtures/pipelines/cdf_bronze_tables.yaml` (`review_skips` keys `[id]`, `user_settings` keys `[user_id]`). Lakehouse Sync creates a history table only after the source table has a row.
 
 `lb_assets_history`, `lb_votes_history`, `lb_campaigns_history`, `lb_campaign_assets_history`, `lb_campaign_assignments_history`, `lb_synonyms_history`, `lb_example_questions_history`, `lb_notifications_history`, `lb_user_activity_history`, `lb_confidence_scores_history`, `lb_feedback_batches_history`, `lb_app_config_history`, `lb_mcp_sessions_history`, `lb_asset_sources_history`, `lb_asset_versions_history`, `lb_app_groups_history`, `lb_app_group_members_history`, `lb_feedback_batch_items_history`, `lb_audit_log_history`, `lb_badge_awards_history`, `lb__migrations_history`
 
@@ -130,7 +136,7 @@ All query `bronze_lakebase_cdf` filtered by `_source_table` and extract fields f
 
 | Metric view | Source table | Key measures |
 |---|---|---|
-| `mv_review_activity` | votes | Total Votes, Unique Reviewers, Approval Rate |
+| `mv_review_activity` | votes, review_skips | Total Votes, Unique Reviewers, Approval Rate, skips, skip_rate |
 | `mv_coverage_metrics` | assets | Total Assets, Reviewed Count, Coverage Pct, Certification Pct |
 | `mv_user_leaderboard` | user_activity | Total Reviews, Edits Accepted, Current Streak |
 | `mv_feedback_pipeline` | feedback_batches | Total Batches, Success Rate, Avg Processing Time |

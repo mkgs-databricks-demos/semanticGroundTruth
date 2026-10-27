@@ -23,14 +23,35 @@ graph LR
   U[Business users] -->|card-swipe UI / MCP| APP[ground-truth-app]
   APP -->|SPN writes| LB[(Lakebase app schema)]
   APP -->|OBO reads| UC[(UC metric views)]
-  LB -->|Lakehouse Sync CDF| H[lb_*_history - 21 tables]
+  LB -->|Lakehouse Sync CDF| H[lb_*_history - 23 tables]
   H -->|SDP cdf_bronze| B[bronze_lakebase_cdf]
   B --> MV[5 business metric views]
   APP -->|OpenTelemetry| OT[semantic_ground_truth_otel_*]
   OT --> MVO[2 operational metric views]
   MV --> G[Ground Truth Operations Genie space]
   MVO --> G
+  MV --> D[Executive + Operations dashboards]
+  MVO --> D
+  LB -->|edit votes| FP[feedback_pipeline job + Genie Code]
+  FP -->|mg-genie-feedback-* branch| GIT[(Git: fixture YAML)]
+  FP -->|register branch| APP
 ```
+
+### Jobs and pipelines
+
+| Bundle | Job / pipeline | Purpose |
+| --- | --- | --- |
+| infra | `setup_lakebase_cdf` | Lakehouse Sync for every `app` table (`lb_*_history`) |
+| infra | `cdf_bronze` (SDP) + `cdf_bronze_refresh` | Bronze from all history tables; hourly refresh (paused in dev) |
+| infra | `metric_view_deploy` | Deploys the 7 metric view fixtures |
+| infra | `feedback_pipeline` | Daily: unprocessed edit votes -> Genie Code task (skill `ground-truth-feedback-author`) -> `mg-genie-feedback-<yyyymmdd>` branch -> app registers it for steward review |
+| infra | `post_deploy_setup` | After every infra deploy: Genie Code automation, job params (restores the feedback `genie_task`), CDF config |
+| infra | `freshness_resurfacing`, `post_deploy_validation` | Daily freshness campaign; infra checks |
+| app | `deploy_verification` | M2M probes of the deployed app |
+| app | `api_contract_tests` | Live contract run of all 50 routes and 13 MCP tools -> `api_contract_results` |
+| app | `sync_agent_skills` | Mirrors `ground-truth-app/agent_skills/` into the `agent_skills` UC volume |
+| app | `app_post_deploy_setup`, `create_mcp_connection`, `demo_campaign_seed` | Grants, Unity Gateway connection, demo data |
+| agent | `agent_verification` | Genie space + operations dashboard checks |
 
 ### Repository Layout
 
@@ -40,7 +61,7 @@ semanticGroundTruth/
 ├── PROJECT_MEMORY.md         # Solution-wide decisions, findings, status log
 ├── ground-truth-infra/       # Bundle 1 — UC schema, warehouse, Lakebase, CDF, SDP bronze, metric views, jobs
 ├── ground-truth-app/         # Bundle 2 — AppKit Node.js + React app, MCP server, migrations, app jobs
-├── ground-truth-agent/       # Bundle 3 — Ground Truth Operations Genie space + verification job
+├── ground-truth-agent/       # Bundle 3 — Ground Truth Operations Genie space, operations dashboard, verification job
 ├── docs/
 │   ├── design/               # L100 / L200 / L300 design documents
 │   ├── plans/                # Root build manifest (waves.json), per-session plans, build conventions
@@ -69,13 +90,14 @@ All design artifacts are in `docs/`:
 |-------|------|-------------|
 | L100 | `docs/design/L100_semantic_ground_truth_app.md` | System-level constitution |
 | L200 | `docs/design/L200-C[1-9]_*.md` | Component designs (9 documents) |
-| L300 | `docs/design/L300-[01-16]_*.md` | Implementation specs (16 documents) |
-| Research | `docs/research/` | UC Semantics API surface, Wilson score + Lakebase CDF, Genie Code workflow tasks, DAB secrets/job_runs/MCP |
+| L300 | `docs/design/L300-[01-17]_*.md` | Implementation specs (17 documents; L300-17 = MCP App review card) |
+| UI | `docs/design/ui/` | Screen inventory, UI test strategy, Figma Make brief, build-5 outline |
+| Research | `docs/research/` | UC Semantics API surface, Wilson score + Lakebase CDF, Genie Code workflow tasks, DAB secrets/job_runs/MCP, Slack MCP notifications — see [INDEX](docs/research/INDEX.md) |
 | Semantics | `docs/semantics/` | Core terminology definitions |
 | Pitch | `docs/pitch/` | Customer pitch, SOW timing estimates, HIPAA compliance matrix |
 | Diagrams | `docs/diagrams/` | 13 diagrams (Mermaid source + SVG + interactive HTML) |
-| Build plans | `docs/plans/` | `waves.json` manifest, session plans (01–15 root build, 16–24 brand + gaps build), `build_conventions.md`, [gap analysis](docs/plans/gap_analysis_2026-10.md), [UI brand plan](docs/plans/ui_brand_plan.md) |
-| Runbooks | `docs/runbooks/` | [Onboarding users](docs/runbooks/onboarding_users.md), [CDF → bronze operations](docs/runbooks/cdf_bronze_operations.md), [UI theming](docs/runbooks/ui_theming.md) |
+| Build plans | `docs/plans/` | `waves.json` manifest, session plans (01–15 root build, 16–24 brand + gaps build, 25–41 build 4), `build_conventions.md`, [gap analysis](docs/plans/gap_analysis_2026-10.md), [UI brand plan](docs/plans/ui_brand_plan.md) |
+| Runbooks | `docs/runbooks/` | [Deploy order and permissions](docs/runbooks/deploy_order_and_permissions.md), [Onboarding users](docs/runbooks/onboarding_users.md), [CDF → bronze operations](docs/runbooks/cdf_bronze_operations.md), [Feedback pipeline](docs/runbooks/feedback_pipeline.md), [Contract tests](docs/runbooks/contract_tests.md), [Node toolchain in Genie Code](docs/runbooks/node_toolchain_genie_code.md), [UI theming](docs/runbooks/ui_theming.md) |
 | Sessions | `docs/sessions/` | Session summaries — see [INDEX](docs/sessions/INDEX.md) |
 
 ## Getting Started
@@ -94,7 +116,7 @@ Each bundle is an independent Declarative Automation Bundle with its own `databr
 # 1. Infra: schema, warehouse, Lakebase, secret scope, M2M SPN, jobs, pipeline, metric view fixtures
 ./deploy.sh --target dev --infra --run-setup
 
-# 2. App: deploys the app (migrations 001–008 create the Lakebase `app` schema),
+# 2. App: deploys the app (migrations 001–009 create the Lakebase `app` schema),
 #    creates the MCP connection, and registers the MCP service
 ./deploy.sh --target dev --app
 
@@ -103,8 +125,9 @@ databricks bundle run setup_lakebase_cdf --target dev
 databricks bundle run cdf_bronze --target dev
 databricks bundle run metric_view_deploy --target dev
 
-# 4. App verification + optional demo data (from ground-truth-app/)
+# 4. App verification, live contract tests, optional demo data (from ground-truth-app/)
 databricks bundle run deploy_verification --target dev
+databricks bundle run api_contract_tests --target dev
 databricks bundle run demo_campaign_seed --target dev
 
 # 5. Agent: deploys ground-truth-agent with infra-resolved vars and runs agent_verification
@@ -112,6 +135,8 @@ databricks bundle run demo_campaign_seed --target dev
 ```
 
 Other `deploy.sh` modes: `--validate` (validate only), `--verify` (run each deployed bundle's verification job), `--destroy`. Run `bundle validate --strict` in any bundle after changing YAML.
+
+Before the first deploy, read [Deploy order and permissions](docs/runbooks/deploy_order_and_permissions.md): the deployer needs `MANAGE` on the catalog (app OTel `TABLE` resources), infra must exist before the app (agent skills volume), and unattended runs must ship app code with `bundle run app`, not `bundle deploy`. For the feedback loop, create a dedicated Git folder for `feedback_pipeline` and run `post_deploy_setup` after each infra deploy ([Feedback pipeline](docs/runbooks/feedback_pipeline.md)).
 
 ### What deploy.sh wires between bundles
 
@@ -135,11 +160,11 @@ This solution was built and converged with the `genie-build-waves` framework: pa
 
 | Item | Location |
 | --- | --- |
-| Manifest | [`docs/plans/waves.json`](docs/plans/waves.json) — current: brand + gaps build, 7 waves / sessions 16–24 (the root build's 6 waves / 15 sessions are in git history) |
+| Manifest | [`docs/plans/waves.json`](docs/plans/waves.json) — current: build 4, waves 4-0..4-9 / sessions 25–41 (earlier builds' manifests are in git history) |
 | Session plans | `docs/plans/NN_*.md` + [`INDEX.md`](docs/plans/INDEX.md) |
 | Conventions | [`docs/plans/build_conventions.md`](docs/plans/build_conventions.md) |
 | Status files | `.build-status/<run_id>/<session>.json` |
-| Build summary | [`docs/sessions/2026-10-23_root-build-waves-summary.md`](docs/sessions/2026-10-23_root-build-waves-summary.md) (root build); brand + gaps build run `745271774924215` in [`docs/sessions/INDEX.md`](docs/sessions/INDEX.md) |
+| Build summary | [`docs/sessions/2026-10-23_root-build-waves-summary.md`](docs/sessions/2026-10-23_root-build-waves-summary.md) (root build); brand + gaps build run `745271774924215` in [`docs/sessions/INDEX.md`](docs/sessions/INDEX.md); [build 4 summary](docs/sessions/2026-10-26_build-4-summary.md) |
 
 Runtime gates scan the app's OTel logs. Lines that every redeploy prints (`App did not respect SIGTERM timeout`, `[ELIFECYCLE] Command failed`) are listed in `ignore_patterns` so they don't count as errors.
 
@@ -156,20 +181,23 @@ Runtime gates scan the app's OTel logs. Lines that every redeploy prints (`App d
 
 | Bundle | Status | Branch |
 |--------|--------|--------|
-| **Infra** (Bundle 1) | ✅ **Deployed to dev** — CDF configured, bronze pipeline (21 flows) + hourly `cdf_bronze_refresh` job, 7 metric views, executive AI/BI dashboard, app SPN READ on the secret scope | `mg-genie-ui-brand-and-gaps` |
-| **App** (Bundle 2) | ✅ **Deployed to dev** — RBAC, asset import, MCP server, Databricks-branded UI (light/dark), Logic View, `/api/config` | `mg-genie-ui-brand-and-gaps` |
-| **Agent** (Bundle 3) | ✅ **Deployed to dev** — Genie space with 9 data sources, verification passing (unchanged in the brand build) | `mg-genie-ui-brand-and-gaps` |
+| **Infra** (Bundle 1) | ✅ **Deployed to dev** — CDF configured, bronze pipeline (23 flows) + hourly `cdf_bronze_refresh` job, 7 metric views with skip measures, executive dashboard (11 datasets), feedback pipeline as a Genie Code task, `agent_skills` volume | `mg-genie-build-4` |
+| **App** (Bundle 2) | ✅ **Deployed to dev** — skips (not votes), user settings, steward triage APIs, 50 contract routes, 13 MCP tools + MCP App review card, in-process + live contract tests | `mg-genie-build-4` |
+| **Agent** (Bundle 3) | ✅ **Deployed to dev** — Genie space with 9 data sources, operations dashboard (17 datasets), verification 29/29 | `mg-genie-build-4` |
 
 All bundles deployed and converged in `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth` (as of 2026-10-23, build run `713417549836954`, 6/6 waves passed). Key resources:
 
-* **App:** `dev-semantic-ground-truth` (Node.js AppKit + React + MCP Server). Migrations 001–008 applied. `/health`, `/api/me`, `/api/campaigns` and `/mcp` probes pass. Runtime gate passed a 10-minute soak with 0 errors.
-* **Data plane:** Lakebase CDF (21 `lb_*_history` tables) → `bronze_lakebase_cdf` (281 rows, 13 sources at converge time) → 7 metric views
+* **App:** `dev-semantic-ground-truth` (Node.js AppKit + React + MCP Server). Migrations 001–009 applied. Build 4: deployment `01f1d180ccfa147db429fdda372aea06`, 8/8 probes, 932 vitest tests, live contract run `687515436484443` 147 pass / 0 fail / 100% coverage.
+* **Data plane:** Lakebase CDF (23 `lb_*_history` tables) → `bronze_lakebase_cdf` → 7 metric views
 * **Agent:** `[dev matthew_giglia] Ground Truth Operations` Genie space (9 data sources, 9/9 example SQLs pass EXPLAIN, verification 11/11)
-* **Jobs / pipeline:** infra `setup_lakebase_cdf`, `cdf_bronze` (SDP), `cdf_bronze_refresh` (hourly; paused in dev), `metric_view_deploy`, `post_deploy_validation`, `feedback_pipeline`, `freshness_resurfacing`; app `deploy_verification`, `demo_campaign_seed`, `app_post_deploy_setup`, `create_mcp_connection`; agent `agent_verification`
+* **Dashboards:** executive `01f1cf0b38d31b7cbac5bdac6cafe3eb` (infra), operations `01f1d17bf9531f5ba79f838a0da0df35` (agent)
+* **Jobs / pipeline:** see [Jobs and pipelines](#jobs-and-pipelines)
 
 **Brand + gaps build (run `745271774924215`, 2026-10-23/24):** gaps G1, G2, G3, G7, G8, G9, G17 Done (G7 after post-build brand-asset commits); G6 Partial. Executive dashboard `01f1cf0b38d31b7cbac5bdac6cafe3eb` (9/9 datasets execute). App stable on deployment `01f1cf13577d1d66a5fb26679855e41d` with all 6 probes (`/health`, `/api/me`, `/api/campaigns`, `/api/config`, `/fonts/dm-sans-regular.ttf`, `/mcp`). Details: [gap analysis §5](docs/plans/gap_analysis_2026-10.md).
 
-**Known follow-ups:** re-check `/api/config` through `./deploy.sh --target dev --app` (the 2026-10-24 redeploy used a bare `bundle deploy` with the dev default); manual Lighthouse / keyboard / theme-toggle checks; a migration if `skip` votes should be stored; steward triage views (G6); deferred G4, G5, G10–G12. `prod` targets are scaffolded but not deployed.
+**Build 4 (runs `110489694161084` + `655172288447819`, 2026-10-24/26):** G4, G9, G10, G17 Done; G6 backend done (UI in build 5); G11 partial (operations dashboard); G5 researched. Details: [gap analysis §6](docs/plans/gap_analysis_2026-10.md) and the [build 4 summary](docs/sessions/2026-10-26_build-4-summary.md).
+
+**Known follow-ups:** build 5 UI (Settings page, steward Feedback queue / Conflicts / Feedback branches screens); manual MCP App render check in Genie One / Genie Code; Slack sharing (G5); Lakehouse Monitoring on bronze (G11); manual Lighthouse / keyboard / theme-toggle checks; the first feedback branch `mg-genie-feedback-20261026` is a test and can be rejected. `prod` targets are scaffolded but not deployed.
 
 ## License
 
