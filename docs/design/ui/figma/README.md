@@ -1,6 +1,7 @@
 # Semantic Ground Truth — Figma Make export
 
 - **Figma file URL:** https://www.figma.com/make/QtXG8JU0oWrP99lnGVdeNE/Semantic-Ground-Truth---Build-5?t=Jx4EQL6hpvXLZfHY-1&preview-route=%2Freview
+- **Preview URL:** https://www.figma.com/make/QtXG8JU0oWrP99lnGVdeNE/Semantic-Ground-Truth---Build-5?t=Jx4EQL6hpvXLZfHY-20&fullscreen=1&preview-route=%2Freview
 - **Export date:** 2026-10-24
 - **Header variant:** A
 - **Source brief:** `docs/design/ui/figma_make_brief.md`
