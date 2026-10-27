@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { BrandIcon, BrandIllustration, BrandLogo, BrandProductIcon } from '../components/BrandAssets'
 
 type PageState = 'populated' | 'loading' | 'empty' | 'dashboard-unconfigured' | 'error' | 'forbidden' | 'offline'
 const paths: Record<string, ReactNode> = {
@@ -20,9 +21,9 @@ const paths: Record<string, ReactNode> = {
   danger:<><path d="M8 2 14 13H2L8 2Z"/><path d="M8 6v3M8 11h.01"/></>,
   cloud:<><path d="M5 12H4a3 3 0 0 1-.8-5.9A4.5 4.5 0 0 1 11 4.4 3.5 3.5 0 0 1 13 11"/><path d="m2 2 12 12"/></>,
 }
-function Icon({name,size=16}:{name:string,size?:number}){return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>}
-function Logo(){return <span className="db-logo" aria-hidden="true"><i/><i/><i/></span>}
-function AiBiIcon(){return <span className="aibi-icon" aria-label="AI/BI"><i/><i/><i/></span>}
+function Icon({name,size=16}:{name:string,size?:number}){return <BrandIcon name={name} size={size} fallback={paths[name]} />}
+function Logo(){return <BrandLogo/>}
+function AiBiIcon(){return <BrandProductIcon file="ai-bi-icon-full-color.svg" label="AI/BI" className="aibi-icon"/>}
 const nav=[['Review','review'],['Leaderboard','ranking'],['Assistant','sparkle'],['Steward','shield'],['Executive','chart'],['Admin','gear']]
 const kpis=[
   {label:'Coverage',value:'35%',test:'executive-kpi-coverage',progress:35,delta:'+4 pts vs last week',trend:'up'},
@@ -64,6 +65,6 @@ export default function App(){
   </div>
 }
 function KpiLoading(){return <section className="kpi-grid">{Array.from({length:6}).map((_,i)=><article className="kpi-card kpi-skeleton" key={i}><i/><i/><i/></article>)}</section>}
-function Empty(){return <section className="executive-state" data-testid="executive-empty-root"><span className="executive-state-icon"><Icon name="dashboards" size={36}/></span><h2>No assets yet</h2><p>Import semantic assets before tracking coverage and certification.</p><a href="#steward">Import assets</a></section>}
-function Forbidden(){return <section className="executive-state" data-testid="executive-forbidden-root"><span className="executive-state-icon"><Icon name="governance" size={36}/><i><Icon name="lock"/></i></span><h2>Steward access required</h2><p>Ask an admin to add you to semantic-ground-truth-stewards.</p></section>}
+function Empty(){return <section className="executive-state" data-testid="executive-empty-root"><span className="executive-state-icon"><BrandIllustration name="dashboards"/></span><h2>No assets yet</h2><p>Import semantic assets before tracking coverage and certification.</p><a href="#steward">Import assets</a></section>}
+function Forbidden(){return <section className="executive-state" data-testid="executive-forbidden-root"><span className="executive-state-icon"><BrandIllustration name="governance"/><i><Icon name="lock"/></i></span><h2>Steward access required</h2><p>Ask an admin to add you to semantic-ground-truth-stewards.</p></section>}
 function ErrorState({retry}:{retry:()=>void}){return <section className="executive-error"><Icon name="danger" size={24}/><div><strong>We couldn't load the executive summary</strong><p>Your data is unchanged. Try loading these metrics again.</p></div><button onClick={retry}>Retry</button></section>}

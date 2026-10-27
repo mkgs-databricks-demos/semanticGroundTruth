@@ -8,4 +8,4 @@
 
 `_code/` is the complete generated React reference export. Build 5 must port it into `ground-truth-app/client/src/**`; production code must not import from `docs/`. The official Section 4 assets with published attachment IDs are bundled under `_code/public/brand/`.
 
-The named-frame PNG export API was unavailable. Required 2x PNG frames remain pending. The reference components still contain some generated icon approximations; Build 5 must wire the bundled official assets. Section 4 does not publish attachment IDs for `copyIcon`, `fileCodeIcon`, `arrowUpIcon`, `arrowDownIcon`, `SendIcon`, or `FolderBranchIcon`, so those six require a brand-catalog lookup.
+The named-frame PNG export API was unavailable. Required 2x PNG frames remain pending. The reference components now use the bundled official symbols, product marks, primary illustrations, and functional icons. Section 4 does not publish attachment IDs for `copyIcon`, `fileCodeIcon`, `arrowUpIcon`, `arrowDownIcon`, `SendIcon`, or `FolderBranchIcon`, so those six require a brand-catalog lookup.

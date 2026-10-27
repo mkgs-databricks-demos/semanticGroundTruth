@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { BrandIcon, BrandLogo } from '../components/BrandAssets'
 
 type Theme='light'|'dark'|'system'
 type Density='comfortable'|'compact'
@@ -8,8 +9,8 @@ const paths:Record<string,ReactNode>={
   review:<path d="M3 4h1M3 8h1M3 12h1M7 4h6M7 8h6M7 12h6"/>,ranking:<path d="M3 4h7M3 8h10M3 12h5"/>,sparkle:<path d="m8 2 .8 3.2L12 6l-3.2.8L8 10l-.8-3.2L4 6l3.2-.8L8 2Z"/>,shield:<path d="M8 2.5 13 4v3.5c0 3-2 5-5 6-3-1-5-3-5-6V4l5-1.5Z"/>,chart:<path d="M3 12V8M8 12V3M13 12V6"/>,gear:<><circle cx="8" cy="8" r="2.5"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2"/></>,bell:<path d="M4 11h8l-1-2V6a3 3 0 0 0-6 0v3l-1 2Zm3 2h2"/>,moon:<path d="M12.5 10.5A5.5 5.5 0 0 1 5.5 3.5a5 5 0 1 0 7 7Z"/>,menu:<path d="M2 4h12M2 8h12M2 12h12"/>,
   sun:<><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.5 1.5M11.5 11.5 13 13M13 3l-1.5 1.5M4.5 11.5 3 13"/></>,monitor:<><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M6 14h4M8 11v3"/></>,rows:<path d="M3 4h10M3 8h10M3 12h10"/>,motion:<path d="M2 5h8M5 8h9M2 11h8"/>,check:<path d="m3 8 3 3 7-7"/>,info:<><circle cx="8" cy="8" r="6"/><path d="M8 7v4M8 5h.01"/></>,danger:<><path d="M8 2 14 13H2L8 2Z"/><path d="M8 6v3M8 11h.01"/></>,cloud:<><path d="M5 12H4a3 3 0 0 1-.8-5.9A4.5 4.5 0 0 1 11 4.4 3.5 3.5 0 0 1 13 11"/><path d="m2 2 12 12"/></>
 }
-function Icon({name,size=16}:{name:string,size?:number}){return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>}
-function Logo(){return <span className="db-logo" aria-hidden="true"><i/><i/><i/></span>}
+function Icon({name,size=16}:{name:string,size?:number}){return <BrandIcon name={name} size={size} fallback={paths[name]} />}
+function Logo(){return <BrandLogo/>}
 const nav=[['Review','review'],['Leaderboard','ranking'],['Assistant','sparkle'],['Steward','shield'],['Executive','chart'],['Admin','gear']]
 const events=[['asset_certified','Asset certified'],['campaign_created','Campaign created'],['campaign_completed','Campaign completed'],['vote_milestone','Vote milestone'],['feedback_branch_ready','Feedback branch ready'],['feedback_failed','Feedback failed']]
 

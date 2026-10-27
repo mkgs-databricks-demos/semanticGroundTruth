@@ -1,4 +1,5 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { BrandIcon, BrandIllustration, BrandLogo, BrandProductIcon } from '../components/BrandAssets'
 
 type ChatState = 'empty' | 'populated' | 'streaming' | 'error' | 'no-agent' | 'offline'
 type Message = { role: 'user' | 'assistant' | 'tool'; text: string }
@@ -20,10 +21,10 @@ const paths: Record<string, ReactNode> = {
   info: <><circle cx="8" cy="8" r="6" /><path d="M8 7v4M8 5h.01" /></>,
 }
 function Icon({ name, size = 16 }: { name: string; size?: number }) {
-  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>
+  return <BrandIcon name={name} size={size} fallback={paths[name]} />
 }
-function Logo() { return <span className="db-logo" aria-hidden="true"><i /><i /><i /></span> }
-function GenieIcon() { return <span className="genie-icon" aria-label="Genie"><i /><i /><i /></span> }
+function Logo() { return <BrandLogo /> }
+function GenieIcon() { return <BrandProductIcon file="genie-icon-full-color-container.svg" label="Genie" className="genie-icon" /> }
 const nav = [['Review', 'review'], ['Leaderboard', 'ranking'], ['Assistant', 'sparkle'], ['Steward', 'shield'], ['Executive', 'chart'], ['Admin', 'gear']]
 const initialMessages: Message[] = [
   { role: 'user', text: 'Why is the confidence score for Readmission Rate (30-day) 71%?' },
@@ -83,7 +84,7 @@ export default function App() {
         <p>Ask about any asset, its confidence score, campaigns or the leaderboard. Answers are read-only.</p>
       </div>
 
-      {state === 'no-agent' ? <section className="no-agent"><span className="chat-primary-icon"><Icon name="chat" size={36} /></span><h2>The assistant isn't set up for this app yet.</h2><p>Ask an admin to connect an assistant before starting a conversation.</p></section> :
+      {state === 'no-agent' ? <section className="no-agent"><span className="chat-primary-icon"><BrandIllustration name="chat" /></span><h2>The assistant isn't set up for this app yet.</h2><p>Ask an admin to connect an assistant before starting a conversation.</p></section> :
       <section className="chat-card" data-testid="assistant-chat-root">
         <div className="conversation" role="log" aria-live="polite" aria-label="Conversation">
           {state === 'empty' ? <div className="chat-empty">

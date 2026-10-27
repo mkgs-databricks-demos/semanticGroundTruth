@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { BrandIcon, BrandLogo } from '../components/BrandAssets'
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive'
@@ -23,7 +24,7 @@ function Icon({ name, size = 16 }: { name: string; size?: number }) {
     info: <><circle cx="8" cy="8" r="6" /><path d="M8 7v4M8 5h.01" /></>,
     plus: <path d="M8 3v10M3 8h10" />,
   }
-  return <svg aria-hidden="true" className="icon" width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>
+  return <BrandIcon name={name} size={size} fallback={paths[name]} />
 }
 
 function Button({ variant = 'default', size = 'default', loading, children, className = '', ...props }: ButtonProps) {

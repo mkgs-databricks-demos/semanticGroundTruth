@@ -1,4 +1,5 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { BrandIcon, BrandIllustration, BrandLogo } from '../components/BrandAssets'
 
 type PageState = 'populated' | 'loading' | 'empty' | 'error' | 'offline'
 const icons: Record<string, ReactNode> = {
@@ -21,9 +22,9 @@ const icons: Record<string, ReactNode> = {
   fire: <path d="M8 14c-2.7 0-4.5-1.7-4.5-4.2 0-2 1.4-3.4 2.5-4.6.2 1.5.9 2.2 1.4 2.4C7.2 5 8.5 3 10 2c0 2.7 2.5 4 2.5 7.7C12.5 12.3 10.6 14 8 14Z" />,
 }
 function Icon({ name, size = 16 }: { name: string; size?: number }) {
-  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{icons[name]}</svg>
+  return <BrandIcon name={name} size={size} fallback={icons[name]} />
 }
-function Logo() { return <span className="db-logo" aria-hidden="true"><i /><i /><i /></span> }
+function Logo() { return <BrandLogo /> }
 const nav = [['Review', 'review'], ['Leaderboard', 'ranking'], ['Assistant', 'sparkle'], ['Steward', 'shield'], ['Executive', 'chart'], ['Admin', 'gear']]
 const stats = [
   ['Rank', '#3', 'trophy'], ['Total votes', '186', 'ranking'], ['Approvals', '131', 'check'], ['Rejections', '29', 'close'],
@@ -90,7 +91,7 @@ function Loading() {
   return <><section className="my-stats stats-loading"><div className="skeleton title-skeleton" /><div className="leaderboard-stats">{Array.from({ length: 8 }).map((_, i) => <div className="stat" key={i}><span className="skeleton circle-skeleton" /><div><span className="skeleton small-skeleton" /><strong className="skeleton value-skeleton" /></div></div>)}</div></section><section className="rankings table-loading"><div className="skeleton title-skeleton" />{Array.from({ length: 5 }).map((_, i) => <div className="row-skeleton" key={i}><i /><i /><i /><i /></div>)}</section></>
 }
 function Empty() {
-  return <section className="leaderboard-empty" data-testid="leaderboard-empty-root"><span className="empty-users"><Icon name="users" size={36} /></span><h2>No reviews in this period yet</h2><p>Be the first to help your team certify a semantic asset.</p><button>Start reviewing</button></section>
+  return <section className="leaderboard-empty" data-testid="leaderboard-empty-root"><span className="empty-users"><BrandIllustration name="users" /></span><h2>No reviews in this period yet</h2><p>Be the first to help your team certify a semantic asset.</p><button>Start reviewing</button></section>
 }
 function ErrorState({ retry }: { retry: () => void }) {
   return <section className="leaderboard-error"><Icon name="danger" size={24} /><div><strong>We couldn't load the leaderboard</strong><p>Your stats are safe. Try loading this page again.</p></div><button data-testid="leaderboard-error-retry" onClick={retry}>Retry</button></section>

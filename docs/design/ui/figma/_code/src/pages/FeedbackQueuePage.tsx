@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { BrandIcon, BrandIllustration, BrandLogo } from '../components/BrandAssets'
 
 type PageState='populated'|'loading'|'empty'|'filtered-empty'|'error'|'forbidden'|'offline'
 const paths:Record<string,ReactNode>={
   review:<path d="M3 4h1M3 8h1M3 12h1M7 4h6M7 8h6M7 12h6"/>,ranking:<path d="M3 4h7M3 8h10M3 12h5"/>,sparkle:<path d="m8 2 .8 3.2L12 6l-3.2.8L8 10l-.8-3.2L4 6l3.2-.8L8 2Z"/>,shield:<path d="M8 2.5 13 4v3.5c0 3-2 5-5 6-3-1-5-3-5-6V4l5-1.5Z"/>,chart:<path d="M3 12V8M8 12V3M13 12V6"/>,gear:<><circle cx="8" cy="8" r="2.5"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2"/></>,bell:<path d="M4 11h8l-1-2V6a3 3 0 0 0-6 0v3l-1 2Zm3 2h2"/>,moon:<path d="M12.5 10.5A5.5 5.5 0 0 1 5.5 3.5a5 5 0 1 0 7 7Z"/>,menu:<path d="M2 4h12M2 8h12M2 12h12"/>,
   search:<><circle cx="7" cy="7" r="4"/><path d="m10 10 3 3"/></>,check:<path d="m3 8 3 3 7-7"/>,close:<path d="m4 4 8 8M12 4l-8 8"/>,pencil:<path d="m3 13 1-3 7-7 2 2-7 7-3 1Z"/>,skip:<path d="m3 4 4 4-4 4M8 4l4 4-4 4"/>,info:<><circle cx="8" cy="8" r="6"/><path d="M8 7v4M8 5h.01"/></>,quality:<><path d="M3 4h10v9H3V4Z"/><path d="m5 9 2 2 4-5"/></>,danger:<><path d="M8 2 14 13H2L8 2Z"/><path d="M8 6v3M8 11h.01"/></>,lock:<><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></>,history:<><circle cx="8" cy="8" r="5"/><path d="M8 5v3l2 1M3 3v3h3"/></>,cloud:<><path d="M5 12H4a3 3 0 0 1-.8-5.9A4.5 4.5 0 0 1 11 4.4 3.5 3.5 0 0 1 13 11"/><path d="m2 2 12 12"/></>
 }
-function Icon({name,size=16}:{name:string,size?:number}){return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>}
-function Logo(){return <span className="db-logo" aria-hidden="true"><i/><i/><i/></span>}
+function Icon({name,size=16}:{name:string,size?:number}){return <BrandIcon name={name} size={size} fallback={paths[name]} />}
+function Logo(){return <BrandLogo/>}
 const nav=[['Review','review'],['Leaderboard','ranking'],['Assistant','sparkle'],['Steward','shield'],['Executive','chart'],['Admin','gear']]
 const rows=[
   {id:'asset-readmission-rate',name:'Readmission Rate (30-day)',type:'Measure',a:8,r:2,e:3,skips:5,edits:3,time:'2 hours ago',absolute:'October 24, 2024 at 10:32 AM'},
@@ -42,7 +43,7 @@ export default function App(){
   </div>
 }
 function VoteBar({row}:{row:typeof rows[number]}){const total=row.a+row.r+row.e;return <div className="queue-votes" aria-label={`${row.a} approvals, ${row.r} rejections, ${row.e} edits`}><div className="stacked-bar"><i className="approve" style={{width:`${row.a/total*100}%`}}/><i className="reject" style={{width:`${row.r/total*100}%`}}/><i className="edit" style={{width:`${row.e/total*100}%`}}/></div><div><span className="approve"><Icon name="check"/>{row.a}</span><span className="reject"><Icon name="close"/>{row.r}</span><span className="edit"><Icon name="pencil"/>{row.e}</span></div></div>}
-function Empty({filtered,clear}:{filtered:boolean,clear:()=>void}){return <section className="queue-empty" data-testid={!filtered?'steward-queue-empty-root':undefined}><span><Icon name="quality" size={36}/></span><h2>{filtered?'No assets match these filters':'Nothing waiting for triage'}</h2><p>{filtered?'Try a broader campaign, type or search.':'New votes, edits and skips will appear here.'}</p>{filtered?<button data-testid="steward-queue-clear-filters" onClick={clear}>Clear filters</button>:<a href="#campaigns">View campaigns</a>}</section>}
+function Empty({filtered,clear}:{filtered:boolean,clear:()=>void}){return <section className="queue-empty" data-testid={!filtered?'steward-queue-empty-root':undefined}><span><BrandIllustration name="data-quality-3"/></span><h2>{filtered?'No assets match these filters':'Nothing waiting for triage'}</h2><p>{filtered?'Try a broader campaign, type or search.':'New votes, edits and skips will appear here.'}</p>{filtered?<button data-testid="steward-queue-clear-filters" onClick={clear}>Clear filters</button>:<a href="#campaigns">View campaigns</a>}</section>}
 function Forbidden(){return <section className="queue-empty"><span><Icon name="lock" size={36}/></span><h2>Steward access required</h2><p>Ask an admin to add you to semantic-ground-truth-stewards.</p></section>}
 function QueueError({retry}:{retry:()=>void}){return <section className="queue-error"><Icon name="danger" size={24}/><div><strong>We couldn't load the feedback queue</strong><p>No triage changes were made.</p></div><button onClick={retry}>Retry</button></section>}
 function QueueLoading(){return <section className="queue-loading"><i/><div>{Array.from({length:6}).map((_,i)=><span key={i}><b/><b/><b/><b/></span>)}</div></section>}

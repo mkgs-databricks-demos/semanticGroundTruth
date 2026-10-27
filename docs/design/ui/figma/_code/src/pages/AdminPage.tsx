@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { BrandIcon, BrandLogo } from '../components/BrandAssets'
 
 type PageState='populated'|'loading'|'empty-group'|'saving'|'saved'|'validation-error'|'last-admin-conflict'|'error'|'forbidden'|'offline'
 type Confirm='remove'|'recompute'|'freshness'|null
@@ -6,8 +7,8 @@ const paths:Record<string,ReactNode>={
   review:<path d="M3 4h1M3 8h1M3 12h1M7 4h6M7 8h6M7 12h6"/>,ranking:<path d="M3 4h7M3 8h10M3 12h5"/>,sparkle:<path d="m8 2 .8 3.2L12 6l-3.2.8L8 10l-.8-3.2L4 6l3.2-.8L8 2Z"/>,shield:<path d="M8 2.5 13 4v3.5c0 3-2 5-5 6-3-1-5-3-5-6V4l5-1.5Z"/>,chart:<path d="M3 12V8M8 12V3M13 12V6"/>,gear:<><circle cx="8" cy="8" r="2.5"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2"/></>,bell:<path d="M4 11h8l-1-2V6a3 3 0 0 0-6 0v3l-1 2Zm3 2h2"/>,moon:<path d="M12.5 10.5A5.5 5.5 0 0 1 5.5 3.5a5 5 0 1 0 7 7Z"/>,menu:<path d="M2 4h12M2 8h12M2 12h12"/>,
   trash:<><path d="M3 4h10M6 4V2h4v2M5 6v7M8 6v7M11 6v7M4 4l1 10h6l1-10"/></>,plus:<path d="M8 3v10M3 8h10"/>,save:<path d="M3 2h8l2 2v10H3V2Zm2 0v4h5V2M5 10h6v4H5v-4Z"/>,danger:<><path d="M8 2 14 13H2L8 2Z"/><path d="M8 6v3M8 11h.01"/></>,check:<path d="m3 8 3 3 7-7"/>,lock:<><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></>,users:<><circle cx="6" cy="5" r="2.5"/><path d="M2 13c.4-2.4 1.7-3.5 4-3.5s3.6 1.1 4 3.5M10 4.2c2.1-.2 3.2.8 3.2 2.3S12.3 9 10.8 9"/></>,refresh:<><path d="M13 5V2l-1 1A6 6 0 1 0 13 10"/><path d="M13 2h-3"/></>
 }
-function Icon({name,size=16}:{name:string,size?:number}){return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>}
-function Logo(){return <span className="db-logo" aria-hidden="true"><i/><i/><i/></span>}
+function Icon({name,size=16}:{name:string,size?:number}){return <BrandIcon name={name} size={size} fallback={paths[name]} />}
+function Logo(){return <BrandLogo/>}
 const nav=[['Review','review'],['Leaderboard','ranking'],['Assistant','sparkle'],['Steward','shield'],['Executive','chart'],['Admin','gear']]
 const groups=[
   {name:'semantic-ground-truth-admins',role:'admin',members:[['priya.raman@databricks.com','system','Oct 02, 2024'],['spn://semantic-ground-truth-deploy','Priya Raman','Oct 18, 2024']]},

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { BrandIcon, BrandIllustration, BrandLogo } from '../components/BrandAssets'
 
 type Page = 'not-found' | 'app-error'
 const paths: Record<string, ReactNode> = {
@@ -13,9 +14,9 @@ const paths: Record<string, ReactNode> = {
   check: <path d="m3 8 3 3 7-7" />,
 }
 function Icon({ name, size = 16 }: { name: string; size?: number }) {
-  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>
+  return <BrandIcon name={name} size={size} fallback={paths[name]} />
 }
-function Logo() { return <span className="db-logo" aria-hidden="true"><i /><i /><i /></span> }
+function Logo() { return <BrandLogo /> }
 
 export default function App({ initialPage = 'not-found' }: { initialPage?: Page }) {
   const [page, setPage] = useState<Page>(initialPage)
@@ -41,7 +42,7 @@ Caused by: TypeError: Cannot read properties of undefined (reading 'display_name
     </header>
     <main className="fallback-main">
       {page === 'not-found' ? <section className="fallback-card" data-testid="not-found-root">
-        <span className="fallback-icon catalog-icon"><Icon name="catalog" size={38} /></span>
+        <span className="fallback-icon catalog-icon"><BrandIllustration name="unity-catalog" /></span>
         <p className="fallback-code">404</p>
         <h1>Page not found</h1>
         <p className="fallback-copy">The page you're looking for doesn't exist or moved.</p>
