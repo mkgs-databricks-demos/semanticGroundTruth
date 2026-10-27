@@ -14,6 +14,9 @@ resources:
         env:
           - name: GT_EXEC_DASHBOARD_URL
             value: "${var.exec_dashboard_url}"
+          # Feedback-branch links (FeedbackBranch.htmlUrl); bundle input var feedback_repo_url.
+          - name: GT_FEEDBACK_REPO_URL
+            value: "${var.feedback_repo_url}"
           # AppKit agents plugin: catalog skills volume (/Volumes/... form required).
           # Must match the agents-skills resource below.
           - name: DATABRICKS_VOLUME_AGENT_SKILLS

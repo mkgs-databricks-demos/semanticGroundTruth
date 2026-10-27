@@ -33,6 +33,11 @@ env:
   # deploy.sh resolves the URL from the infra bundle's executive dashboard resource.
   - name: GT_EXEC_DASHBOARD_URL
     value: ""
+  # Overridden at deploy time by app.app.yml config.env → ${var.feedback_repo_url}
+  # (bundle input variable, default = this project's GitHub repo). Empty = no
+  # feedback-branch links. A plain string can't use valueFrom (resources only).
+  - name: GT_FEEDBACK_REPO_URL
+    value: ""
 
   # ── OpenTelemetry ──
   # Record every trace unconditionally. Without this, the default parent-based
