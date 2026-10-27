@@ -1,6 +1,6 @@
 # Build 4 follow-ups
 
-**Source:** build 4 (runs `110489694161084` + `655172288447819`, `BUILD_PASSED` 2026-10-27), session status files under `.build-status/655172288447819/`, the [build 4 summary](../../sessions/2026-10-26_build-4-summary.md) and the [unblock and close session](../../sessions/2026-10-27_build-4-unblock-and-close.md).
+**Source:** build 4 (runs `110489694161084` + `655172288447819`, `BUILD_PASSED` 2026-10-27), session status files under `.build-status/655172288447819/`, the [build 4 summary](../sessions/2026-10-26_build-4-summary.md) and the [unblock and close session](../sessions/2026-10-27_build-4-unblock-and-close.md).
 
 **Closed on 2026-10-27 (not repeated below):** app `voteIds` (session 38, `e7c8736`); `feedback_pipeline` default `repo_path` -> `semanticGroundTruth-feedback` (session 38); `api_contract_tests` `max_retries: 0` (session 40); re-snapshot recovery runbook + infra PROJECT_MEMORY (session 37); `post_deploy_setup` after infra deploy (session 37); probe helper return values in the build-waves runner skill (session 36, mbp PR #8).
 
@@ -92,7 +92,7 @@ SELECT regexp_replace(lower(hex(asset_id)), '^(.{8})(.{4})(.{4})(.{4})(.{12})$',
 
 ## 11. Build 5 UI and manual checks (P3, app; existing plan)
 
-* Build 5 per [`../../design/ui/build5_outline.md`](../../design/ui/build5_outline.md) after the Figma Make export: Settings page, steward Feedback queue / Conflicts / Feedback branches, `resurfacedFromSkip` on `ReviewCard`, a repo URL on `FeedbackBranch`.
+* Build 5 per [`../design/ui/build5_outline.md`](../design/ui/build5_outline.md) after the Figma Make export: Settings page, steward Feedback queue / Conflicts / Feedback branches, `resurfacedFromSkip` on `ReviewCard`, a repo URL on `FeedbackBranch`.
 * Manual: MCP App render check in Genie One / Genie Code; Lighthouse / keyboard / theme toggle.
 
 ## 12. Other gaps (P3)

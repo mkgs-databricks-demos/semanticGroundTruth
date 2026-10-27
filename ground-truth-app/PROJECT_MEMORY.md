@@ -248,7 +248,7 @@ OAuth secret scopes are immutable — must generate a new secret.
 | ~~16~~ | ~~Lakebase Lakehouse Sync~~ | ✅ Done by infra `setup_lakebase_cdf` |
 | ~~17~~ | ~~Genie Code skill registration~~ | ✅ Feedback skill `ground-truth-feedback-author` `1.0.0` lives in infra fixtures; agent skills come from the UC volume |
 
-> Phases C-J above are all built (builds 1-4). Open items after build 4: build 5 UI (Settings, steward Feedback queue / Conflicts / Feedback branches screens from the Figma Make brief), MCP App render check in Genie One / Genie Code, `@mlflow/core` if MLflow agent traces are wanted (runtime logs `MLflow agent tracing requires the optional @mlflow/core package`). App follow-ups (steward re-notify on re-register, edit votes with no proposed value, unattended deploy "Invalid delegation claim"): `../docs/plans/requests/2026-10-27_build-4-follow-ups.md`. `api_contract_tests` has `max_retries: 0` since 2026-10-27.
+> Phases C-J above are all built (builds 1-4). Open items after build 4: build 5 UI (Settings, steward Feedback queue / Conflicts / Feedback branches screens from the Figma Make brief), MCP App render check in Genie One / Genie Code, `@mlflow/core` if MLflow agent traces are wanted (runtime logs `MLflow agent tracing requires the optional @mlflow/core package`). App follow-ups (steward re-notify on re-register, edit votes with no proposed value, unattended deploy "Invalid delegation claim"): `../docs/requests/2026-10-27_build-4-follow-ups.md`. `api_contract_tests` has `max_retries: 0` since 2026-10-27.
 
 ---
 

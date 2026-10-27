@@ -88,7 +88,7 @@ Full table: `docs/plans/gap_analysis_2026-10.md` §6.
 
 ## Open items for build 5
 
-> **Update 2026-10-27:** the build finished `BUILD_PASSED`. The `repo_path` default and `max_retries: 0` items below are closed; the rest moved to [`../plans/requests/2026-10-27_build-4-follow-ups.md`](../plans/requests/2026-10-27_build-4-follow-ups.md) ([close-out session](2026-10-27_build-4-unblock-and-close.md)).
+> **Update 2026-10-27:** the build finished `BUILD_PASSED`. The `repo_path` default and `max_retries: 0` items below are closed; the rest moved to [`../requests/2026-10-27_build-4-follow-ups.md`](../requests/2026-10-27_build-4-follow-ups.md) ([close-out session](2026-10-27_build-4-unblock-and-close.md)).
 
 * UI: Settings page, steward Feedback queue / Conflicts / Feedback branches screens, `resurfacedFromSkip` on `ReviewCard`, branch URL on `FeedbackBranch` (sessions 32, 33).
 * ~~`feedback_pipeline` `repo_path` default -> dedicated folder (session 38).~~ Done 2026-10-27.

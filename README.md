@@ -65,6 +65,7 @@ semanticGroundTruth/
 ├── docs/
 │   ├── design/               # L100 / L200 / L300 design documents
 │   ├── plans/                # Root build manifest (waves.json), per-session plans, build conventions
+│   ├── requests/             # Open follow-ups and requests (build follow-ups, upstream tooling) + README index
 │   ├── runbooks/             # Cross-bundle operational runbooks
 │   ├── sessions/             # Cross-bundle session summaries + INDEX.md
 │   ├── research/ semantics/ pitch/ diagrams/
@@ -98,6 +99,7 @@ All design artifacts are in `docs/`:
 | Diagrams | `docs/diagrams/` | 13 diagrams (Mermaid source + SVG + interactive HTML) |
 | Build plans | `docs/plans/` | `waves.json` manifest, session plans (01–15 root build, 16–24 brand + gaps build, 25–41 build 4), `build_conventions.md`, [gap analysis](docs/plans/gap_analysis_2026-10.md), [UI brand plan](docs/plans/ui_brand_plan.md) |
 | Runbooks | `docs/runbooks/` | [Deploy order and permissions](docs/runbooks/deploy_order_and_permissions.md), [Onboarding users](docs/runbooks/onboarding_users.md), [CDF → bronze operations](docs/runbooks/cdf_bronze_operations.md), [Feedback pipeline](docs/runbooks/feedback_pipeline.md), [Contract tests](docs/runbooks/contract_tests.md), [Node toolchain in Genie Code](docs/runbooks/node_toolchain_genie_code.md), [UI theming](docs/runbooks/ui_theming.md) |
+| Requests | `docs/requests/` | Open follow-ups from builds and requests to upstream tooling — see [README](docs/requests/README.md) |
 | Sessions | `docs/sessions/` | Session summaries — see [INDEX](docs/sessions/INDEX.md) |
 
 ## Getting Started
@@ -197,7 +199,7 @@ All bundles deployed and converged in `hls_fde_dev.dev_matthew_giglia_semantic_g
 
 **Build 4 (runs `110489694161084` + `655172288447819`, 2026-10-24/27, `BUILD_PASSED`):** G4, G9, G10, G17 Done; G6 backend done (UI in build 5); G11 partial (operations dashboard); G5 researched. Details: [gap analysis §6](docs/plans/gap_analysis_2026-10.md), the [build 4 summary](docs/sessions/2026-10-26_build-4-summary.md) and the [unblock and close session](docs/sessions/2026-10-27_build-4-unblock-and-close.md).
 
-**Known follow-ups:** tracked in [`docs/plans/requests/`](docs/plans/requests/README.md) ([build 4 follow-ups](docs/plans/requests/2026-10-27_build-4-follow-ups.md): idempotent `post_deploy_setup` automation, automatic `post_deploy_setup` after infra deploys, build-waves repair of blocked sessions, readable dashboard ids, then build 5 UI). The first feedback branch `mg-genie-feedback-20261026` is a test and can be rejected. The feedback pipeline needs the dedicated Git folder `/Workspace/Users/<you>/semanticGroundTruth-feedback` (job default `repo_path`). `prod` targets are scaffolded but not deployed.
+**Known follow-ups:** tracked in [`docs/requests/`](docs/requests/README.md) ([build 4 follow-ups](docs/requests/2026-10-27_build-4-follow-ups.md): idempotent `post_deploy_setup` automation, automatic `post_deploy_setup` after infra deploys, build-waves repair of blocked sessions, readable dashboard ids, then build 5 UI). The first feedback branch `mg-genie-feedback-20261026` is a test and can be rejected. The feedback pipeline needs the dedicated Git folder `/Workspace/Users/<you>/semanticGroundTruth-feedback` (job default `repo_path`). `prod` targets are scaffolded but not deployed.
 
 ## License
 

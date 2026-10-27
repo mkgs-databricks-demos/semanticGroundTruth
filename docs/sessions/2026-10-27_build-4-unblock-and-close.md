@@ -33,7 +33,7 @@ Build 4 is complete. `build_verdict`: **BUILD_PASSED: 6 wave gate(s) passed** (r
    * `ground-truth-infra/resources/jobs/feedback_pipeline.job.yml`: default `repo_path` is now `/Workspace/Users/${workspace.current_user.userName}/semanticGroundTruth-feedback` (session 38 request). `bundle validate --strict` OK; infra deploy (`--var=run_setup=false`, 7 jobs updated); `post_deploy_setup` run `1115453808467683` (`run_setup=true`) SUCCESS; `jobs get`: default updated, `author_feedback_branch` is a `genie_task` again (`configuration_id` …`/20536fcdc3b647448babc91f3e5e44ae`, a new id on every setup run).
    * `ground-truth-app/resources/jobs/api_contract_tests.job.yml`: task `max_retries: 0` (session 40 request). `bundle validate --strict` OK; app deploy, deployment `01f1d1bf1da21e6d9178db9ae66ac99e` RUNNING; probes 8/8.
    * Session 37 requests (re-snapshot recovery runbook, infra PROJECT_MEMORY) and session 38 docs requests were completed by session 41. Plan 40 "run `deploy_verification`" is documented in the app README.
-   * Deferred: ops dashboard UUID ids (session 39), see [`../plans/requests/2026-10-27_build-4-follow-ups.md`](../plans/requests/2026-10-27_build-4-follow-ups.md).
+   * Deferred: ops dashboard UUID ids (session 39), see [`../requests/2026-10-27_build-4-follow-ups.md`](../requests/2026-10-27_build-4-follow-ups.md).
 9. **Docs.** This summary, session INDEX row, follow-up requests, PROJECT_MEMORY (root, infra, app, agent), README and runbook updates for the closed requests.
 
 ## Decisions
@@ -47,6 +47,6 @@ Build 4 is complete. `build_verdict`: **BUILD_PASSED: 6 wave gate(s) passed** (r
 * `ground-truth-infra/resources/jobs/feedback_pipeline.job.yml`
 * `ground-truth-app/resources/jobs/api_contract_tests.job.yml`
 * `docs/sessions/2026-10-27_build-4-unblock-and-close.md` (new), `docs/sessions/INDEX.md`
-* `docs/plans/requests/README.md` (new), `docs/plans/requests/2026-10-27_build-4-follow-ups.md` (new), `docs/plans/INDEX.md`
+* `docs/requests/README.md` (new), `docs/requests/2026-10-27_build-4-follow-ups.md` (new), `docs/plans/INDEX.md` (first committed under `docs/plans/requests/` in `8683803`, moved to `docs/requests/` next to the existing `2026-10-24_mbp_archived_waves.md` request)
 * `PROJECT_MEMORY.md`, `README.md`, `ground-truth-infra/PROJECT_MEMORY.md`, `ground-truth-infra/README.md`, `ground-truth-app/PROJECT_MEMORY.md`, `ground-truth-agent/PROJECT_MEMORY.md`
 * `docs/runbooks/feedback_pipeline.md`, `docs/runbooks/contract_tests.md`, `docs/sessions/2026-10-26_build-4-summary.md` (open items marked closed)

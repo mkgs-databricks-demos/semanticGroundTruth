@@ -17,7 +17,7 @@ The first branch: `mg-genie-feedback-20261026` (commit `38fb38e`, run `799084267
 
 * **Dedicated Git folder.** Genie Code commits and switches branches in `repo_path`. Never point it at a folder someone builds in. Use `/Workspace/Users/<you>/semanticGroundTruth-feedback` (dev: repo id `1397479021974305`, on `main`). Since 2026-10-27 this is the job default (`/Workspace/Users/${workspace.current_user.userName}/semanticGroundTruth-feedback`), so create that Git folder once (clone of the repo, on `main`) before the first run. Override `repo_path` only to point at another dedicated folder.
 * **`post_deploy_setup` after every infra deploy.** A bundle deploy resets `author_feedback_branch` to a notebook placeholder that fails on purpose; `post_deploy_setup` (`run_setup=true`, task `setup_job_params`) patches it back to a `genie_task`. Check with `databricks jobs get <feedback_pipeline id>`: the task must have `genie_task.configuration_id`.
-* Each `setup_genie_automation` run creates a new Genie Code scheduled task ("Ground Truth Feedback Author (dev)"): the `configuration_id` changed on every run in build 4 (`e9bdf433…`, then `20536fcd…`). Remove the old ones in Genie Code; making setup idempotent is follow-up 1 in [`../plans/requests/2026-10-27_build-4-follow-ups.md`](../plans/requests/2026-10-27_build-4-follow-ups.md).
+* Each `setup_genie_automation` run creates a new Genie Code scheduled task ("Ground Truth Feedback Author (dev)"): the `configuration_id` changed on every run in build 4 (`e9bdf433…`, then `20536fcd…`). Remove the old ones in Genie Code; making setup idempotent is follow-up 1 in [`../requests/2026-10-27_build-4-follow-ups.md`](../requests/2026-10-27_build-4-follow-ups.md).
 
 ## Run it by hand
 
