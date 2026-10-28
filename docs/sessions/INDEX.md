@@ -5,6 +5,8 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-28 | 5-10 | 63 | [Build 5 summary — Figma redesign, steward triage, Share to Slack, infra/agent hardening, Chromium gate (waves 5-0..5-9 pass; 5-11 manual acceptance pending M5)](2026-10-28_build-5-summary.md) | edit | pass | `mg-genie-build-5` |
+| 2026-10-28 | 5-10 | 63 | [Docs: build-5 summary, manual-check worksheet (build-5_manual_checks.md), PROJECT_MEMORY x4, runbooks, build-4 follow-ups closed, build-5 follow-ups, gap analysis §7 (run 229891579528310)](2026-10-28_w5-10-63-docs-and-summary.md) | edit | pass | `mg-genie-build-5` |
 | 2026-10-28 | 5-9 | 62 | [Converge UI: ui_visual_checks 44/44 on deployment 01f1d3145f05 (job run 743244124674286), attempt 3 stable; dark tokens under :root.dark, leaderboard focusable scroller, outline button bg-card contrast fixes, arm64 lib dir (run 229891579528310)](2026-10-28_w5-9-62-ui-visual-checks-converge.md) | converge | pass | `mg-genie-build-5` |
 | 2026-10-28 | 5-8 | 61 | [Converge app: live contract tests, attempt 1 stable; api_contract_tests run 281019161761628 153 pass, 0 fail, 201 skipped_live, 100% coverage; live harness gains build-5 checks (run 229891579528310)](2026-10-28_w5-8-61-app-converge-contract-tests.md) | converge | pass | `mg-genie-build-5` |
 | 2026-10-28 | 5-7 | 60 | [Converge app; owner attempt 3: AppKit 0.89.0 + committed typegen artifacts, deployment 01f1d3029bf1 stable (12/12 probes, deploy_verification 263699809540741 SUCCESS, 10 min soak 0 errors) (run 229891579528310, w5-7 repair)](2026-10-28_w5-7-60-app-converge-deploy.md) | converge | pass | `mg-genie-build-5` |

@@ -172,6 +172,8 @@ Resource: `ground-truth-infra/resources/monitors/bronze_lakebase_cdf.quality_mon
 
 **Verified (build 5 session 58, 2026-10-28):** `bundle summary --target dev` lists no `Quality Monitors`, `w.quality_monitors.get` on the dev table returns `ResourceDoesNotExist`, and the dev deploy completes (no 429 hang). `bundle validate --strict --target prod` passes, and `bundle summary --target prod` lists `quality_monitors.bronze_lakebase_cdf`.
 
+**Not yet proven (build 5 close, 2026-10-28):** build 5 validated prod but did not deploy it, so no refresh of this monitor has been observed. After the first prod infra deploy, refresh once by hand (below) and check that both metric tables appear in the prod schema. Tracked as follow-ups 1 and 2 in `docs/requests/2026-10-28_build-5-follow-ups.md`.
+
 **Re-enable in dev** once quota allows (a metastore admin raises the limit, or monitors are freed):
 
 1. Check capacity first. Do not test it by creating a throwaway monitor by hand; ask the metastore admin to confirm the monitor count is under the limit.

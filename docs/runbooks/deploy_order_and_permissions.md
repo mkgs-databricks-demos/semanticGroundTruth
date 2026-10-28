@@ -21,6 +21,14 @@ Rule (build 5, follow-up 2): **deploy infra with `./deploy.sh --target <t> --inf
 * **One automation:** `setup_genie_automation` reuses the automation already on the job, else the id it recorded in `<bundle root_path>/setup_state/genie_automation.json` (dev: `/Workspace/Users/<you>/.bundle/ground-truth-infra/dev/setup_state/`; outside the synced `files/`, so a deploy keeps it), else the newest one with its display name. It updates that automation in place and creates one only when none exists, so two runs give the same `configuration_id`. Unscheduled automations are not returned by the list API, which is why build 4 created a new one per run. With `cleanup_duplicates=true` (job parameter, default) it deletes the other feedback-author automations it knows of; pass old ids once in the job parameter `duplicate_automation_ids` (comma-separated, full `genie_code/users/...` names or bare ids). Only automations whose prompt starts with the feedback-author prefix (or that have the expected name) are deleted.
 * **Bare `bundle deploy`** (e.g. a converge session's `deploy_commands`): follow it with `databricks bundle run post_deploy_setup --target <t> --params run_setup=true` from `ground-truth-infra/`.
 * Revisit when Declarative Automation Bundles support `genie_task`.
+* Verified in build 5 (session 57): three `post_deploy_setup` runs kept the same `configuration_id` (`20536fcd...`) and left `author_feedback_branch` a `genie_task`.
+
+## Share to Slack: `ai-gateway` user scope (build 5)
+
+* Build 5 (session 50) added `ai-gateway` to `user_api_scopes` in `ground-truth-app/resources/app.app.yml`, because Share to Slack calls `system.ai.slack` (`/ai-gateway/mcp-services/system.ai.slack`) with the **user's** OBO token. The app SPN never posts to Slack.
+* After the first deploy with this scope, **every user consents again once** when they next open the app. That is expected, not an error.
+* Owner, once per workspace: reconnect `system.ai.slack` in Catalog Explorer (per-user OAuth), then check that `slack_send_message` is listed by its `tools/list`. Until a user has connected, the share routes answer HTTP 200 with `needs_slack_login` (and an optional `loginUrl`).
+* Only stewards and admins can share; automated tests mock the MCP client, and live use is `draft` mode until the owner's Send check in `docs/sessions/build-5_manual_checks.md`.
 
 ## Deployer permissions
 
