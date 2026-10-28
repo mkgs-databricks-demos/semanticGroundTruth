@@ -1,123 +1,120 @@
+// @a11y-strict
 // client/src/components/layout/AppLayout.tsx — app shell with header, nav, notifications
 // Session 16 · Wave 0 · Databricks symbol + DM Sans Bold name, 3-state theme toggle
+// Session 49 · Build 5 · wave 5-1: header variant A (Oat Light / Gray
+// Navigation, 4 px brand bar), product name is a link, not the page heading
+// (F2; every page renders its own level-1 heading); skip link to #main; Databricks icons
+// and one NavItem for desktop, drawer and bottom nav (F6, F7); steward
+// sub-nav on /steward*; offline banner; account menu.
+//
+// Tab order (S0): Skip to content -> product link -> nav -> bell -> theme ->
+// account menu (-> mobile menu button, which only shows below md).
 
 import { useState } from 'react';
-import { Outlet } from 'react-router';
-import {
-  Button,
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  useIsMobile,
-} from '@databricks/appkit-ui/react';
-import { Menu, Monitor, Moon, Sun } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import type { MouseEvent } from 'react';
+import { Link, Outlet, useLocation } from 'react-router';
+import { useMe } from '../../lib/api/hooks';
+import { hasRole } from '../../lib/api/roles';
+import { usePersistedTheme } from '../../lib/settings/ThemeSync';
+import { Sheet } from '../ui/Sheet';
 import { NavLinks } from './NavLinks';
 import { NotificationBell } from './NotificationBell';
+import type { NotificationBellProps } from './NotificationBell';
+import { OfflineBanner } from './OfflineBanner';
+import { ShellGlyph } from './ShellIcons';
+import { StewardSubNav } from './StewardSubNav';
+import { ThemeToggle } from './ThemeToggle';
+import { UserMenu } from './UserMenu';
 
 // public/ directory assets — referenced as URL strings, not ES imports
-const SYMBOL_COLOR = '/brand/databricks-symbol-color.svg';
-const SYMBOL_LIGHT = '/brand/databricks-symbol-light.svg';
+export const SYMBOL_COLOR = '/brand/databricks-symbol-color.svg';
+export const SYMBOL_LIGHT = '/brand/databricks-symbol-light.svg';
 
-/** Theme cycle: light → dark → system → light */
-const THEME_CYCLE = ['light', 'dark', 'system'] as const;
+export const MAIN_ID = 'main';
+export const PRODUCT_NAME = 'Semantic Ground Truth';
 
-function nextTheme(current: string | undefined): string {
-  const idx = THEME_CYCLE.indexOf(current as typeof THEME_CYCLE[number]);
-  return THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
+export interface AppLayoutProps {
+  /** Forwarded to the bell popover (session 56 mounts Share to Slack here). */
+  notificationActions?: NotificationBellProps['notificationActions'];
 }
 
-function themeAriaLabel(current: string | undefined): string {
-  const next = nextTheme(current);
-  return `Switch to ${next} theme`;
+/** Moves focus to <main> (hash links do not move focus in every browser). */
+function skipToMain(event: MouseEvent<HTMLAnchorElement>) {
+  const main = document.getElementById(MAIN_ID);
+  if (!main) return;
+  event.preventDefault();
+  main.focus();
+  main.scrollIntoView?.({ block: 'start' });
 }
 
-function ThemeIcon({ theme }: { theme: string | undefined }) {
-  if (theme === 'dark') return <Moon className="h-4 w-4" />;
-  if (theme === 'system') return <Monitor className="h-4 w-4" />;
-  return <Sun className="h-4 w-4" />;
-}
+export function AppLayout({ notificationActions }: AppLayoutProps = {}) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const { resolvedTheme } = usePersistedTheme();
+  const { data: me } = useMe();
+  const { pathname } = useLocation();
 
-const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-    isActive
-      ? 'bg-primary text-primary-foreground'
-      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-  }`;
-
-export function AppLayout() {
-  const isMobile = useIsMobile();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const { theme, setTheme, resolvedTheme } = useTheme();
-
-  const toggleTheme = () => setTheme(nextTheme(theme));
   const symbol = resolvedTheme === 'dark' ? SYMBOL_LIGHT : SYMBOL_COLOR;
+  const showStewardNav = hasRole(me, 'steward') && (pathname === '/steward' || pathname.startsWith('/steward/'));
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b border-border px-4 md:px-6 py-3 flex items-center gap-4">
-        {/* Databricks symbol + product name */}
-        <div className="flex items-center gap-2 shrink-0">
-          <img src={symbol} alt="" aria-hidden="true" className="h-6 w-6" />
-          <h1 className="text-lg font-bold text-foreground whitespace-nowrap">
-            Semantic Ground Truth
-          </h1>
-        </div>
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <a
+        href={`#${MAIN_ID}`}
+        onClick={skipToMain}
+        className="fixed left-4 top-2 z-[100] -translate-y-[150%] rounded-lg border border-input bg-card px-3 py-2 font-bold text-foreground focus:translate-y-0 focus-visible:outline-2 focus-visible:outline-ring"
+      >
+        Skip to content
+      </a>
 
-        {/* Desktop nav */}
-        <NavLinks className="hidden md:flex gap-1" />
-
-        <div className="ml-auto flex items-center gap-2">
-          <NotificationBell />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            aria-label={themeAriaLabel(theme)}
+      <header data-testid="shell-header-root" className="sticky top-0 z-40 h-16 border-b border-border bg-background">
+        <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-brand-accent" />
+        <div className="mx-auto flex h-full max-w-screen-2xl items-center gap-8 px-4 pt-1 md:px-6">
+          <Link
+            to="/"
+            data-testid="shell-product-link"
+            className="flex shrink-0 items-center gap-2.5 whitespace-nowrap text-lg font-bold text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
-            <ThemeIcon theme={theme} />
-          </Button>
+            <img src={symbol} alt="" data-testid="shell-product-symbol" className="h-6 w-6" />
+            <span>{PRODUCT_NAME}</span>
+          </Link>
 
-          {/* Mobile hamburger */}
-          <div className="md:hidden">
-            <Sheet open={mobileNavOpen && isMobile} onOpenChange={setMobileNavOpen}>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setMobileNavOpen(true)}
-                aria-label="Open navigation"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-              <SheetContent side="left">
-                <SheetHeader>
-                  <SheetTitle>Navigation</SheetTitle>
-                </SheetHeader>
-                <NavLinks
-                  className="flex flex-col gap-1 mt-4"
-                  linkClass={mobileNavLinkClass}
-                  onClick={() => setMobileNavOpen(false)}
-                />
-              </SheetContent>
-            </Sheet>
+          <NavLinks label="Main navigation" className="hidden h-full md:flex" />
+
+          <div className="ml-auto flex items-center gap-1">
+            <NotificationBell notificationActions={notificationActions} />
+            <ThemeToggle />
+            <UserMenu />
+            <button
+              type="button"
+              aria-label="Open navigation menu"
+              aria-haspopup="dialog"
+              aria-expanded={drawerOpen}
+              onClick={() => setDrawerOpen(true)}
+              className="inline-flex h-11 min-w-11 items-center justify-center rounded-lg text-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring md:hidden"
+            >
+              <ShellGlyph name="menu" />
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile bottom nav */}
-      {isMobile && (
-        <nav
-          className="fixed bottom-0 inset-x-0 z-50 border-t border-border bg-background px-2 py-1 flex justify-around md:hidden"
-          aria-label="Mobile navigation"
-        >
-          <NavLinks variant="bottom" />
-        </nav>
-      )}
+      <OfflineBanner />
+      {showStewardNav ? <StewardSubNav /> : null}
 
-      <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen} title="Navigation menu" side="left">
+        <NavLinks label="Drawer navigation" variant="drawer" onNavigate={() => setDrawerOpen(false)} />
+      </Sheet>
+
+      <main id={MAIN_ID} tabIndex={-1} className="mx-auto w-full max-w-screen-2xl flex-1 p-4 pb-24 focus-visible:outline-2 focus-visible:outline-ring md:p-6 md:pb-6">
         <Outlet />
       </main>
+
+      <NavLinks
+        label="Mobile navigation"
+        variant="bottom"
+        limit={4}
+        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-background md:hidden"
+      />
     </div>
   );
 }
