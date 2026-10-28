@@ -7,25 +7,32 @@
 # tables land in the project schema:
 #   bronze_lakebase_cdf_profile_metrics, bronze_lakebase_cdf_drift_metrics
 #
-# Schedule: daily at 06:00 UTC, after the hourly bronze refresh. Dev mode (mode: development)
-# pauses it, matching the paused cdf_bronze_refresh schedule; refresh by hand in dev
-# (docs/runbooks/cdf_bronze_operations.md §6). No notifications in dev.
-# Runtime proof: build 5 session 58 (deploy + first refresh).
+# Schedule: daily at 06:00 UTC, after the hourly bronze refresh.
+#
+# PROD TARGET ONLY (owner decision D-B5-4, 2026-10-28). The dev target has no monitor:
+# the shared fevm-hls-fde metastore is at its 1000 quality-monitor limit (create returns
+# 429 RESOURCE_EXHAUSTED and `bundle deploy` hangs on retries), and dev only carries
+# test-scale vote traffic. This matches the original G11 call (gap_analysis_2026-10.md:
+# "prod only, once vote volume justifies it"). To monitor dev again, move the resource
+# back under top-level `resources:` once quota is available.
+# Build 5 session 58 proves the prod definition with `bundle validate --target prod`.
 
-resources:
-  quality_monitors:
-    bronze_lakebase_cdf:
-      table_name: ${resources.schemas.ground_truth_schema.catalog_name}.${resources.schemas.ground_truth_schema.name}.bronze_lakebase_cdf
-      output_schema_name: ${resources.schemas.ground_truth_schema.catalog_name}.${resources.schemas.ground_truth_schema.name}
-      assets_dir: ${workspace.root_path}/monitoring/bronze_lakebase_cdf
-      warehouse_id: ${resources.sql_warehouses.infra_warehouse.id}
-      time_series:
-        timestamp_col: _timestamp
-        granularities:
-          - 1 hour
-          - 1 day
-      slicing_exprs:
-        - _source_table
-      schedule:
-        quartz_cron_expression: "0 0 6 * * ?"  # Daily, 06:00 UTC
-        timezone_id: UTC
+targets:
+  prod:
+    resources:
+      quality_monitors:
+        bronze_lakebase_cdf:
+          table_name: ${resources.schemas.ground_truth_schema.catalog_name}.${resources.schemas.ground_truth_schema.name}.bronze_lakebase_cdf
+          output_schema_name: ${resources.schemas.ground_truth_schema.catalog_name}.${resources.schemas.ground_truth_schema.name}
+          assets_dir: ${workspace.root_path}/monitoring/bronze_lakebase_cdf
+          warehouse_id: ${resources.sql_warehouses.infra_warehouse.id}
+          time_series:
+            timestamp_col: _timestamp
+            granularities:
+              - 1 hour
+              - 1 day
+          slicing_exprs:
+            - _source_table
+          schedule:
+            quartz_cron_expression: "0 0 6 * * ?"  # Daily, 06:00 UTC
+            timezone_id: UTC

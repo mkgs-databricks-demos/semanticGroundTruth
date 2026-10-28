@@ -26,6 +26,7 @@ Decisions below were made by the project owner on 2026-10-27 and are not open fo
   Add the semantic token `warning-text` (light `#7D5319` Yellow 800, dark `#FFAB00` Yellow 600). Every semantic token in `variables.json` must equal `tokens.ts` and `index.css` in both modes. Sessions do not pick new colors: if a corrected value fails a contrast pair used in the app, record a `request` and stop `blocked`.
 * **D-B5-2 Gates are automated; manual checks are the last wave.** UI sessions gate on Testing Library + axe (jsdom). After deploy, the `ui_visual_checks` job runs headless Chromium (Playwright) against the deployed app and is a runtime gate. Manual checks (screen reader, touch device, forced colors, Lighthouse if not automated, Figma side-by-side) are recorded by the owner in `docs/sessions/build-5_manual_checks.md` and checked in wave `5-11` (manual prerequisite `M5`).
 * **D-B5-3 Scope is the whole solution:** infra, app and agent work from `docs/requests/2026-10-27_build-4-follow-ups.md` and `docs/design/ui/**`.
+* **D-B5-4 Bronze quality monitor is prod-only (2026-10-28):** the shared `fevm-hls-fde` metastore is at its 1000 quality-monitor limit (create returns `429 RESOURCE_EXHAUSTED`; the project owns none, so none can be freed). `resources/monitors/bronze_lakebase_cdf.quality_monitor.yml` defines the monitor under `targets.prod` only. Dev has no monitor and no profile / drift tables. Session 58 proves dev deploys without it and prod validates with it. Sessions must not move it back to dev or create a monitor by hand.
 * **D2 header variant A** (Oat Light / Gray Navigation) per `docs/design/ui/figma/README.md`.
 
 ## 3. UI rules
@@ -51,7 +52,7 @@ Decisions below were made by the project owner on 2026-10-27 and are not open fo
 * **Infra deploys use `./deploy.sh --target dev --infra`** once session 46 lands; it always runs `post_deploy_setup` so `author_feedback_branch` is never left on the placeholder.
 * **`setup_genie_automation`** reuses the automation recorded on the job (or found by name) and updates it in place; two runs give the same automation id.
 * **Metric view ids:** BINARY id dimensions in `ground-truth-infra/fixtures/metric_views/*.yaml` become canonical lowercase UUID strings, using the SQL tested in follow-up 4 (`docs/requests/2026-10-27_build-4-follow-ups.md`). No dashboard JSON edits: `*.lvdash.json` files are workspace dashboard objects.
-* **G11 Lakehouse Monitoring:** a `quality_monitors` resource on `bronze_lakebase_cdf` in the infra bundle (dev included), time-series profile on the commit timestamp, output in the project schema.
+* **G11 Lakehouse Monitoring:** a `quality_monitors` resource on `bronze_lakebase_cdf` in the infra bundle, **prod target only (D-B5-4)**, time-series profile on the commit timestamp, output in the project schema.
 * **Test data cleanup (approved):** session 57 rejects the build-4 test branch `mg-genie-feedback-20261026` through `POST /api/steward/feedback-branches/:batchId/status` and deletes the remote branch. Keep test asset `efaa7f30…` and vote `644eff17…`.
 * **Feedback pipeline** runs only from the `semanticGroundTruth-feedback` Git folder.
 * **Never add an `ignore_patterns` entry to pass a gate.**

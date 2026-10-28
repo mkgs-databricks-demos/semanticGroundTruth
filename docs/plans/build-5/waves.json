@@ -503,17 +503,17 @@
     {
       "wave_id": "5-5",
       "build": "5",
-      "name": "Converge infra: Lakehouse Monitoring on bronze (G11)",
-      "gate": ["Session 58 status is pass with a final attempt classified stable", "Session 58 status file records the ui_visual_checks volume and the M2M SPN READ_VOLUME + WRITE_VOLUME grants"],
-      "runtime_gate": ["bronze_cdf_profile_metrics", "bronze_lakebase_cdf"],
+      "name": "Converge infra: bronze monitor prod-only (G11, D-B5-4) + visual-checks volume",
+      "gate": ["Session 58 status is pass with a final attempt classified stable", "Session 58 status file records the ui_visual_checks volume and the M2M SPN READ_VOLUME + WRITE_VOLUME grants", "Session 58 status file records that the dev bundle has no quality monitor and that bundle validate --strict --target prod lists quality_monitors.bronze_lakebase_cdf (D-B5-4)"],
+      "runtime_gate": ["bronze_lakebase_cdf"],
       "sessions": [
         {
           "session_id": "58",
-          "title": "Converge infra: monitor refresh succeeds, profile metrics populated, visual-checks volume",
+          "title": "Converge infra: dev has no monitor, prod validates with it, visual-checks volume",
           "plan_file": "58_infra_converge_monitoring.md",
           "mode": "converge",
-          "scope": "Refresh the bronze monitor to SUCCESS; profile and drift tables exist; volume grants in place.",
-          "runtime_targets": ["bronze_cdf_profile_metrics"],
+          "scope": "D-B5-4: the bronze monitor is prod-only (metastore 1000-monitor limit). Prove dev deploys with no monitor and prod validates with it; volume grants in place.",
+          "runtime_targets": ["bronze_lakebase_cdf"],
           "owned_paths": [
             "ground-truth-infra/**",
             "docs/runbooks/cdf_bronze_operations.md"
