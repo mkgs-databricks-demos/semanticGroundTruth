@@ -5,6 +5,8 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-28 | 5-2 | 54 | [Steward console (S4) + Executive (S5) + Admin (S6), RoleGate (F4); resumed by owner (run 229891579528310, w5-2 repair)](2026-10-28_w5-2-54-steward-executive-admin.md) | edit | pass | `mg-genie-build-5` |
+| 2026-10-28 | 5-2 | 52 | [Settings screen (S7); Fallback.test.tsx patch applied by owner (run 229891579528310, w5-2 repair)](2026-10-28_w5-2-52-settings-screen.md) | edit | pass | `mg-genie-build-5` |
 | 2026-10-28 | 5-2 | 53 | [Leaderboard (S2) + Assistant (S3) (run 229891579528310)](2026-10-28_w5-2-53-leaderboard-and-assistant.md) | edit | pass | `mg-genie-build-5` |
 | 2026-10-28 | 5-2 | 52 | [Settings screen (S7); blocked on unowned Fallback.test.tsx GET /api/campaigns handler (run 229891579528310)](2026-10-28_w5-2-52-settings-screen.md) | edit | blocked | `mg-genie-build-5` |
 | 2026-10-28 | 5-2 | 51 | [Review screen (S1): all states, skip reasons, resurfaced badge, session complete, K1 (run 229891579528310)](2026-10-28_w5-2-51-review-screen.md) | edit | pass | `mg-genie-build-5` |
