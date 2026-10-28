@@ -53,7 +53,16 @@ export interface LeaderboardTableProps {
 
 export function LeaderboardTable({ entries, currentUserId, caption }: LeaderboardTableProps) {
   return (
-    <div data-testid="leaderboard-table-root" className="overflow-x-auto rounded-xl border border-border bg-card">
+    // Session 62 · wave 5-9: this wrapper is the only horizontal scroller (AppKit's inner
+    // table-container is kept from scrolling), and it is a focusable, named region so
+    // keyboard users can scroll it (axe scrollable-region-focusable at 390 px).
+    <div
+      data-testid="leaderboard-table-root"
+      role="region"
+      aria-label={caption}
+      tabIndex={0}
+      className="overflow-x-auto rounded-xl border border-border bg-card [&>[data-slot=table-container]]:overflow-visible"
+    >
       <Table>
         <TableCaption className="sr-only">{caption}</TableCaption>
         <TableHeader className="bg-muted">

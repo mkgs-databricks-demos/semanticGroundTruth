@@ -73,8 +73,10 @@ A=/tmp/apt; mkdir -p $A/lists/partial $A/cache/archives/partial /tmp/cdeps/debs
 O="-o Dir::State::Lists=$A/lists -o Dir::Cache=$A/cache -o Debug::NoLocking=1 -o APT::Sandbox::User=$(id -un)"
 apt-get $O update && (cd /tmp/cdeps/debs && apt-get $O download libatk1.0-0t64 libatk-bridge2.0-0t64 libatspi2.0-0t64 libxdamage1)
 for d in /tmp/cdeps/debs/*.deb; do dpkg -x "$d" /tmp/cdeps/root; done
-export LD_LIBRARY_PATH=/tmp/cdeps/root/usr/lib/x86_64-linux-gnu
+export LD_LIBRARY_PATH=/tmp/cdeps/root/usr/lib/x86_64-linux-gnu   # aarch64-linux-gnu on arm64 hosts
 ```
+
+Serverless hosts can be x86_64 or arm64; apt downloads the host's architecture, so the notebook picks the library folder from `platform.machine()` (session 62: an arm64 host failed with `libatk-1.0.so.0: cannot open shared object file` while the folder was hard-coded).
 
 `apt-get` may print `rm: cannot remove '/var/cache/apt/archives/partial/*.deb': Permission denied`; it is harmless (exit code 0).
 
@@ -83,3 +85,14 @@ Other notebook details:
 * **Sync API in a thread.** The notebook kernel runs an asyncio loop, and `sync_playwright()` refuses to start inside one ("It looks like you are using Playwright Sync API inside the asyncio loop"). The matrix runs in a single worker thread.
 * **axe injection.** axe-core comes from the `axe-playwright-python` wheel (`axe.min.js`); no npm or CDN access is needed. Browser contexts use `bypass_csp=True` so the script can be injected despite the app's Content Security Policy.
 * **Auth.** Each cell gets a fresh M2M OAuth token in `extra_http_headers` (`Authorization: Bearer ...`); the Apps proxy rejects a PAT.
+* **axe details.** Each axe entry in the task output is `rule(impact, n nodes): <selector> -> <failure summary> | ...` (up to 5 nodes), e.g. the measured foreground/background colors and ratio for `color-contrast`.
+
+## First runs (session 62, build 5 wave 5-9)
+
+| Job run | App deployment | Cells pass | Failures and fixes |
+|---|---|---|---|
+| `1099658488939115` | `01f1d3029bf1` | 19/44 | 22 dark cells `bg_ok` false: body `lab(2.51 ...)` = AppKit's zinc `oklch(0.141 ...)`. AppKit declares its dark palette in `@media (prefers-color-scheme: dark) { :root:not(.light) }` (specificity 0,2,0), which beat the app's `.dark` (0,1,0) whenever the OS is dark. Fix: `client/src/index.css` lists the dark block under `:root.dark, .dark` (guarded by `theme/dark-specificity.test.ts`). `/leaderboard` 390 px: `scrollable-region-focusable` on AppKit's inner `table-container`; fix: `LeaderboardTable` wrapper is the only scroller and a focusable named region. `/` light: color-contrast (see next row). |
+| `493269714873880` | `01f1d311f641` | 38/44 | color-contrast on colored-label outline buttons: AppKit's outline variant paints `bg-background` (light) / `bg-input/30` (dark) under the label. Approve `#00875C` on `#F9F7F4` 4.25:1, Reject `#FF5F46` on `#253F47` 3.71:1, admin "Run freshness check" `#FF5F46` on `#304B54` 3.08:1. Fix: those buttons use `bg-card dark:bg-card` (vote-* and destructive are contrast-tested as text on card; lowest 4.52:1). No token values changed. |
+| `743244124674286` | `01f1d3145f05` | **44/44** | none |
+
+Lesson: an outline button whose label uses a status color must sit on the surface its token is contrast-tested against (`card`), not on AppKit's outline background.

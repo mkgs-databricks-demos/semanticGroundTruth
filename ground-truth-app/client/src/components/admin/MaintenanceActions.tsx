@@ -11,7 +11,9 @@ import { useRecomputeAsset, useRunFreshnessCheck } from '../../lib/api';
 import { InlineAlert } from '../ui';
 import { ConfirmDialog } from './ConfirmDialog';
 
-const DESTRUCTIVE_OUTLINE = 'min-h-[44px] border-destructive/40 text-destructive';
+// bg-card in both modes: destructive is contrast-checked as text on card. AppKit's outline
+// variant tints dark mode with bg-input/30 (3.08:1 in ui_visual_checks run 493269714873880, session 62).
+const DESTRUCTIVE_OUTLINE = 'min-h-[44px] bg-card dark:bg-card border-destructive/40 text-destructive';
 
 export function MaintenanceActions({ disabled = false }: { disabled?: boolean }) {
   const freshness = useRunFreshnessCheck();

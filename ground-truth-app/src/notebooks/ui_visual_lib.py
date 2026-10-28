@@ -225,8 +225,25 @@ def axe_counts(axe_result: Mapping[str, object] | None) -> tuple[int, int, list[
     raw = (axe_result or {}).get("violations")
     violations = [v for v in raw if isinstance(v, Mapping)] if isinstance(raw, list) else []
     serious = [v for v in violations if (v.get("impact") or "") in AXE_BLOCKING_IMPACTS]
-    desc = [f"{v.get('id')}({v.get('impact')}, {len(v.get('nodes') or [])} nodes)" for v in violations]
+    desc = [_axe_desc(v) for v in violations]
     return len(violations), len(serious), desc
+
+
+def _axe_desc(v: Mapping[str, object]) -> str:
+    """`rule(impact, n nodes)`, plus up to 5 node targets and failure summaries when axe gave them.
+
+    Session 62: the targets are what locates the element to fix (the runbook promised them).
+    """
+    nodes = [n for n in (v.get("nodes") or []) if isinstance(n, Mapping)]
+    head = f"{v.get('id')}({v.get('impact')}, {len(v.get('nodes') or [])} nodes)"
+    parts = []
+    for n in nodes[:5]:
+        target = n.get("target")
+        sel = " ".join(str(t) for t in target) if isinstance(target, list) else str(target or "")
+        summary = " ".join(str(n.get("summary") or "").split())[:200]
+        if sel or summary:
+            parts.append(f"{sel} -> {summary}" if summary else sel)
+    return head + (": " + " | ".join(parts) if parts else "")
 
 
 def same_origin(url: str, app_url: str) -> bool:

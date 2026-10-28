@@ -176,8 +176,15 @@
   --confidence-high: var(--dbx-green-700);
 }
 
-/* ---------- Dark semantic tokens ---------- */
+/* ---------- Dark semantic tokens ----------
+ * Session 62 · Build 5 · wave 5-9: `:root.dark` (specificity 0,2,0) is listed so
+ * these values beat AppKit's prefers-color-scheme: dark media block on `:root:not(.light)`,
+ * its OS-dark fallback (also 0,2,0, declared earlier). With only `.dark` (0,1,0), an OS in dark
+ * mode got AppKit's zinc palette (body oklch(0.141 ...)) instead of Navy 900; found by
+ * ui_visual_checks run 1099658488939115 (22/22 dark cells failed bg_ok).
+ */
 
+:root.dark,
 .dark {
   --background: var(--dbx-navy-900);
   --foreground: #FFFFFF;

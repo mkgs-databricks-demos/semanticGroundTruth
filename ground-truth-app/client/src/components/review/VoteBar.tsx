@@ -44,6 +44,15 @@ interface VoteBarProps {
   picker: ReactNode;
 }
 
+/**
+ * Colored-label outline buttons sit on the card surface: the vote-* tokens are
+ * contrast-checked as text on card (theme/contrast.test.ts). AppKit's outline
+ * variant paints bg-background (light) and bg-input/30 (dark) instead, which
+ * gave 4.25:1 (Approve, light) and 3.71:1 (Reject, dark) in ui_visual_checks
+ * run 493269714873880 (session 62).
+ */
+const ON_CARD = 'bg-card dark:bg-card';
+
 export function VoteBar({
   onApprove,
   onReject,
@@ -75,7 +84,7 @@ export function VoteBar({
           aria-describedby={describedBy}
           disabled={disabled}
           onClick={onReject}
-          className="min-h-[44px] gap-1.5 border-vote-reject/40 text-vote-reject hover:bg-vote-reject/10"
+          className={`${ON_CARD} min-h-[44px] gap-1.5 border-vote-reject/40 text-vote-reject hover:bg-vote-reject/10`}
         >
           {pending === 'reject' ? <Spinner /> : <Icon name="close" size={20} />}
           <span>Reject</span>
@@ -88,7 +97,7 @@ export function VoteBar({
           aria-describedby={describedBy}
           disabled={disabled}
           onClick={onEdit}
-          className="min-h-[44px] gap-1.5 border-vote-edit/40 text-vote-edit hover:bg-vote-edit/10"
+          className={`${ON_CARD} min-h-[44px] gap-1.5 border-vote-edit/40 text-vote-edit hover:bg-vote-edit/10`}
         >
           {pending === 'edit' ? <Spinner /> : <Icon name="pencil" size={20} />}
           <span>Edit</span>
@@ -100,7 +109,7 @@ export function VoteBar({
           aria-describedby={describedBy}
           disabled={disabled}
           onClick={onApprove}
-          className="min-h-[52px] gap-2 border-2 border-vote-approve px-6 text-base font-bold text-vote-approve hover:bg-vote-approve/10"
+          className={`${ON_CARD} min-h-[52px] gap-2 border-2 border-vote-approve px-6 text-base font-bold text-vote-approve hover:bg-vote-approve/10`}
         >
           {pending === 'approve' ? <Spinner /> : <Icon name="check" size={20} />}
           <span>Approve</span>

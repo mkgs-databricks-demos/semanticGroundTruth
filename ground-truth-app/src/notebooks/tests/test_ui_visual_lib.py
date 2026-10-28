@@ -123,6 +123,16 @@ def test_axe_counts_serious_and_critical_only():
     assert lib.axe_counts({"violations": "bad"})[:2] == (0, 0)
 
 
+def test_axe_counts_lists_node_targets():
+    # Session 62: the description names the offending elements so a failing cell can be fixed.
+    result = {"violations": [{"id": "color-contrast", "impact": "serious", "nodes": [
+        {"target": ["#review-root", "span.font-bold"], "summary": "Fix any of the following:\n  contrast 4.25"},
+        {"target": [".x"], "summary": ""},
+    ]}]}
+    _, _, desc = lib.axe_counts(result)
+    assert desc == ["color-contrast(serious, 2 nodes): #review-root span.font-bold -> Fix any of the following: contrast 4.25 | .x"]
+
+
 def test_axe_tags_include_wcag21_aa():
     # color-contrast is a wcag2aa rule, so running these tags includes it.
     assert {"wcag2aa", "wcag21aa"} <= set(lib.AXE_TAGS)
