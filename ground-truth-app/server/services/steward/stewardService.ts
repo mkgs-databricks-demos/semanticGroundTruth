@@ -12,6 +12,8 @@ import type { UserContext } from '../../lib/context';
 import { conflict, notFound } from '../../lib/errors';
 import { logger } from '../../lib/logger';
 import type { NotificationService } from '../notification';
+import { createFeedbackRepoUrlResolver, feedbackBranchHtmlUrl } from './feedbackRepo';
+import type { FeedbackRepoUrlResolver } from './feedbackRepo';
 import type {
   ConflictGroup,
   ConflictResolutionResult,
@@ -143,10 +145,12 @@ function parseFiles(raw: unknown): string[] {
   return [];
 }
 
-export function rowToFeedbackBranch(r: Record<string, unknown>): FeedbackBranch {
+/** Map an app.feedback_batches row; `repoUrl` (feedbackRepo.ts) gives htmlUrl, null when unknown. */
+export function rowToFeedbackBranch(r: Record<string, unknown>, repoUrl: string | null = null): FeedbackBranch {
+  const branchName = r.branch_name ? String(r.branch_name) : '';
   return {
     batchId: String(r.id),
-    branchName: r.branch_name ? String(r.branch_name) : '',
+    branchName,
     status: String(r.status) as FeedbackBatchStatus,
     assetCount: Number(r.asset_count ?? 0),
     files: parseFiles(r.files),
@@ -154,6 +158,7 @@ export function rowToFeedbackBranch(r: Record<string, unknown>): FeedbackBranch 
     createdAt: toIso(r.created_at),
     completedAt: toIsoOrNull(r.completed_at),
     reviewedBy: r.reviewed_by ? String(r.reviewed_by) : null,
+    htmlUrl: feedbackBranchHtmlUrl(repoUrl, branchName),
   };
 }
 
@@ -177,16 +182,38 @@ const REVIEWABLE_FROM: readonly FeedbackBatchStatus[] = ['proposed', 'in_review'
 /** Upsert statuses that tell stewards something happened. */
 const NOTIFY_ON_UPSERT: readonly FeedbackBatchStatus[] = ['proposed', 'failed'];
 
+/**
+ * Notify once (build 5 follow-up 5): an upsert sends feedback.branch_ready /
+ * feedback.failed only when it creates the row (`previous` null) or changes its
+ * status. A retry or re-registration with the same status sends nothing.
+ */
+export function shouldNotifyOnUpsert(
+  previous: FeedbackBatchStatus | null,
+  next: FeedbackBatchStatus,
+): boolean {
+  return NOTIFY_ON_UPSERT.includes(next) && previous !== next;
+}
+
+export interface StewardServiceOptions {
+  /** Web URL of the feedback repo for FeedbackBranch.htmlUrl (default: env / Repos API, read once). */
+  feedbackRepoUrl?: FeedbackRepoUrlResolver;
+}
+
 // ── Service ──────────────────────────────────────────────────────────────────────
 
 export class StewardService {
   private db: Db;
+  private readonly repoUrl: FeedbackRepoUrlResolver;
 
   constructor(
     deps: ServiceDeps,
     private readonly notifications: NotificationService,
+    opts: StewardServiceOptions = {},
   ) {
     this.db = deps.db;
+    this.repoUrl = opts.feedbackRepoUrl ?? createFeedbackRepoUrlResolver();
+    // Read the repo URL once at startup; the resolver caches it and never rejects.
+    void this.repoUrl();
   }
 
   // ── GET /api/steward/feedback-queue ──
@@ -381,7 +408,8 @@ export class StewardService {
       : await this.db.query<Record<string, unknown>>(
           'SELECT * FROM app.feedback_batches ORDER BY created_at DESC LIMIT 200',
         );
-    return rows.map(rowToFeedbackBranch);
+    const repoUrl = await this.repoUrl();
+    return rows.map((r) => rowToFeedbackBranch(r, repoUrl));
   }
 
   // ── POST /api/steward/feedback-branches (admin; feedback job via M2M) ──
@@ -390,7 +418,8 @@ export class StewardService {
    * Upsert by batchId (when given) or branchName. `created` is true for a new row.
    * For a 'proposed' branch, `voteIds` are marked processed right after the upsert. Db has no
    * parameterised transaction, so this is a second statement; a retry is safe (the upsert is by
-   * branch name and only unprocessed votes are updated).
+   * branch name and only unprocessed votes are updated). Stewards are notified
+   * only when the row is created or its status changes (shouldNotifyOnUpsert).
    */
   async upsertFeedbackBranch(
     user: UserContext,
@@ -398,11 +427,11 @@ export class StewardService {
   ): Promise<{ branch: FeedbackBranch; created: boolean }> {
     const existing = req.batchId
       ? await this.db.one<Record<string, unknown>>(
-          'SELECT id FROM app.feedback_batches WHERE id = $1',
+          'SELECT id, status FROM app.feedback_batches WHERE id = $1',
           [req.batchId],
         )
       : await this.db.one<Record<string, unknown>>(
-          'SELECT id FROM app.feedback_batches WHERE branch_name = $1 ORDER BY created_at DESC LIMIT 1',
+          'SELECT id, status FROM app.feedback_batches WHERE branch_name = $1 ORDER BY created_at DESC LIMIT 1',
           [req.branchName],
         );
     if (req.batchId && !existing) throw notFound(`Feedback batch not found: ${req.batchId}`);
@@ -428,7 +457,8 @@ export class StewardService {
       );
     }
     if (!row) throw new Error('feedback_batches upsert returned no row');
-    const branch = rowToFeedbackBranch(row);
+    const branch = rowToFeedbackBranch(row, await this.repoUrl());
+    const previousStatus = existing ? (String(existing.status) as FeedbackBatchStatus) : null;
 
     if (req.status === 'proposed' && req.voteIds?.length) {
       const marked = await this.db.query<{ id: string }>(
@@ -442,7 +472,7 @@ export class StewardService {
       });
     }
 
-    if (NOTIFY_ON_UPSERT.includes(req.status)) {
+    if (shouldNotifyOnUpsert(previousStatus, req.status)) {
       await this.notifications.notify({
         eventType: req.status === 'failed' ? 'feedback.failed' : 'feedback.branch_ready',
         recipientType: 'role',
@@ -493,7 +523,7 @@ export class StewardService {
       note: req.note ?? null,
     });
 
-    return rowToFeedbackBranch(row);
+    return rowToFeedbackBranch(row, await this.repoUrl());
   }
 
   // ── helpers ──

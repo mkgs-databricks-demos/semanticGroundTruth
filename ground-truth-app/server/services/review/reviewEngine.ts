@@ -195,7 +195,7 @@ export class ReviewEngine {
       );
       if (!oldest) return { card: null, resurfacedFromSkip: false };
       const card = await this.buildCard(user, q, String(oldest.asset_id), 'random');
-      return { card, resurfacedFromSkip: true };
+      return { card: { ...card, resurfacedFromSkip: true }, resurfacedFromSkip: true };
     }
 
     const now = new Date();
@@ -219,7 +219,22 @@ export class ReviewEngine {
     if (!picked) return { card: null, resurfacedFromSkip: false };
 
     const card = await this.buildCard(user, q, picked.assetId, reasonFor(picked));
-    return { card, resurfacedFromSkip: false };
+    // Card flag (build 5): the user skipped this asset before and the cooldown has
+    // passed (skips inside the cooldown were excluded above). The meta flag keeps
+    // its meaning: "everything was in cooldown" (response header + span attribute).
+    const skippedBefore = cooldownHours > 0 && await this.hasSkipped(user.userId, picked.assetId);
+    return { card: { ...card, resurfacedFromSkip: skippedBefore }, resurfacedFromSkip: false };
+  }
+
+  /** True when the user has any skip on the asset. */
+  private async hasSkipped(userId: string, assetId: string): Promise<boolean> {
+    const row = await this.db.one<{ skipped: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM app.review_skips WHERE asset_id = $1 AND user_id = $2
+       ) AS skipped`,
+      [assetId, userId],
+    );
+    return Boolean(row?.skipped);
   }
 
   /** Hydrate a ReviewCard for one asset. */

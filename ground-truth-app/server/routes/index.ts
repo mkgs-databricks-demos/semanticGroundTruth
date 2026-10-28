@@ -14,6 +14,7 @@ import { registerAdminRoutes } from './admin';
 import { registerMetricViewRoutes } from './metricViews';
 import { registerConfigRoutes } from './config';
 import { registerStewardRoutes } from './steward';
+import { registerSlackRoutes } from './slack';
 
 export function registerRoutes(app: Application, services: Services): void {
   registerHealthRoutes(app, services);
@@ -27,4 +28,5 @@ export function registerRoutes(app: Application, services: Services): void {
   registerMetricViewRoutes(app, services);
   registerConfigRoutes(app, services);
   registerStewardRoutes(app, services);
+  registerSlackRoutes(app, services);
 }

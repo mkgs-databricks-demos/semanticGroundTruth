@@ -25,7 +25,9 @@ export const ERROR_CODE_FOR_STATUS: Record<number, ErrorCode> = {
   403: 'FORBIDDEN',
   404: 'NOT_FOUND',
   409: 'CONFLICT',
+  429: 'RATE_LIMITED',
   500: 'INTERNAL',
+  501: 'NOT_IMPLEMENTED',
   502: 'UPSTREAM_ERROR',
 };
 

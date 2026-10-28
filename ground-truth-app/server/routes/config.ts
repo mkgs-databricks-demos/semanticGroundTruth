@@ -23,6 +23,8 @@ export function registerConfigRoutes(app: Application, _services: Services): voi
   app.get('/api/config', requireRoleMiddleware('reviewer'), validate({}), asyncRoute(async (_req, res) => {
     const config: AppRuntimeConfig = {
       executive_dashboard_url: resolveExecDashboardUrl(),
+      // Build 5: true until session 50 maps it to GT_SLACK_SHARE_ENABLED.
+      slackShareEnabled: true,
     };
     res.json(config);
   }));

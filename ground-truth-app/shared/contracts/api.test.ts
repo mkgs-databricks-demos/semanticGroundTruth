@@ -3,8 +3,12 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  EDIT_VOTE_NEEDS_VALUE_MESSAGE,
   ExampleBodySchema,
   FeedbackQueueQuerySchema,
+  ShareSlackRequestSchema,
+  SlackChannelsQuerySchema,
+  hasProposedEdit,
   ResolveConflictRequestSchema,
   ReviewableQuerySchema,
   SkipRequestSchema,
@@ -56,6 +60,54 @@ describe('VoteBodySchema', () => {
       voteType: 'approve',
     });
     expect(result.success).toBe(false);
+  });
+
+  // Build 5 follow-up 6: an edit vote must propose a value.
+  it.each([
+    ['no edits', {}],
+    ['empty edits', { edits: {} }],
+    ['blank values', { edits: { description: '   ', displayName: '' } }],
+  ])('rejects an edit vote with %s (issue path edits)', (_label, extra) => {
+    const result = VoteBodySchema.safeParse({ ...validBody, voteType: 'edit', ...extra });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual([
+      expect.objectContaining({ path: ['edits'], message: EDIT_VOTE_NEEDS_VALUE_MESSAGE }),
+    ]);
+  });
+
+  it('accepts an edit vote with one non-blank value (others blank)', () => {
+    const result = VoteBodySchema.safeParse({
+      ...validBody,
+      voteType: 'edit',
+      edits: { description: ' ', plainEnglishLogic: 'Sum of net bookings' },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('approve and reject votes do not need edits', () => {
+    expect(VoteBodySchema.safeParse({ ...validBody, voteType: 'reject', edits: { description: '' } }).success).toBe(true);
+  });
+
+  it('hasProposedEdit trims values', () => {
+    expect(hasProposedEdit(undefined)).toBe(false);
+    expect(hasProposedEdit({ display_name: '\t' })).toBe(false);
+    expect(hasProposedEdit({ display_name: ' Net revenue ' })).toBe(true);
+  });
+});
+
+describe('Share to Slack request schemas (build 5)', () => {
+  it('ShareSlackRequestSchema requires channelId and a mode', () => {
+    expect(ShareSlackRequestSchema.safeParse({ channelId: 'C0123ABCD', mode: 'draft' }).success).toBe(true);
+    expect(ShareSlackRequestSchema.safeParse({ channelId: 'C0123ABCD', mode: 'send', message: 'FYI' }).success).toBe(true);
+    expect(ShareSlackRequestSchema.safeParse({ channelId: 'C0123ABCD' }).success).toBe(false);
+    expect(ShareSlackRequestSchema.safeParse({ channelId: '  ', mode: 'draft' }).success).toBe(false);
+    expect(ShareSlackRequestSchema.safeParse({ channelId: 'C1', mode: 'post' }).success).toBe(false);
+    expect(ShareSlackRequestSchema.safeParse({ channelId: 'C1', mode: 'draft', message: 'x'.repeat(2001) }).success).toBe(false);
+  });
+
+  it('SlackChannelsQuerySchema takes an optional query', () => {
+    expect(SlackChannelsQuerySchema.parse({})).toEqual({});
+    expect(SlackChannelsQuerySchema.parse({ query: ' data ' })).toEqual({ query: 'data' });
   });
 });
 

@@ -5,6 +5,8 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-27 | 5-0 | 44 | [Contracts + server fixes: htmlUrl, slackShareEnabled, resurfacedFromSkip, 3 Share to Slack route stubs (run 229891579528310, w5-0 repair)](2026-10-27_w5-0-44-contracts-and-server-fixes.md) | edit | pass | `mg-genie-build-5` |
+| 2026-10-27 | 5-0 | 42 | [Design-system port: tokens, icons, UI primitives; 6 catalog SVGs downloaded by owner (run 229891579528310, w5-0 repair)](2026-10-27_w5-0-42-design-system-port.md) | edit | pass | `mg-genie-build-5` |
 | 2026-10-27 | 5-0 | 48 | [ui_visual_checks job: headless Chromium + axe against the deployed app (run 229891579528310)](2026-10-27_w5-0-48-ui-visual-checks-job.md) | edit | pass | `mg-genie-build-5` |
 | 2026-10-27 | 5-0 | 47 | [Metric view UUID-string ids + Lakehouse Monitoring on bronze (G11) (run 229891579528310)](2026-10-27_w5-0-47-metric-view-ids-and-monitoring.md) | edit | pass | `mg-genie-build-5` |
 | 2026-10-27 | 5-0 | 46 | [Infra post-deploy hardening: one Genie automation, deploy.sh always runs setup, unprocessed edits (run 229891579528310)](2026-10-27_w5-0-46-infra-post-deploy-hardening.md) | edit | pass | `mg-genie-build-5` |

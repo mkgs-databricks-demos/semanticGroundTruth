@@ -5,9 +5,11 @@ import { describe, expect, it } from 'vitest';
 import {
   ALL_MCP_TOOL_NAMES,
   AssetSchema,
+  FeedbackBranchSchema,
   MCP_TOOL_CONTRACTS,
   ReviewCardSchema,
   ROUTE_CONTRACTS,
+  ShareSlackResponseSchema,
   SkipResponseSchema,
   UserSettingsSchema,
   renderContractSchemas,
@@ -15,6 +17,7 @@ import {
   toJsonSchemas,
 } from './schemas';
 import { MCP_TOOL_NAMES } from './mcp';
+import { AppRuntimeConfigSchema } from './config';
 
 // node:fs / node:path through a non-literal specifier: this file is also
 // type-checked by tsconfig.client.json, which has no Node types.
@@ -51,9 +54,24 @@ describe('ROUTE_CONTRACTS', () => {
   // Plan 25 says "49 (41 + 8 new)" but lists 9 new method+path pairs
   // (GET|PUT /api/me/settings are two routes), so the contract has 50.
   // Session 33 registered the 9 new routes, so no route is plannedIn any more.
-  it('covers 50 routes, all registered (none plannedIn)', () => {
-    expect(ROUTE_CONTRACTS).toHaveLength(50);
+  // Build 5 session 44 adds the 3 Share to Slack routes (50 -> 53), registered
+  // as 501 stubs until session 50.
+  it('covers 53 routes, all registered (none plannedIn)', () => {
+    expect(ROUTE_CONTRACTS).toHaveLength(53);
     expect(ROUTE_CONTRACTS.filter((c) => c.plannedIn).map(routeKey)).toEqual([]);
+  });
+
+  it('the 3 Share to Slack routes are steward-only (admin passes) and list 429', () => {
+    const slack = ROUTE_CONTRACTS.filter((c) => /share-slack|\/api\/slack\//.test(c.path));
+    expect(slack.map(routeKey).sort()).toEqual([
+      'GET /api/slack/channels',
+      'POST /api/assets/:assetId/share-slack',
+      'POST /api/notifications/:id/share-slack',
+    ]);
+    for (const c of slack) {
+      expect(c.role, routeKey(c)).toBe('steward');
+      expect(c.errors, routeKey(c)).toEqual([400, 401, 403, 404, 429, 500, 502]);
+    }
   });
 
   it('has unique method + path keys', () => {
@@ -135,6 +153,30 @@ describe('response schemas', () => {
       progress: { reviewed: 0, total: 1 },
     };
     expect(ReviewCardSchema.safeParse(card).success).toBe(true);
+    expect(ReviewCardSchema.safeParse({ ...card, resurfacedFromSkip: true }).success).toBe(true);
+    expect(ReviewCardSchema.safeParse({ ...card, resurfacedFromSkip: 'yes' }).success).toBe(false);
+  });
+
+  it('FeedbackBranch requires htmlUrl (an https URL or null)', () => {
+    const branch = {
+      batchId: ID, branchName: 'mg-genie-feedback-20261027', status: 'proposed', assetCount: 1,
+      files: ['a.yaml'], summary: null, createdAt: NOW, completedAt: NOW, reviewedBy: null,
+    };
+    expect(FeedbackBranchSchema.safeParse({ ...branch, htmlUrl: null }).success).toBe(true);
+    expect(FeedbackBranchSchema.safeParse({
+      ...branch, htmlUrl: 'https://github.com/org/repo/tree/mg-genie-feedback-20261027',
+    }).success).toBe(true);
+    expect(FeedbackBranchSchema.safeParse(branch).success).toBe(false);
+    expect(FeedbackBranchSchema.safeParse({ ...branch, htmlUrl: 'not a url' }).success).toBe(false);
+  });
+
+  it('AppRuntimeConfig requires slackShareEnabled; ShareSlackResponse statuses', () => {
+    expect(AppRuntimeConfigSchema.safeParse({ executive_dashboard_url: null, slackShareEnabled: true }).success).toBe(true);
+    expect(AppRuntimeConfigSchema.safeParse({ executive_dashboard_url: null }).success).toBe(false);
+    expect(ShareSlackResponseSchema.safeParse({ status: 'drafted' }).success).toBe(true);
+    expect(ShareSlackResponseSchema.safeParse({ status: 'sent', permalink: 'https://example.slack.com/archives/C1/p1' }).success).toBe(true);
+    expect(ShareSlackResponseSchema.safeParse({ status: 'needs_slack_login', loginUrl: 'https://example.com/login' }).success).toBe(true);
+    expect(ShareSlackResponseSchema.safeParse({ status: 'queued' }).success).toBe(false);
   });
 
   it('SkipResponse and UserSettings validate representative payloads', () => {
@@ -152,7 +194,7 @@ describe('response schemas', () => {
 describe('generated/contracts.schema.json', () => {
   it('has an entry for every route and tool', () => {
     const json = toJsonSchemas();
-    expect(Object.keys(json.routes)).toHaveLength(50);
+    expect(Object.keys(json.routes)).toHaveLength(53);
     expect(Object.keys(json.mcpTools)).toHaveLength(13);
   });
 

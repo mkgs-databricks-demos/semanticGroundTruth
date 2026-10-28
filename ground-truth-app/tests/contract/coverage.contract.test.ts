@@ -14,7 +14,7 @@ import { REVIEW_CARD_URI as SERVER_REVIEW_CARD_URI } from '../../server/mcp/tool
 import { MCP_TOOL_CONTRACTS, ROUTE_CONTRACTS, routeKey } from '../../shared/contracts/schemas';
 import { ROUTE_CASES, errorPlan } from './routeCases';
 import { TOOL_CASES } from './toolCases';
-import { REVIEW_CARD_MIME_TYPE, REVIEW_CARD_URI, buildContractManifest, renderContractManifest } from './manifest';
+import { REVIEW_CARD_MIME_TYPE, REVIEW_CARD_URI, SKIPPED_LIVE, buildContractManifest, renderContractManifest } from './manifest';
 
 const routeKeys = ROUTE_CONTRACTS.map(routeKey);
 const toolNames = MCP_TOOL_CONTRACTS.map((t) => t.name as string);
@@ -88,6 +88,16 @@ describe('tests/contract/manifest.json', () => {
     expect(m.routes.map((r) => r.key)).toEqual(routeKeys);
     expect(m.mcpTools.map((t) => t.name)).toEqual(toolNames);
     for (const r of m.routes) expect(r.response.$ref).toMatch(/^#\/\$defs\//);
+  });
+
+  it('the 3 Share to Slack routes are skipped_live obo-only; nothing else is', () => {
+    const m = buildContractManifest();
+    expect(m.routes.filter((r) => r.skippedLive).map((r) => [r.key, r.skippedLive])).toEqual([
+      ['POST /api/notifications/:id/share-slack', 'obo-only'],
+      ['POST /api/assets/:assetId/share-slack', 'obo-only'],
+      ['GET /api/slack/channels', 'obo-only'],
+    ]);
+    for (const key of Object.keys(SKIPPED_LIVE)) expect(routeKeys, key).toContain(key);
   });
 
   it('review card URI and MIME type match the MCP server', () => {

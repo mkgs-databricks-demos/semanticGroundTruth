@@ -7,6 +7,7 @@
 
 import type { UserContext } from '../../server/lib/context';
 import type { ErrorCode } from '../../shared/contracts/errors';
+import { EDIT_VOTE_NEEDS_VALUE_MESSAGE } from '../../shared/contracts/api';
 import type { FakeStore } from './fakeStore';
 import {
   BROKEN_METRIC_VIEW_FQN,
@@ -79,6 +80,7 @@ export const TOOL_CASES: Record<string, ToolCase> = {
       args: {},
       expected: (s) => ({
         asset: s.asset(IDS.A3), synonyms: [], examples: [], confidence: null, reason: 'low_confidence', progress: { reviewed: 2, total: 5 },
+        resurfacedFromSkip: false,
       }),
       after: (s) => {
         if (s.mcpSessions.get(`user:${REVIEWER.userId}`)?.current_asset_id !== IDS.A3) throw new Error('session not set to A3');
@@ -102,6 +104,7 @@ export const TOOL_CASES: Record<string, ToolCase> = {
         assetStatus: 'REVIEWED',
         next: {
           asset: s.asset(IDS.A4), synonyms: [], examples: [], confidence: null, reason: 'low_confidence', progress: { reviewed: 3, total: 5 },
+          resurfacedFromSkip: false,
         },
       }),
     },
@@ -109,6 +112,9 @@ export const TOOL_CASES: Record<string, ToolCase> = {
     errors: [
       { args: { asset_id: IDS.UNKNOWN, vote_type: 'approve' }, code: 'NOT_FOUND' },
       { args: { vote_type: 'approve' }, code: 'BAD_REQUEST', message: 'No asset_id provided and no current review session asset.' },
+      // Build 5 follow-up 6: an edit vote needs a proposed value (same rule as POST /api/review/vote).
+      { args: { asset_id: IDS.A3, vote_type: 'edit', edits: { description: '  ' } }, code: 'BAD_REQUEST', message: EDIT_VOTE_NEEDS_VALUE_MESSAGE },
+      { args: { asset_id: IDS.A3, vote_type: 'edit' }, code: 'BAD_REQUEST', message: EDIT_VOTE_NEEDS_VALUE_MESSAGE },
     ],
   },
   review_add_synonym: {
@@ -226,6 +232,8 @@ export const TOOL_CASES: Record<string, ToolCase> = {
         next: {
           asset: s.asset(IDS.A3), synonyms: [], examples: [], confidence: null,
           campaign: { campaignId: IDS.C1, name: 'Q4 Finance review' }, reason: 'campaign', progress: { reviewed: 2, total: 3 },
+          // Every campaign asset is voted on or in cooldown, so the just-skipped A3 resurfaces.
+          resurfacedFromSkip: true,
         },
       }),
       after: (s) => {

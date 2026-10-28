@@ -21,6 +21,8 @@
 
 ## Findings for the owner (no change made)
 
+**Owner decision (2026-10-27):** keep Green 700 `#00875C` as is. `success` / `vote-approve` / `confidence-high` may be used as text only on card surfaces, or as non-text (icons, borders, fills); never as text directly on the light page background.
+
 * `vote-approve` / `confidence-high` / `success` (Green 700 `#00875C`) on light `background` (Oat Light) is 4.25:1. That is fine for non-text (≥ 3:1) and for text on cards (4.55:1), which is how the app uses them today (SwipeActions and ExampleQuestions are inside the review card). These tokens must not be used as text directly on the page background. Changing the value is an owner decision (D-B5-1: sessions do not pick colors).
 
 ## Checks
@@ -35,7 +37,9 @@
 
 Runs used the Node toolchain of `docs/runbooks/node_toolchain_genie_code.md` (Node 22.16.0, pnpm 11.0.8).
 
-## Blocking (manual prerequisite)
+## Blocking (manual prerequisite) - resolved 2026-10-27
+
+**Resolved:** the owner authorized the `cdn.bfldr.com` fetch; the 6 SVGs were downloaded into `client/public/brand/icons/`, the manifest entries set to `downloaded: true` (pending note removed) and `ICON_FILES` extended. Re-run in `/tmp/gt-42fix`: `components/ui` + `theme` 282 passed / 1 skipped, full vitest 1202 passed / 1 skipped, both `tsc -b` exit 0. Status set to `pass`. Original steps kept below for reference.
 
 The 6 catalog-only SVGs could not be downloaded: the Genie Code safety guardrail blocks requests to `cdn.bfldr.com` from this session, and `src/notebooks/download_brand_assets` only downloads the symbols and favicons. To unblock (about 5 minutes):
 

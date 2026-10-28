@@ -1,6 +1,8 @@
 /* ==========================================================================
  * Semantic Ground Truth — brand tokens
  * Session 16 · Wave 0 · Values mirror theme/tokens.ts
+ * Session 42 · Build 5 · D-B5-1 brand values, warning-text, brand icon classes
+ *   (theme/tokens-parity.test.ts asserts this file equals tokens.ts)
  *
  * Two layers:
  *   1. --dbx-* brand primitives (never used by components directly)
@@ -67,6 +69,8 @@
   --font-mono: 'DM Mono', ui-monospace, monospace;
 
   --color-brand-accent: var(--brand-accent);
+  --color-warning-text: var(--warning-text);
+  --color-info: var(--info);
   --color-vote-approve: var(--vote-approve);
   --color-vote-reject: var(--vote-reject);
   --color-vote-edit: var(--vote-edit);
@@ -93,15 +97,15 @@
   --dbx-navy-800: #1B3139;
   --dbx-navy-900: #0B2026;
   --dbx-green-500: #42BA91;
-  --dbx-green-600: #3AA278;
+  --dbx-green-600: #00A972;
   --dbx-green-700: #00875C;
-  --dbx-yellow-500: #FFB800;
+  --dbx-yellow-500: #FCBA33;
   --dbx-yellow-600: #FFAB00;
   --dbx-yellow-800: #7D5319;
   --dbx-blue-400: #8ACAFF;
   --dbx-blue-600: #2272B4;
-  --dbx-maroon-300: #D776A8;
-  --dbx-maroon-500: #9E2B6E;
+  --dbx-maroon-300: #D69EA8;
+  --dbx-maroon-500: #AB4057;
   --dbx-oat-light: #F9F7F4;
   --dbx-oat-medium: #EEEDE9;
   --dbx-gray-text: #5A6F77;
@@ -141,6 +145,7 @@
   --success-foreground: #FFFFFF;
   --warning: var(--dbx-yellow-600);
   --warning-foreground: var(--dbx-navy-900);
+  --warning-text: var(--dbx-yellow-800);
   --info: var(--dbx-blue-600);
 
   --border: var(--dbx-gray-lines);
@@ -199,6 +204,7 @@
   --success-foreground: var(--dbx-navy-900);
   --warning: var(--dbx-yellow-600);
   --warning-foreground: var(--dbx-navy-900);
+  --warning-text: var(--dbx-yellow-600);
   --info: var(--dbx-blue-400);
 
   --border: var(--dbx-navy-600);
@@ -234,6 +240,30 @@
 :focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+
+/* ---------- Brand icons (components/ui/Icon.tsx) ----------
+ * Functional icons are CSS masks filled with currentColor, so they inherit the
+ * text color in both modes. In forced-colors mode the fill is CanvasText so the
+ * icon stays visible against the system background.
+ */
+
+.brand-icon {
+  display: inline-block;
+  flex: 0 0 auto;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+@media (forced-colors: active) {
+  .brand-icon {
+    background-color: CanvasText;
+  }
 }
 
 /* ---------- Reduced motion (§7.2) ---------- */

@@ -1,6 +1,10 @@
 // client/src/theme/tokens.ts — brand primitives and semantic maps
 // Session 16 · Wave 0 · Single source of hex values for index.css and contrast.test.ts
 // Values from docs/plans/ui_brand_plan.md §3.1–3.3, verified 2026-10-23
+// Session 42 · Build 5 · D-B5-1: Green 600, Yellow 500, Maroon 500 and Maroon 300
+// corrected to the Databricks brand values in
+// docs/design/ui/figma/design-system/variables.json; `warning-text` added.
+// tokens-parity.test.ts keeps this file, index.css and figma-variables.json equal.
 
 /* ---------- Brand primitives (never reference directly in components) ---------- */
 
@@ -20,11 +24,11 @@ export const brand = {
   },
   green: {
     500: '#42BA91',
-    600: '#3AA278',
+    600: '#00A972',
     700: '#00875C',
   },
   yellow: {
-    500: '#FFB800',
+    500: '#FCBA33',
     600: '#FFAB00',
     800: '#7D5319',
   },
@@ -33,8 +37,8 @@ export const brand = {
     600: '#2272B4',
   },
   maroon: {
-    300: '#D776A8',
-    500: '#9E2B6E',
+    300: '#D69EA8',
+    500: '#AB4057',
   },
   oat: {
     light: '#F9F7F4',
@@ -72,6 +76,7 @@ export const light = {
   'success-foreground': brand.white,
   warning: brand.yellow[600],
   'warning-foreground': brand.navy[900],
+  'warning-text': brand.yellow[800],
   info: brand.blue[600],
   border: brand.gray.lines,
   input: brand.navy[500],
@@ -122,6 +127,7 @@ export const dark = {
   'success-foreground': brand.navy[900],
   warning: brand.yellow[600],
   'warning-foreground': brand.navy[900],
+  'warning-text': brand.yellow[600],
   info: brand.blue[400],
   border: brand.navy[600],
   input: brand.navy[500],
@@ -165,8 +171,8 @@ export const contrastPairings = [
   { name: 'Success text on card (dark)', fg: dark.success, bg: dark.card, min: 4.5 },
   { name: 'Link/info text (light)', fg: light.info, bg: light.background, min: 4.5 },
   { name: 'Link/info text (dark)', fg: dark.info, bg: dark.card, min: 4.5 },
-  { name: 'Warning text (light)', fg: brand.yellow[800], bg: light.background, min: 4.5 },
-  { name: 'Warning text (dark)', fg: dark.warning, bg: dark.background, min: 4.5 },
+  { name: 'Warning text (light)', fg: light['warning-text'], bg: light.background, min: 4.5 },
+  { name: 'Warning text (dark)', fg: dark['warning-text'], bg: dark.background, min: 4.5 },
   { name: 'Input boundary (light)', fg: light.input, bg: light.card, min: 3.0 },
   { name: 'Input boundary (dark)', fg: dark.input, bg: dark.card, min: 3.0 },
   { name: 'Focus ring (light)', fg: light.ring, bg: light.background, min: 3.0 },

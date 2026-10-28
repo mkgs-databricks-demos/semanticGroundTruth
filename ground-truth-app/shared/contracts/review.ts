@@ -20,6 +20,13 @@ export interface ReviewCard {
   campaign?: { campaignId: string; name: string };
   reason: SurfacingReason;
   progress: { reviewed: number; total: number };
+  /**
+   * True when this user skipped the card's asset before and it came back after
+   * the skip cooldown (UI badge "You skipped this earlier"). The server always
+   * sets it on cards from GET /api/review/next, vote/skip `next` and MCP
+   * review_get_next (build 5 session 44); optional so older fixtures still type-check.
+   */
+  resurfacedFromSkip?: boolean;
 }
 
 // ── Skip: POST /api/review/skip, MCP review_skip_card (plan 25) ──────────

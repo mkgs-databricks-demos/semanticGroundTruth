@@ -33,10 +33,12 @@ import {
   SKIP_COOLDOWN_HOURS_MAX,
   SKIP_COOLDOWN_HOURS_MIN,
   SKIP_REASONS,
+  SLACK_SHARE_MESSAGE_MAX,
+  SLACK_SHARE_MODES,
   THEMES,
   VOTE_TYPES,
 } from './values';
-import type { AssetStatus, Role } from './values';
+import type { AssetStatus, Role, SlackShareStatus } from './values';
 
 // ── Shared primitives ───────────────────────────────────────────────────
 
@@ -53,6 +55,19 @@ export type GetNextResponse = ReviewCard | null;
 
 // ── Review: POST /api/review/vote ──────────────────────────────────────
 
+/** Message of the 400 issue (path ['edits']) for an edit vote with no proposed value (build 5 follow-up 6). */
+export const EDIT_VOTE_NEEDS_VALUE_MESSAGE =
+  'An edit vote needs at least one proposed value (description, plain-English logic or display name)';
+
+/**
+ * True when `edits` has at least one value that is not empty after trimming.
+ * Shared by VoteBodySchema and the MCP review_submit_vote tool (whose input is
+ * a plain zod shape, so it cannot carry the refinement itself).
+ */
+export function hasProposedEdit(edits: Readonly<Record<string, string | undefined>> | undefined): boolean {
+  return !!edits && Object.values(edits).some((v) => typeof v === 'string' && v.trim().length > 0);
+}
+
 export const VoteBodySchema = z.object({
   assetId: uuid,
   voteType: z.enum(VOTE_TYPES),
@@ -62,7 +77,10 @@ export const VoteBodySchema = z.object({
     plainEnglishLogic: z.string().optional(),
     displayName: z.string().optional(),
   }).optional(),
-});
+}).refine(
+  (d) => d.voteType !== 'edit' || hasProposedEdit(d.edits),
+  { message: EDIT_VOTE_NEEDS_VALUE_MESSAGE, path: ['edits'] },
+);
 export type VoteBody = z.infer<typeof VoteBodySchema>;
 
 export interface VoteResult {
@@ -554,3 +572,43 @@ export const UpdateFeedbackBranchStatusRequestSchema = z.object({
 });
 export type UpdateFeedbackBranchStatusRequest = z.infer<typeof UpdateFeedbackBranchStatusRequestSchema>;
 // Response: FeedbackBranch
+
+// ──────────────────────────────────────────────────────────────────────
+// Share to Slack (G5 Option A; build 5: contract session 44, handlers session 50)
+// Steward/admin only, with the user's OBO token through system.ai.slack.
+// ──────────────────────────────────────────────────────────────────────
+
+// ── Slack: POST /api/notifications/:id/share-slack, POST /api/assets/:assetId/share-slack ──
+
+export const NotificationIdParamSchema = z.object({ id: uuid });
+export type NotificationIdParam = z.infer<typeof NotificationIdParamSchema>;
+
+export const ShareSlackRequestSchema = z.object({
+  /** Slack channel id (from GET /api/slack/channels), e.g. C0123ABCD. */
+  channelId: z.string().trim().min(1).max(64),
+  /** Optional note added to the server-built message. */
+  message: z.string().max(SLACK_SHARE_MESSAGE_MAX).optional(),
+  mode: z.enum(SLACK_SHARE_MODES),
+});
+export type ShareSlackRequest = z.infer<typeof ShareSlackRequestSchema>;
+
+export interface ShareSlackResponse {
+  status: SlackShareStatus;
+  /** Slack message permalink (sent / drafted when Slack returns one). */
+  permalink?: string;
+  /** Where the user connects Slack (needs_slack_login). */
+  loginUrl?: string;
+}
+
+// ── Slack: GET /api/slack/channels?query= ──
+
+export const SlackChannelsQuerySchema = z.object({
+  query: z.string().trim().max(200).optional(),
+});
+export type SlackChannelsQuery = z.infer<typeof SlackChannelsQuerySchema>;
+
+export interface SlackChannel {
+  id: string;
+  name: string;
+}
+export type SlackChannelsResponse = SlackChannel[];

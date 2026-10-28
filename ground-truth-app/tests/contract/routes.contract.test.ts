@@ -40,7 +40,17 @@ for (const c of ROUTE_CONTRACTS) {
       return;
     }
 
-    it(`happy path: ${c.status}, response schema, exact values`, async () => {
+    if (rc.stub) {
+      // Registered stub (RBAC + validation run, handler not implemented yet).
+      it(`stub: valid input answers 501 NOT_IMPLEMENTED until ${rc.stub}`, async () => {
+        const env = newEnv();
+        const res = await callRoute(env, c, rc.happy);
+        expect(res.status, JSON.stringify(res.body)).toBe(501);
+        const parsed = ErrorResponseSchema.safeParse(res.body);
+        expect(parsed.success, JSON.stringify(res.body)).toBe(true);
+        expect((res.body as { error: { code: string } }).error.code).toBe('NOT_IMPLEMENTED');
+      });
+    } else it(`happy path: ${c.status}, response schema, exact values`, async () => {
       const env = newEnv();
       const res = await callRoute(env, c, rc.happy);
       expect(res.status, JSON.stringify(res.body)).toBe(c.status);

@@ -4,6 +4,8 @@
 // skip never touches confidence or votes; skip is not a vote type; a skipped
 // card is hidden for the cooldown and comes back after it; settings PUT/GET
 // round-trip; /health reports degraded (200) when the database is down.
+// Build 5 (session 44): resurfacedFromSkip on cards, edit votes need a value,
+// feedback-branch upserts notify once.
 
 import { describe, expect, it, vi } from 'vitest';
 import { HealthResponseSchema, ROUTE_CONTRACTS, routeKey } from '../../shared/contracts/schemas';
@@ -11,6 +13,7 @@ import type { RouteContract } from '../../shared/contracts/schemas';
 import { callRoute, newEnv } from './harness';
 import type { Env } from './harness';
 import { ADMIN, IDS, REVIEWER } from './fixtures';
+import { EDIT_VOTE_NEEDS_VALUE_MESSAGE } from '../../shared/contracts/api';
 import type { CallInput } from './routeCases';
 
 vi.mock('../../server/services/sources', async (importOriginal) => ({
@@ -56,6 +59,16 @@ describe('skip invariants', () => {
     expect(await nextAssetId(env)).toBe(IDS.A3);
   });
 
+  it('a card served again after the cooldown has resurfacedFromSkip: true', async () => {
+    const env = newEnv();
+    const first = (await call(env, 'GET /api/review/next', { query: {} })).body as Record<string, unknown>;
+    expect(first.resurfacedFromSkip).toBe(false);
+    await call(env, 'POST /api/review/skip', { body: { assetId: IDS.A3 } });
+    env.store.skips[0].createdAt = '2026-10-24T11:59:59.000Z';
+    const again = (await call(env, 'GET /api/review/next', { query: {} })).body as Record<string, unknown>;
+    expect(again).toMatchObject({ asset: { id: IDS.A3 }, resurfacedFromSkip: true });
+  });
+
   it('skips count in stats but not in totals', async () => {
     const env = newEnv();
     await call(env, 'POST /api/review/skip', { body: { assetId: IDS.A3 } });
@@ -63,6 +76,40 @@ describe('skip invariants', () => {
     expect(stats.skippedCount).toBe(1);
     expect(stats.skippedToday).toBe(1);
     expect(stats.totalVotes).toBe(2);
+  });
+});
+
+describe('edit votes need a proposed value (build 5 follow-up 6)', () => {
+  it.each([
+    ['no edits', {}],
+    ['blank edits', { edits: { description: ' ', displayName: '' } }],
+  ])('POST /api/review/vote edit with %s: 400 issue at edits, nothing written', async (_label, extra) => {
+    const env = newEnv();
+    const res = await call(env, 'POST /api/review/vote', { body: { assetId: IDS.A3, voteType: 'edit', ...extra } });
+    expect(res.status).toBe(400);
+    const err = (res.body as { error: { code: string; details: { issues: { path: string[]; message: string }[] } } }).error;
+    expect(err.code).toBe('BAD_REQUEST');
+    expect(err.details.issues).toEqual([expect.objectContaining({ path: ['edits'], message: EDIT_VOTE_NEEDS_VALUE_MESSAGE })]);
+    expect(env.store.votes).toHaveLength(5);
+  });
+});
+
+describe('feedback branch notifications (build 5 follow-up 5)', () => {
+  const body = { branchName: 'mg-genie-feedback-20261020', files: ['a.yml'], status: 'proposed' };
+
+  it('re-upserting a branch with the same status sends no notification', async () => {
+    const env = newEnv();
+    // Fixture B1 is already proposed: a retry / re-registration.
+    const res = await call(env, 'POST /api/steward/feedback-branches', { user: ADMIN, body });
+    expect(res.status).toBe(200);
+    expect(env.store.stewardNotifications).toEqual([]);
+  });
+
+  it('a status change notifies once', async () => {
+    const env = newEnv();
+    await call(env, 'POST /api/steward/feedback-branches', { user: ADMIN, body: { ...body, status: 'failed' } });
+    await call(env, 'POST /api/steward/feedback-branches', { user: ADMIN, body: { ...body, status: 'failed' } });
+    expect(env.store.stewardNotifications).toEqual([{ eventType: 'feedback.failed', batchId: IDS.B1 }]);
   });
 });
 

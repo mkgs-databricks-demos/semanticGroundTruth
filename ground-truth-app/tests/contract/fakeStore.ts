@@ -29,7 +29,8 @@ import { computeConfidence, deriveStatus, wilsonLowerBound } from '../../server/
 import type { UserSettingsService } from '../../server/services/settings';
 import { DEFAULT_USER_SETTINGS } from '../../server/services/settings/userSettingsService';
 import type { StewardService, TriageVoteRow } from '../../server/services/steward/stewardService';
-import { detectConflicts, resolutionFor } from '../../server/services/steward/stewardService';
+import { detectConflicts, resolutionFor, shouldNotifyOnUpsert } from '../../server/services/steward/stewardService';
+import { feedbackBranchHtmlUrl } from '../../server/services/steward/feedbackRepo';
 import type { SourceService } from '../../server/services/sources';
 import type {
   AppGroup,
@@ -59,6 +60,7 @@ import {
   CATALOGS,
   EXAMPLES,
   FEEDBACK_BATCHES,
+  FEEDBACK_REPO_URL,
   GROUPS,
   METRIC_VIEW,
   METRIC_VIEW_FQN,
@@ -124,6 +126,8 @@ export class FakeStore {
   config: AppSettings = { ...clone(DEFAULT_SETTINGS) };
   sources: AssetSource[] = clone(SOURCES);
   mcpSessions = new Map<string, { current_asset_id: string; campaign_id: string | null; updated_at: string }>();
+  /** Steward notifications the fake steward service sent (eventType + batchId), in order. */
+  stewardNotifications: { eventType: string; batchId: string }[] = [];
 
   now(): string {
     return new Date(this.clockMs).toISOString();
@@ -288,6 +292,8 @@ export class FakeStore {
       ...(campaign ? { campaign: { campaignId: campaign.id, name: campaign.name } } : {}),
       reason: campaign ? 'campaign' : 'low_confidence',
       progress: { reviewed: scope.filter((a) => voted.has(a.id)).length, total: scope.length },
+      // Same rule as ReviewEngine: everything in cooldown, or skipped before (cooldown passed).
+      resurfacedFromSkip: resurfacedFromSkip || (cooldownMs > 0 && lastSkip(pick.id) !== undefined),
     };
     return { card, resurfacedFromSkip };
   }
@@ -303,6 +309,7 @@ export class FakeStore {
       createdAt: b.createdAt,
       completedAt: b.completedAt,
       reviewedBy: b.reviewedBy,
+      htmlUrl: feedbackBranchHtmlUrl(FEEDBACK_REPO_URL, b.branchName),
     };
   }
 
@@ -735,6 +742,7 @@ export function createFakeServices(store: FakeStore): Services {
         ? store.batches.find((b) => b.id === req.batchId)
         : store.batches.find((b) => b.branchName === req.branchName);
       if (req.batchId && !existing) throw notFound(`Feedback batch not found: ${req.batchId}`);
+      const previousStatus = existing ? existing.status : null;
       const completes = req.status === 'proposed' || req.status === 'failed';
       const batch: FeedbackBatch = existing ?? {
         id: store.newId(),
@@ -756,6 +764,12 @@ export function createFakeServices(store: FakeStore): Services {
       batch.summary = req.summary ?? batch.summary;
       if (completes) batch.completedAt = store.now();
       if (!existing) store.batches.push(batch);
+      if (shouldNotifyOnUpsert(previousStatus, req.status)) {
+        store.stewardNotifications.push({
+          eventType: req.status === 'failed' ? 'feedback.failed' : 'feedback.branch_ready',
+          batchId: batch.id,
+        });
+      }
       return { branch: store.branch(batch), created: !existing };
     },
     updateFeedbackBranchStatus: async (user, batchId, req) => {
