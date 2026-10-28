@@ -8,10 +8,39 @@ resources:
       description: "A Databricks App powered by AppKit"
       source_code_path: ../
 
-      # Override app.yaml env vars with bundle-variable values at deploy time.
+      # Full runtime config. When `config` is set, the bundle's command + env REPLACE
+      # app.yaml's (the deployment lists only these env names). Until 2026-10-28 only
+      # three vars were here and the app.yaml valueFrom bindings were silently lost;
+      # the app only started because a gitignored local .env in the dev Git folder was
+      # uploaded with the source and read via --env-file-if-exists. A clean worktree
+      # deploy (no .env) failed with "Warehouse ID not found". Keep this list a superset
+      # of app.yaml env (app.yaml still serves plain `databricks apps deploy`).
       # deploy.sh passes --var exec_dashboard_url=<url> from the infra dashboard resource.
       config:
+        command: ['node', '--env-file-if-exists=./.env', './dist/server.js']
         env:
+          - name: NODE_ENV
+            value: production
+          # ── App resource bindings (resource names under `resources:` below) ──
+          - name: DATABRICKS_SERVING_ENDPOINT_NAME
+            value_from: agents-serving-endpoint
+          - name: MLFLOW_EXPERIMENT_ID
+            value_from: agents-mlflow-experiment
+          - name: DATABRICKS_WAREHOUSE_ID
+            value_from: sql-warehouse
+          - name: DATABRICKS_JOB_ID
+            value_from: job
+          - name: LAKEBASE_ENDPOINT
+            value_from: postgres
+          # ── RBAC bootstrap ──
+          - name: GT_BOOTSTRAP_ADMIN_IDS
+            value_from: m2m-client-id
+          - name: GT_ADMIN_EMAILS
+            value: matthew.giglia@databricks.com
+          # ── OpenTelemetry: record every trace (see app.yaml) ──
+          - name: OTEL_TRACES_SAMPLER
+            value: always_on
+          # ── Bundle-variable values ──
           - name: GT_EXEC_DASHBOARD_URL
             value: "${var.exec_dashboard_url}"
           # Feedback-branch links (FeedbackBranch.htmlUrl); bundle input var feedback_repo_url.
