@@ -1,3 +1,4 @@
+// @a11y-strict
 // client/src/components/ui/StatusBadge.tsx — status = text + icon, never color only
 // Session 42 · Build 5 · wave 5-0 (ui_brand_plan §7, screen_inventory findings).
 

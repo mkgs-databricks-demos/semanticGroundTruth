@@ -1,3 +1,4 @@
+// @a11y-strict
 // client/src/components/ui/RadioCardGroup.tsx — single choice shown as cards
 // Session 42 · Build 5 · wave 5-0 (reject reasons, share mode, campaign type).
 // Native radio inputs inside a fieldset, so arrow keys move the selection, Tab

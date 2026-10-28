@@ -1,3 +1,4 @@
+// @a11y-strict
 // client/src/components/ui/Icon.tsx — Databricks functional brand icons
 // Session 42 · Build 5 · wave 5-0. Ported from the Figma export
 // (docs/design/ui/figma/_code/src/components/BrandAssets.tsx, BrandIcon).

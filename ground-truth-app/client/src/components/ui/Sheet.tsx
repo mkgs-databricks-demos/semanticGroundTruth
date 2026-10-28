@@ -1,3 +1,4 @@
+// @a11y-strict
 // client/src/components/ui/Sheet.tsx — side / bottom sheet with a required title
 // Session 42 · Build 5 · wave 5-0. Thin wrapper over the AppKit (Radix Dialog)
 // sheet, which already traps focus, closes on Escape and restores focus to the

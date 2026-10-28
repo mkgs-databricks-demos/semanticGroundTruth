@@ -1,3 +1,4 @@
+// @a11y-strict
 // client/src/components/ui/KeyHint.tsx — keyboard shortcut hint (<kbd>)
 // Session 42 · Build 5 · wave 5-0. Visual spec from the Figma export (`.vote kbd`).
 // Arrow glyphs get a spoken name so screen readers do not read "left arrow

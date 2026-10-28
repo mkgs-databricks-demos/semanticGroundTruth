@@ -282,7 +282,7 @@ describe('S9 conflicts · empty, error, forbidden, offline', () => {
     await expectNoAxeViolations(container);
   });
 
-  it('error: names the problem and Retry reloads', async () => {
+  it('error state, names the problem and Retry reloads', async () => {
     mockApi(base);
     mockApi.error(LIST, 503, 'UPSTREAM_ERROR', 'The SQL warehouse is starting.');
     const { user, container } = renderConflicts();

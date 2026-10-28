@@ -1,3 +1,4 @@
+// @a11y-strict
 // client/src/components/ui/DiffText.tsx — word-level diff with <ins> / <del>
 // Session 42 · Build 5 · wave 5-0 (screen_inventory: conflict detail, "insertions
 // underlined + --vote-approve tint, deletions struck + --vote-reject tint, never

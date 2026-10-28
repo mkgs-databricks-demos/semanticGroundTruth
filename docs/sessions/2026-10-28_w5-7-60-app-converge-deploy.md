@@ -28,6 +28,13 @@
    * I checked the published packages: 0.85.0 through 0.88.1 still have imports without an extension. **0.89.0** adds `.js` to all three. Its `zod` pin is 4.3.6 (unchanged) and its `@mlflow/core` peer is 0.4.0.
    * This is outside the changes this session may make: a `package.json` / lockfile change other than removing lucide belongs to session 45 (conventions §4). An in-app ESM resolve hook would only work around a dependency bug. So I stopped `blocked` instead of starting attempt 3.
 
+3. **Owner attempt 3** (2026-10-28, npm download approved): `01f1d3029bf11f6ba728ead47406d68a` **stable**.
+   * `@databricks/appkit` + `@databricks/appkit-ui` 0.84.0 -> 0.89.0 (`package.json`, `pnpm-lock.yaml`). New transitive deps: the split `@databricks/sdk-*` packages (Node >= 22), `@databricks/lakebase` 0.7.0. `zod` stays 4.3.6.
+   * 0.89.0 makes `appkit generate-types --wait` (in `prebuild`) fatal when the warehouse is unreachable and `shared/appkit-types/analytics.d.ts` is missing. Committed the generated `analytics.d.ts` and `metric-views.d.ts`; an offline `pnpm run build` then passes with a warning.
+   * Fresh `/tmp` copy: frozen install OK, lockfile stable under `--lockfile-only`, vitest 1880 pass / 2 skipped, both tsc exit 0, entry 235.18 kB gzip.
+   * `bundle run app --target dev`; 12/12 probes; `deploy_verification` run `263699809540741` SUCCESS; 10 min soak (19:24-19:34Z): 883 log rows, 0 error lines, `listening on` present, no `Cannot find module` / `auto-detect failed`; 19 traces, 0 errors.
+   * Incident: an earlier owner deploy through the raw SDK (`01f1d301…`) sent no `command`/`env`, so it failed and the app was `UNAVAILABLE` for about 6 minutes until the bundle deployment replaced it. Always deploy with `bundle run app`, which sends the `app.app.yml` config.
+
 ## Follow-up 10 (Invalid delegation claim), one investigation
 
 `bundle plan --target dev -o json` plans `update` for `resources.apps.app` because:
@@ -53,3 +60,5 @@ Neither is a config difference in `resources/app.app.yml`. The update fails beca
 
 * Apps log ingestion tags any line that contains `error:` as `ERROR`, including passing vitest output from `prebuild`. Do not start test titles with `error:`.
 * `runDatabricksCli bundle run app` hits the 300 s cap, but the deployment continues. Poll `w.apps.get` instead.
+* Never deploy with `w.apps.deploy(source_code_path=...)` alone: with `app.yaml` a comment stub, the deployment has no command and fails, and it takes the running app down.
+* AppKit >= 0.89.0: keep `shared/appkit-types/analytics.d.ts` committed (regenerate with `appkit generate-types --wait` when `config/queries/*.sql` changes).

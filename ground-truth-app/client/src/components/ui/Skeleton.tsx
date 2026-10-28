@@ -1,3 +1,4 @@
+// @a11y-strict
 // client/src/components/ui/Skeleton.tsx — loading placeholder
 // Session 42 · Build 5 · wave 5-0. The block itself is decorative; a group of
 // skeletons announces one "Loading …" message through `label` (role="status").

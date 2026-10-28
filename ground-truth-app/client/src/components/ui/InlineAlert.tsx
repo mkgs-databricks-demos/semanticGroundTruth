@@ -1,3 +1,4 @@
+// @a11y-strict
 // client/src/components/ui/InlineAlert.tsx — in-place error / warning with Retry
 // Session 42 · Build 5 · wave 5-0. role="alert" so the message is announced when
 // it appears; the Retry button keeps focus order inside the alert.

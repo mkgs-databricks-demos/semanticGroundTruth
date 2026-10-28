@@ -270,7 +270,7 @@ describe('S10 feedback branches · failed-branch, empty, error, forbidden, offli
     await expectNoAxeViolations(container);
   });
 
-  it('error: names the problem and Retry reloads', async () => {
+  it('error state, names the problem and Retry reloads', async () => {
     mockApi.error(LIST, 503, 'UPSTREAM_ERROR', 'The SQL warehouse is starting.');
     const { user, container } = renderBranches();
     const alert = await screen.findByRole('alert');

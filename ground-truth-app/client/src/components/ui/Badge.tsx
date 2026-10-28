@@ -1,3 +1,4 @@
+// @a11y-strict
 // client/src/components/ui/Badge.tsx — small pill label
 // Session 42 · Build 5 · wave 5-0. Visual spec from the Figma export
 // (DesignSystemPage `.badge`, ReviewPage `.type-badge` / `.pending` / `.info-badge`).

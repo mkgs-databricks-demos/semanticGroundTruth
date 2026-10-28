@@ -1,3 +1,4 @@
+// @a11y-strict
 // client/src/components/ui/EmptyPanel.tsx — empty state with a brand illustration
 // Session 42 · Build 5 · wave 5-0. Ported from BrandIllustration in the Figma
 // export: primary icons use the navy file on light and the white file on dark

@@ -12,8 +12,8 @@
 //   (d1) no lucide-react import
 //   (d2) every data-testid matches ui_test_strategy.md §3
 //   (d3) a page component under pages/** renders exactly one <h1>
-//   (e)  report only: files under pages/** and components/** still missing
-//        the marker (session 60 requires that list to be empty)
+//   (e)  coverage: every file under pages/** and components/** has the
+//        marker (hard check since session 60, build 5 wave 5-7)
 //
 // Known false-positive escapes are documented inline.
 
@@ -222,23 +222,21 @@ describe('(d) strict files (// @a11y-strict)', () => {
   });
 });
 
-// ── (e) Report: screens still missing the marker ────────────────────────────────
-// Report only (never fails). The count is in the test name so it shows in
-// the default reporter even with silent: 'passed-only'; the list goes to
-// stdout. Session 60 turns this into a hard check (the list must be empty).
+// ── (e) Coverage: every screen file carries the marker ──────────────────────────
+// Session 43 added this as a report; session 60 (build 5, wave 5-7) made it a
+// hard check once every pages/** and components/** file had the marker. A new
+// screen file must start with the marker and meet the (d) rules.
 
-describe('(e) @a11y-strict coverage (report only)', () => {
+describe('(e) @a11y-strict coverage', () => {
   const screens = allSources().filter((s) => !isTestFile(s.rel));
   const missing = screens.filter((s) => !isStrict(s.content)).map((s) => s.rel).sort();
 
-  it(`report: ${missing.length} of ${screens.length} pages/components files still missing ${STRICT_MARKER}`, () => {
-    if (missing.length > 0) {
-      process.stdout.write(
-        `[a11y-static] ${missing.length} file(s) under pages/** and components/** without "${STRICT_MARKER}":\n` +
-          missing.map((f) => `  ${f}`).join('\n') +
-          '\n',
-      );
-    }
-    expect(missing.length).toBeLessThanOrEqual(screens.length);
+  it(`every one of ${screens.length} pages/components files starts with ${STRICT_MARKER}`, () => {
+    expect(screens.length).toBeGreaterThan(0);
+    expect(
+      missing,
+      `${missing.length} file(s) under pages/** and components/** without "${STRICT_MARKER}" on line 1:\n` +
+        missing.map((f) => `  ${f}`).join('\n'),
+    ).toEqual([]);
   });
 });

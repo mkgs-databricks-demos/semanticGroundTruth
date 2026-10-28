@@ -205,7 +205,7 @@ describe('S8 feedback queue · empty and filtered-empty', () => {
 });
 
 describe('S8 feedback queue · error, forbidden, offline', () => {
-  it('error: names the problem and Retry reloads', async () => {
+  it('error state, names the problem and Retry reloads', async () => {
     mockApi(base);
     mockApi.error(QUEUE, 503, 'UPSTREAM_ERROR', 'The SQL warehouse is starting.');
     const { user, container } = renderQueue();

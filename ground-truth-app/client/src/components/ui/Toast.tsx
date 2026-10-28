@@ -1,3 +1,4 @@
+// @a11y-strict
 // client/src/components/ui/Toast.tsx — toast live region (role="status")
 // Session 42 · Build 5 · wave 5-0. The region is always mounted (empty when there
 // is nothing to say) so screen readers announce toasts added later. Toasts do

@@ -139,7 +139,7 @@ describe('S0 shell · notifications empty / error', () => {
     expect(screen.queryByTestId('shell-bell-count')).toBeNull();
   });
 
-  it('error: bell stays focusable, named "Notifications unavailable", with a tooltip', async () => {
+  it('error state, bell stays focusable, named "Notifications unavailable", with a tooltip', async () => {
     mockApi(notificationsRoutes).error('GET /api/notifications/unread-count', 500, 'INTERNAL', 'Lakebase unavailable');
     const { user } = renderWithProviders(shell(), { roles: STEWARD });
     const bell = await screen.findByRole('button', { name: 'Notifications unavailable' });
