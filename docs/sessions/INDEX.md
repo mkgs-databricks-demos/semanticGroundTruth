@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-28 | 5-7 | 60 | [Converge app: entry chunk 235.18 kB gzip, 13 files @a11y-strict, lucide-react removed, vitest 1880 pass, 12/12 probes, deploy_verification SUCCESS; blocked on AppKit 0.84.0 @mlflow/core ESM 'Cannot find module' log line (needs 0.89.0, session-45 scope) (run 229891579528310)](2026-10-28_w5-7-60-app-converge-deploy.md) | converge | blocked | `mg-genie-build-5` |
 | 2026-10-28 | 5-6 | 59 | [Converge agent: deploy no-op, ops dashboard republished, 17/17 datasets with UUID string ids, agent_verification 29/29, Genie space 9 tables / 9 examples / 2 probes (run 229891579528310)](2026-10-28_w5-6-59-agent-converge-regression.md) | converge | pass | `mg-genie-build-5` |
 | 2026-10-28 | 5-5 | 58 | [Converge infra; owner applied M2M SPN READ/WRITE VOLUME grant on ui_visual_checks, attempt 1 stable, runbook §6 committed (run 229891579528310, w5-5 repair)](2026-10-28_w5-5-58-infra-converge-monitoring.md) | converge | pass | `mg-genie-build-5` |
 | 2026-10-28 | 5-5 | 58 | [Converge infra: dev deploys with no quality monitor, prod validate lists bronze monitor (D-B5-4), runbook §6; blocked on M2M SPN READ/WRITE VOLUME on ui_visual_checks (app_post_deploy_setup not run since 6d2b95f) (run 229891579528310)](2026-10-28_w5-5-58-infra-converge-monitoring.md) | converge | blocked | `mg-genie-build-5` |
