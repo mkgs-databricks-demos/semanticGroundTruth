@@ -7,7 +7,7 @@
 // still usable), forbidden + F4 regression (GET /api/me 500 is an error, not
 // forbidden), offline (writes disabled), import wizard (step navigation, scan
 // pending, partial failure list, ImportAssetsBody request parse), the asset
-// detail `actions` slot (session 56); axe light + dark.
+// detail `actions` slot (session 56; GET /api/config for Share to Slack); axe light + dark.
 
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -30,6 +30,7 @@ import {
   meSteward,
   metricViews,
   pagedAssets,
+  runtimeConfig,
   sources,
   stewardRoutes,
   TARGET_CATALOG,
@@ -169,6 +170,8 @@ describe('S4 steward · loading / populated', () => {
       ...stewardRoutes,
       'GET /api/assets/:assetId': assetReadmissionRate,
       'GET /api/assets/:assetId/versions': [],
+      // Share to Slack (session 56) reads GET /api/config for stewards in the sheet footer.
+      'GET /api/config': runtimeConfig,
     });
     const name = assetReadmissionRate.displayName ?? assetReadmissionRate.name;
     const { user } = renderPage({}, { assetActions: (a) => <button type="button">Share {a.name}</button> });

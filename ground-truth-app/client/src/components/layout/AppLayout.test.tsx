@@ -20,6 +20,7 @@ import {
   feedbackQueueRoutes,
   notifications,
   notificationsRoutes,
+  runtimeConfig,
   settingsRoutes,
 } from '../../test/fixtures';
 import { pressKey, tabUntil } from '../../test/keyboard';
@@ -44,7 +45,8 @@ function shell(props: AppLayoutProps = {}): ReactElement {
 
 function renderShell(options: RenderWithProvidersOptions & { props?: AppLayoutProps } = {}) {
   const { props, ...rest } = options;
-  mockApi(notificationsRoutes);
+  // Share to Slack (session 56) reads GET /api/config for stewards when the list renders.
+  mockApi({ ...notificationsRoutes, 'GET /api/config': runtimeConfig });
   return renderWithProviders(shell(props), { roles: STEWARD, ...rest });
 }
 
