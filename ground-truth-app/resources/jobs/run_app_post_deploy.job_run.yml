@@ -1,6 +1,7 @@
 # resources/jobs/run_app_post_deploy.job_run.yml
 # Deploy hook: auto-triggers app_post_deploy_setup on every `bundle deploy`.
-# Ensures M2M SPN has App CAN_USE + UC grants (USE CATALOG/SCHEMA, EXECUTE).
+# Ensures M2M SPN has App CAN_USE + UC grants (USE CATALOG/SCHEMA, EXECUTE,
+# READ/WRITE VOLUME on ui_visual_checks; the volume comes from ground-truth-infra, deployed first).
 # Requires: engine: direct, CLI >= 1.7.0
 
 resources:
@@ -14,3 +15,4 @@ resources:
         catalog: ${var.catalog}
         schema_name: ${var.catalog}.${var.schema_name}
         mcp_service_name: ${var.catalog}.${var.schema_name}.semantic-ground-truth-mcp
+        visual_checks_volume: ${var.catalog}.${var.schema_name}.ui_visual_checks

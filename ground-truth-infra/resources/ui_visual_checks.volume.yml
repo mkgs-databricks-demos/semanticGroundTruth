@@ -5,11 +5,10 @@
 # Written by ground-truth-app's ui_visual_checks job (parameter output_volume points here).
 # Runbook: docs/runbooks/ui_visual_checks.md
 #
-# Grants: none beyond the owner, same as agent_skills. The job runs as the bundle deployer (the
-# schema and volume owner), who writes the screenshots; the M2M SPN only authenticates the browser
-# against the app and never touches this volume. The M2M SPN's application id is not a bundle
-# variable (ensure_m2m_service_principal creates it at runtime), so a READ/WRITE VOLUME grant to it
-# would need a new variable first; see the session 48 summary.
+# Grants: none in this file. The M2M SPN's READ VOLUME + WRITE VOLUME grant is applied with its
+# other UC grants by ground-truth-app's app_post_deploy_setup job (grant_app_permissions notebook,
+# visual_checks_volume parameter), because the SPN's application id is only known at runtime
+# (ensure_m2m_service_principal). This bundle deploys first, so the volume exists by then.
 
 resources:
   volumes:
