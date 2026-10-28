@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-28 | 5-5 | 58 | [Converge infra: dev deploys with no quality monitor, prod validate lists bronze monitor (D-B5-4), runbook §6; blocked on M2M SPN READ/WRITE VOLUME on ui_visual_checks (app_post_deploy_setup not run since 6d2b95f) (run 229891579528310)](2026-10-28_w5-5-58-infra-converge-monitoring.md) | converge | blocked | `mg-genie-build-5` |
 | 2026-10-28 | 5-4 | 57 | [Converge infra; owner D-B5-4 (bronze monitor prod-only) + redeploy, attempt 3 stable, files_changed fixed (run 229891579528310, w5-4 repair 2)](2026-10-28_w5-4-57-infra-converge-setup-metric-views.md) | converge | pass | `mg-genie-build-5` |
 | 2026-10-28 | 5-4 | 57 | [Converge infra: post_deploy_setup idempotent (20536fcd kept), metric view UUID ids, dry-run, batch reject; blocked on quality-monitor 429 quota + remote branch delete (run 229891579528310)](2026-10-28_w5-4-57-infra-converge-setup-metric-views.md) | converge | blocked; repair: pass but inconsistent (attempt-3 file missing from files_changed) | `mg-genie-build-5` |
 | 2026-10-28 | 5-3 | 55 | [Steward triage: Feedback queue (S8), Conflicts (S9), Feedback branches (S10); S9/S10 tests + confirm-dialog focus fix by owner after step limit (run 229891579528310, w5-3 repair)](2026-10-28_w5-3-55-steward-triage-screens.md) | edit | pass | `mg-genie-build-5` |
