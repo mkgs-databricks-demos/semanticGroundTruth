@@ -23,6 +23,11 @@ resources:
               schema: "${resources.schemas.ground_truth_schema.name}"
               warehouse_id: "${resources.sql_warehouses.infra_warehouse.id}"
               lakebase_project_id: "${resources.postgres_projects.ground_truth_project.id}"
+              # Job ids, not names: deployed names carry the target prefix ("[dev <user>] ...").
+              feedback_pipeline_job_id: "${resources.jobs.feedback_pipeline.id}"
+              freshness_resurfacing_job_id: "${resources.jobs.freshness_resurfacing.id}"
+              metric_view_deploy_job_id: "${resources.jobs.metric_view_deploy.id}"
+              post_deploy_validation_job_id: "{{job.id}}"
           environment_key: serverless
 
       email_notifications:
