@@ -1,79 +1,72 @@
+// @a11y-strict
 // client/src/components/steward/AssetDetailSheet.tsx — asset detail + versions in a sheet
 // Session 13 · Wave 4 · No enum, no namespace, no default export
+// Session 54 · Build 5 · wave 5-2 (S4): ui/Sheet (required accessible name),
+// loading / error states, versions timeline as a list, and an `actions` slot
+// rendered in the sheet footer (session 56 mounts "Share to Slack" there).
 
-import {
-  Badge,
-  Card,
-  CardContent,
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  Skeleton,
-} from '@databricks/appkit-ui/react';
+import type { ReactNode } from 'react';
+import type { Asset } from '../../../../shared/contracts';
 import { useAsset, useAssetVersions } from '../../lib/api';
+import { Badge, InlineAlert, SkeletonGroup } from '../ui';
+import { Sheet } from '../ui/Sheet';
 
-export function AssetDetailSheet({
-  assetId,
-  open,
-  onOpenChange,
-}: {
+export interface AssetDetailSheetProps {
   assetId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}) {
+  /** Extra actions for the loaded asset (footer). Rendered only once the asset has loaded. */
+  actions?: (asset: Asset) => ReactNode;
+}
+
+export function AssetDetailSheet({ assetId, open, onOpenChange, actions }: AssetDetailSheetProps) {
+  if (!assetId) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange} title="Asset detail">
+        <div data-testid="steward-asset-detail-root" />
+      </Sheet>
+    );
+  }
+  return <LoadedAssetSheet assetId={assetId} open={open} onOpenChange={onOpenChange} actions={actions} />;
+}
+
+function LoadedAssetSheet({ assetId, open, onOpenChange, actions }: AssetDetailSheetProps & { assetId: string }) {
+  const asset = useAsset(assetId);
+  const loaded = asset.isSuccess ? asset.data : null;
+  const extra = loaded && actions ? actions(loaded) : null;
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
-        {assetId ? (
-          <AssetDetailContent assetId={assetId} />
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={loaded ? loaded.displayName || loaded.name : 'Asset detail'}
+      footer={extra ? <div className="flex flex-wrap gap-2">{extra}</div> : undefined}
+    >
+      <div data-testid="steward-asset-detail-root">
+        {asset.isPending ? (
+          <SkeletonGroup label="Loading asset" lines={4} />
+        ) : asset.isError ? (
+          <InlineAlert title="Couldn't load the asset" onRetry={() => void asset.refetch()} retrying={asset.isFetching}>
+            {asset.error.message}
+          </InlineAlert>
         ) : (
-          <SheetHeader>
-            <SheetTitle>Asset Detail</SheetTitle>
-          </SheetHeader>
+          <AssetDetailContent asset={asset.data} />
         )}
-      </SheetContent>
+      </div>
     </Sheet>
   );
 }
 
-function AssetDetailContent({ assetId }: { assetId: string }) {
-  const { data: asset, isLoading, error } = useAsset(assetId);
-  const versions = useAssetVersions(assetId);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-3 pt-6">
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-      </div>
-    );
-  }
-
-  if (error || !asset) {
-    return (
-      <div className="pt-6">
-        <p className="text-sm text-destructive">
-          {error?.message ?? 'Asset not found.'}
-        </p>
-      </div>
-    );
-  }
+function AssetDetailContent({ asset }: { asset: Asset }) {
+  const versions = useAssetVersions(asset.id);
 
   return (
     <>
-      <SheetHeader>
-        <SheetTitle>{asset.displayName || asset.name}</SheetTitle>
-      </SheetHeader>
-
-      <div className="mt-4 space-y-4">
+      <div className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-2">
-          <Badge variant="outline">{asset.assetType}</Badge>
-          <Badge>{asset.status}</Badge>
-          {asset.domain && (
-            <Badge variant="secondary">{asset.domain}</Badge>
-          )}
+          <Badge tone="outline">{asset.assetType}</Badge>
+          <Badge tone="info">{asset.status}</Badge>
+          {asset.domain ? <Badge>{asset.domain}</Badge> : null}
         </div>
 
         {asset.description && (
@@ -95,31 +88,23 @@ function AssetDetailContent({ assetId }: { assetId: string }) {
         </div>
 
         <div>
-          <h4 className="mb-2 text-sm font-medium">Versions</h4>
-          {versions.isLoading ? (
-            <Skeleton className="h-16 w-full" />
-          ) : versions.error ? (
-            <p className="text-sm text-destructive">{versions.error.message}</p>
-          ) : !versions.data || versions.data.length === 0 ? (
+          <h3 className="mb-2 text-sm font-bold">Versions</h3>
+          {versions.isPending ? (
+            <SkeletonGroup label="Loading versions" lines={2} />
+          ) : versions.isError ? (
+            <InlineAlert title="Couldn't load versions">{versions.error.message}</InlineAlert>
+          ) : versions.data.length === 0 ? (
             <p className="text-sm text-muted-foreground">No versions recorded.</p>
           ) : (
-            <div className="space-y-2">
+            <ol className="flex flex-col gap-2">
               {versions.data.map((v) => (
-                <Card key={v.id}>
-                  <CardContent className="py-2 text-sm">
-                    <span className="font-mono">v{v.version}</span>
-                    <span className="ml-2 text-muted-foreground">
-                      {new Date(v.createdAt).toLocaleDateString()}
-                    </span>
-                    {v.description && (
-                      <p className="mt-1 text-muted-foreground">
-                        {v.description}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
+                <li key={v.id} className="rounded-md border border-border p-2 text-sm">
+                  <span className="font-mono">v{v.version}</span>
+                  <span className="ml-2 text-muted-foreground">{new Date(v.createdAt).toLocaleDateString('en-US')}</span>
+                  {v.description ? <p className="mt-1 text-muted-foreground">{v.description}</p> : null}
+                </li>
               ))}
-            </div>
+            </ol>
           )}
         </div>
       </div>

@@ -1,123 +1,125 @@
+// @a11y-strict
 // client/src/components/steward/MetricViewPanel.tsx — metric view list + detail + validate
 // Session 13 · Wave 4 · No enum, no namespace, no default export
+// Session 54 · Build 5 · wave 5-2 (S4): toggle buttons (aria-pressed) for the
+// list, skeleton / error (Retry) / empty ("No metric views found in this
+// catalog") states, Validate result announced through role="status".
 
 import { useState } from 'react';
-import {
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Skeleton,
-} from '@databricks/appkit-ui/react';
+import { Button } from '@databricks/appkit-ui/react';
 import type { MetricViewDetail } from '../../../../shared/contracts';
 import { useMetricView, useMetricViews, useValidateMetricView } from '../../lib/api';
+import { Badge, EmptyPanel, Icon, InlineAlert, SkeletonGroup } from '../ui';
 
-export function MetricViewPanel() {
+export const METRIC_VIEWS_EMPTY_TITLE = 'No metric views found in this catalog';
+
+export function MetricViewPanel({ onImport }: { onImport?: () => void }) {
   const [selected, setSelected] = useState<string | null>(null);
-  const { data: views, isLoading, error } = useMetricViews();
+  const views = useMetricViews();
 
-  if (isLoading) {
+  if (views.isPending) {
+    return <SkeletonGroup label="Loading metric views" lines={4} />;
+  }
+
+  if (views.isError) {
     return (
-      <div className="space-y-2">
-        {Array.from({ length: 3 }, (_, i) => (
-          <Skeleton key={i} className="h-12 w-full" />
-        ))}
-      </div>
+      <InlineAlert title="Couldn't load metric views" onRetry={() => void views.refetch()} retrying={views.isFetching}>
+        {views.error.message}
+      </InlineAlert>
     );
   }
 
-  if (error) {
-    return <p className="text-sm text-destructive">{error.message}</p>;
-  }
-
-  if (!views || views.length === 0) {
+  if (views.data.length === 0) {
     return (
-      <p className="py-6 text-center text-sm text-muted-foreground">
-        No metric views found.
-      </p>
+      <EmptyPanel
+        illustration="unity-catalog"
+        title={METRIC_VIEWS_EMPTY_TITLE}
+        description="Metric views appear here once they exist in the app's catalog and schema."
+        action={
+          onImport ? (
+            <Button variant="outline" onClick={onImport} className="min-h-[44px]">
+              Import assets
+            </Button>
+          ) : undefined
+        }
+      />
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        {views.map((v) => (
-          <Card
-            key={v.fullName}
-            className={`cursor-pointer transition-colors ${
-              selected === v.fullName ? 'ring-2 ring-primary' : 'hover:bg-muted/50'
-            }`}
-            onClick={() => setSelected(v.fullName === selected ? null : v.fullName)}
-          >
-            <CardContent className="flex items-center justify-between py-3">
-              <span className="text-sm font-medium">{v.fullName}</span>
-              <div className="flex gap-1.5">
-                <Badge variant="outline">{v.measureCount}m</Badge>
-                <Badge variant="outline">{v.dimensionCount}d</Badge>
-              </div>
-            </CardContent>
-          </Card>
+    <div className="flex flex-col gap-4">
+      <ul className="flex flex-col gap-2">
+        {views.data.map((v) => (
+          <li key={v.fullName}>
+            <button
+              type="button"
+              aria-pressed={selected === v.fullName}
+              onClick={() => setSelected(v.fullName === selected ? null : v.fullName)}
+              className="flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 text-left text-card-foreground aria-pressed:border-primary"
+            >
+              <span className="font-mono text-sm">{v.fullName}</span>
+              <span className="flex gap-1.5">
+                <Badge tone="outline">{v.measureCount} measures</Badge>
+                <Badge tone="outline">{v.dimensionCount} dimensions</Badge>
+              </span>
+            </button>
+          </li>
         ))}
-      </div>
+      </ul>
 
-      {selected && <MetricViewDetailCard fullName={selected} />}
+      {selected ? <MetricViewDetailCard fullName={selected} /> : null}
     </div>
   );
 }
 
 function MetricViewDetailCard({ fullName }: { fullName: string }) {
-  const { data, isLoading, error } = useMetricView(fullName);
+  const detail = useMetricView(fullName);
   const validate = useValidateMetricView();
 
-  if (isLoading) {
-    return <Skeleton className="h-32 w-full" />;
+  if (detail.isPending) {
+    return <SkeletonGroup label="Loading metric view" lines={4} />;
   }
 
-  if (error || !data) {
-    return <p className="text-sm text-destructive">{error?.message ?? 'Not found.'}</p>;
+  if (detail.isError) {
+    return (
+      <InlineAlert title="Couldn't load the metric view" onRetry={() => void detail.refetch()} retrying={detail.isFetching}>
+        {detail.error.message}
+      </InlineAlert>
+    );
   }
 
+  const data = detail.data;
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">{data.fullName}</CardTitle>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={validate.isPending}
-            onClick={() => validate.mutate(fullName)}
-          >
-            {validate.isPending ? 'Validating…' : 'Validate'}
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {data.comment && (
-          <p className="text-sm text-muted-foreground">{data.comment}</p>
-        )}
+    <section aria-label={data.fullName} className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-mono text-sm font-bold">{data.fullName}</h3>
+        <Button
+          size="sm"
+          variant="outline"
+          className="min-h-[44px] gap-1.5"
+          disabled={validate.isPending}
+          onClick={() => validate.mutate(fullName)}
+          data-testid="steward-metric-view-validate"
+        >
+          <Icon name="check" />
+          {validate.isPending ? 'Validating…' : 'Validate'}
+        </Button>
+      </div>
+      {data.comment ? <p className="text-sm text-muted-foreground">{data.comment}</p> : null}
 
-        <ColumnSection title="Measures" columns={data.measures} />
-        <ColumnSection title="Dimensions" columns={data.dimensions} />
+      <ColumnSection title="Measures" columns={data.measures} />
+      <ColumnSection title="Dimensions" columns={data.dimensions} />
 
-        {validate.data && (
-          <div className="mt-2 rounded-md border p-3 text-sm">
-            <p className={validate.data.valid ? 'text-[var(--success)]' : 'text-destructive'}>
-              {validate.data.valid ? 'Validation passed' : 'Validation failed'}
-            </p>
-            {validate.data.error && (
-              <p className="mt-1 text-destructive">{validate.data.error}</p>
-            )}
-          </div>
-        )}
-
-        {validate.error && (
-          <p className="text-sm text-destructive">{validate.error.message}</p>
-        )}
-      </CardContent>
-    </Card>
+      <div role="status" className="text-sm">
+        {validate.data ? (
+          <>
+            <p className="font-medium">{validate.data.valid ? 'Validation passed' : 'Validation failed'}</p>
+            {validate.data.error ? <p className="mt-1 font-mono text-destructive">{validate.data.error}</p> : null}
+          </>
+        ) : null}
+      </div>
+      {validate.isError ? <InlineAlert title="Couldn't validate">{validate.error.message}</InlineAlert> : null}
+    </section>
   );
 }
 
@@ -132,7 +134,7 @@ function ColumnSection({
 
   return (
     <div>
-      <p className="text-xs font-medium text-muted-foreground">{title}</p>
+      <h4 className="text-sm font-bold">{title}</h4>
       <ul className="mt-1 space-y-1">
         {columns.map((c) => (
           <li key={c.name} className="text-sm">

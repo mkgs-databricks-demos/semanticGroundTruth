@@ -1,18 +1,15 @@
+// @a11y-strict
 // client/src/components/steward/CreateCampaignSheet.tsx — create campaign form in a sheet
 // Session 13 · Wave 4 · No enum, no namespace, no default export
+// Session 54 · Build 5 · wave 5-2 (S4): ui/Sheet (named dialog, focus trap,
+// Escape), InlineAlert for create errors.
 
 import { useState } from 'react';
-import {
-  Button,
-  Input,
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  Textarea,
-} from '@databricks/appkit-ui/react';
+import { Button, Input, Textarea } from '@databricks/appkit-ui/react';
 import type { CampaignType, CompletionRule } from '../../../../shared/contracts';
 import { useCreateCampaign } from '../../lib/api';
+import { InlineAlert } from '../ui';
+import { Sheet } from '../ui/Sheet';
 
 const CAMPAIGN_TYPE_OPTIONS: { value: CampaignType; label: string }[] = [
   { value: 'manual', label: 'Manual' },
@@ -76,13 +73,13 @@ export function CreateCampaignSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Create Campaign</SheetTitle>
-        </SheetHeader>
-
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="New campaign"
+      description="Group assets for reviewers to work through."
+    >
+        <form onSubmit={handleSubmit} className="space-y-4 pb-4">
           <Field label="Name">
             <Input
               value={name}
@@ -164,15 +161,14 @@ export function CreateCampaignSheet({
             </select>
           </Field>
 
-          {create.error && (
-            <p className="text-sm text-destructive">{create.error.message}</p>
-          )}
+          {create.isError ? (
+            <InlineAlert title="Couldn't create the campaign">{create.error.message}</InlineAlert>
+          ) : null}
 
-          <Button type="submit" disabled={!name || create.isPending}>
-            {create.isPending ? 'Creating…' : 'Create Campaign'}
+          <Button type="submit" className="min-h-[44px]" disabled={!name || create.isPending}>
+            {create.isPending ? 'Creating…' : 'Create campaign'}
           </Button>
         </form>
-      </SheetContent>
     </Sheet>
   );
 }
