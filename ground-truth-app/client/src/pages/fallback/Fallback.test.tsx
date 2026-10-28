@@ -14,6 +14,7 @@ import { ErrorBoundary } from '../../ErrorBoundary';
 import { THEME_STORAGE_KEY } from '../../lib/settings/ThemeSync';
 import { expectNoAxeViolations } from '../../test/axe';
 import {
+  campaign,
   conflictsRoutes,
   feedbackBranchesRoutes,
   feedbackQueueRoutes,
@@ -54,6 +55,8 @@ function shellApi(me = meSteward, theme: 'light' | 'dark' | 'system' = 'light') 
     'GET /api/me': me,
     'GET /api/me/settings': settingsWithTheme(theme),
     'PUT /api/me/settings': userSettings,
+    // The Settings page (session 52) loads campaigns for its default-campaign select.
+    'GET /api/campaigns': [campaign],
   });
 }
 
