@@ -8,20 +8,29 @@ resources:
       description: "A Databricks App powered by AppKit"
       source_code_path: ../
 
-      # Full runtime config. When `config` is set, the bundle's command + env REPLACE
-      # app.yaml's (the deployment lists only these env names). Until 2026-10-28 only
-      # three vars were here and the app.yaml valueFrom bindings were silently lost;
-      # the app only started because a gitignored local .env in the dev Git folder was
-      # uploaded with the source and read via --env-file-if-exists. A clean worktree
-      # deploy (no .env) failed with "Warehouse ID not found". Keep this list a superset
-      # of app.yaml env (app.yaml still serves plain `databricks apps deploy`).
+      # SINGLE SOURCE of the app's runtime command + env. app.yaml is a comment stub.
+      # When `config` is set, the bundle's command + env REPLACE app.yaml's (the
+      # deployment lists only these env names). Until 2026-10-28 only three vars were
+      # here and the app.yaml valueFrom bindings were silently lost; the app only
+      # started because a gitignored local .env in the dev Git folder was uploaded
+      # with the source and read via --env-file-if-exists. A clean worktree deploy
+      # (no .env) failed with "Warehouse ID not found".
       # deploy.sh passes --var exec_dashboard_url=<url> from the infra dashboard resource.
       config:
+        # Run node directly (same as `pnpm run start`) so SIGTERM from the platform
+        # reaches the server process and its graceful shutdown handler
+        # (server/lib/shutdown.ts), instead of going through a pnpm wrapper that
+        # prints `[ELIFECYCLE] Command failed`.
         command: ['node', '--env-file-if-exists=./.env', './dist/server.js']
         env:
+          # Also seen by the Apps build (prebuild runs vitest), hence the
+          # NODE_ENV=test pin in vitest.config.ts.
           - name: NODE_ENV
             value: production
           # ── App resource bindings (resource names under `resources:` below) ──
+          # value_from works only for app resources (secrets, warehouses, ...), not
+          # plain strings; DATABRICKS_VOLUME_AGENT_SKILLS is a plain value below
+          # (value_from: agents-skills left the agents plugin without a volume path).
           - name: DATABRICKS_SERVING_ENDPOINT_NAME
             value_from: agents-serving-endpoint
           - name: MLFLOW_EXPERIMENT_ID
@@ -33,11 +42,16 @@ resources:
           - name: LAKEBASE_ENDPOINT
             value_from: postgres
           # ── RBAC bootstrap ──
+          # M2M SPN client_id from the m2m-client-id secret resource below.
           - name: GT_BOOTSTRAP_ADMIN_IDS
             value_from: m2m-client-id
           - name: GT_ADMIN_EMAILS
             value: matthew.giglia@databricks.com
-          # ── OpenTelemetry: record every trace (see app.yaml) ──
+          # ── OpenTelemetry ──
+          # Record every trace unconditionally. Without this, the default parent-based
+          # sampler follows the platform proxy's sampling decision and drops most
+          # spans, leaving otel_spans near-empty. See:
+          # https://docs.databricks.com/aws/en/dev-tools/databricks-apps/observability/
           - name: OTEL_TRACES_SAMPLER
             value: always_on
           # ── Bundle-variable values ──

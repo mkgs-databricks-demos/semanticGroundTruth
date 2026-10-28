@@ -88,13 +88,13 @@
 | `exec_dashboard_url` | Executive AI/BI dashboard published URL → `GT_EXEC_DASHBOARD_URL` (via `resources/app.app.yml` `config.env`) | deploy.sh builds it from the infra `executive` dashboard ID | Dev target value is the real published URL `https://fevm-hls-fde.cloud.databricks.com/dashboardsv3/01f1cf0b38d31b7cbac5bdac6cafe3eb/published` (`resources.dashboards.executive`); deploy.sh rebuilds the same URL. Update it if the dashboard is recreated. Global default `""` |
 | `agents_skills_path` | Agent skills UC volume (`catalog.schema.volume`) | Default `${var.catalog}.${var.schema_name}.agent_skills` (infra volume) | `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.agent_skills` |
 
-> **Agent skills (2026-10-26):** sources are `agent_skills/<skill>/SKILL.md` (`review-guide`, `scoring-model`, `tracer-bullets`; moved from `server/agents/skills/`). AppKit reads `DATABRICKS_VOLUME_AGENT_SKILLS` at boot; it is set in `app.app.yml` `config.env` because an `app.yaml` `valueFrom` for the volume did not reach AppKit. Do not edit the volume by hand.
+> **Agent skills (2026-10-26):** sources are `agent_skills/<skill>/SKILL.md` (`review-guide`, `scoring-model`, `tracer-bullets`; moved from `server/agents/skills/`). AppKit reads `DATABRICKS_VOLUME_AGENT_SKILLS` at boot; it is set in `app.app.yml` `config.env` (no `app.yaml` env reaches the app: the bundle `config` block replaces it). Do not edit the volume by hand.
 
 ### App Configuration
 
 | File | Purpose |
 |------|---------|
-| `app.yaml` | App runtime config — command, env vars (valueFrom resource bindings) |
+| `app.yaml` | Comment stub only. App runtime command + env (incl. `value_from` resource bindings) live in `resources/app.app.yml` `config` |
 | `appkit.plugins.json` | Plugin manifest — resource bindings, env var mappings, scaffolding rules |
 | `.env` | Local dev env vars (gitignored) |
 | `.env.example` | Template for `.env` |
@@ -166,7 +166,7 @@ All scaffold-time placeholders replaced with infra-owned values:
 
 ## OpenTelemetry
 
-Declared in `databricks.yml` via `telemetry_export_destinations` (CLI ≥ 0.294.0). Platform auto-creates tables on first deploy. `OTEL_TRACES_SAMPLER=always_on` in `app.yaml` ensures all spans are recorded.
+Declared in `databricks.yml` via `telemetry_export_destinations` (CLI ≥ 0.294.0). Platform auto-creates tables on first deploy. `OTEL_TRACES_SAMPLER=always_on` in `resources/app.app.yml` `config.env` ensures all spans are recorded.
 
 | Signal | Table |
 |--------|-------|
@@ -261,8 +261,8 @@ OAuth secret scopes are immutable — must generate a new secret.
 5. **`app_db` parent = `production` branch.** Use `postgres_branches.production.id` for `LAKEBASE_BRANCH`, NOT `development`.
 6. **`deploy_bundle()` must pass `extra_args` to both validate AND deploy.** Fixed in deploy.sh.
 7. **OTel prefix: `semantic_ground_truth_`** (not `ground_truth_app_`). Matches app display name pattern.
-8. **`OTEL_TRACES_SAMPLER=always_on` required in `app.yaml`.** Without it, default parent-based sampler drops most spans.
-9. **`app.yaml` does not interpolate `${var.*}`.** Pass bundle variables to the runtime through `resources/app.app.yml` `config.env` (overrides `app.yaml` env), as done for `GT_EXEC_DASHBOARD_URL`.
+8. **`OTEL_TRACES_SAMPLER=always_on` required in `resources/app.app.yml` `config.env`.** Without it, default parent-based sampler drops most spans.
+9. **All runtime env lives in `resources/app.app.yml` `config` (single source); `app.yaml` is a comment stub.** The bundle `config` block REPLACES `app.yaml` command + env entirely (not a per-variable merge). Until 2026-10-28 the env was duplicated in `app.yaml`, the `value_from` bindings never reached the app, and it only started because a gitignored local `.env` was uploaded with the source; a clean worktree deploy failed with `Warehouse ID not found`. Use `value_from` for resource bindings and `${var.*}` for bundle variables there.
 10. **The Apps build runs vitest (`prebuild`).** vitest's default include also matches `.test.ts` files inside the container's Python `.venv/` (gradio), so `vitest.config.ts` must exclude `**/.venv/**`.
 11. **Secret scope READ for the app SPN is owned by the infra bundle.** The infra scope `permissions` block is authoritative and removes the READ that the app's `m2m-client-id` secret resource grants. The app bundle state still reports "unchanged". `grant_app_permissions` re-grants READ after every app deploy.
 12. **Unattended `bundle deploy` fails at `apps update` (`400 Invalid delegation claim present in Ctx`).** A scheduled Genie Code task has no user delegation claim, and the plan always contains a no-op `config.env` update (values are redacted by the API). Deploy code with `bundle run app --target dev`; apply config changes with an interactive `bundle deploy`.

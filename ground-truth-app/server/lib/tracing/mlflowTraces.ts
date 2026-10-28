@@ -5,7 +5,7 @@
 //
 // * The AppKit agents plugin (0.84.0) already records MLflow traces when the
 //   optional peer `@mlflow/core` is installed and `MLFLOW_EXPERIMENT_ID` is set
-//   (app.yaml binds it from the `agents-mlflow-experiment` resource, the infra
+//   (resources/app.app.yml config.env binds it from the `agents-mlflow-experiment` resource, the infra
 //   experiment `app_agents_experiment`). Every chat turn is an AGENT span and
 //   every tool call a TOOL span. Auth is the app's own Databricks credentials
 //   (Apps inject DATABRICKS_HOST / DATABRICKS_CLIENT_ID / _SECRET; `@mlflow/core`

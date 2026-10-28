@@ -32,7 +32,7 @@ graph LR
 ```
 ground-truth-app/
 ├── databricks.yml              # Bundle config (app + MCP service resources)
-├── app.yaml                    # App runtime config
+├── app.yaml                    # Comment stub; runtime config is resources/app.app.yml config
 ├── appkit.plugins.json         # Plugin manifest
 ├── package.json                # pnpm monorepo root
 ├── pnpm-workspace.yaml
@@ -177,7 +177,9 @@ Roles are stored in Lakebase app groups (`app.app_groups` + `app.app_group_membe
 
 ## Environment Variables
 
-### Platform-injected (via `app.yaml` resource bindings)
+All runtime env is set in `resources/app.app.yml` `config.env` (that block replaces `app.yaml`, which is a comment stub).
+
+### Platform-injected (via `config.env` `value_from` resource bindings)
 
 | Variable | Source |
 | --- | --- |
@@ -188,7 +190,7 @@ Roles are stored in Lakebase app groups (`app.app_groups` + `app.app_group_membe
 | `LAKEBASE_ENDPOINT` | Lakebase Postgres connection |
 | `OTEL_TRACES_SAMPLER` | `always_on` (record every trace) |
 
-### Application (set in `app.yaml`, `.env`, or Admin UI)
+### Application (set in `resources/app.app.yml` `config.env`, a local `.env`, or Admin UI)
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -203,7 +205,7 @@ Roles are stored in Lakebase app groups (`app.app_groups` + `app.app_group_membe
 | `SLACK_WEBHOOK_URL` | — | Slack notification destination (optional) |
 | `TEAMS_WEBHOOK_URL` | — | Teams notification destination (optional) |
 | `GENERIC_WEBHOOK_URL` | — | Generic webhook destination (optional) |
-| `GT_EXEC_DASHBOARD_URL` | `""` | Published URL of the executive AI/BI dashboard, served at runtime by `GET /api/config` (`executive_dashboard_url`; `null` unless it is an `https://` URL). Set by `resources/app.app.yml` `config.env` from the bundle variable `exec_dashboard_url`; `app.yaml` keeps an empty fallback. Replaces the build-time `VITE_EXEC_DASHBOARD_URL`. |
+| `GT_EXEC_DASHBOARD_URL` | `""` | Published URL of the executive AI/BI dashboard, served at runtime by `GET /api/config` (`executive_dashboard_url`; `null` unless it is an `https://` URL). Set by `resources/app.app.yml` `config.env` from the bundle variable `exec_dashboard_url`. Replaces the build-time `VITE_EXEC_DASHBOARD_URL`. |
 
 ## Bundle Variables and Targets
 

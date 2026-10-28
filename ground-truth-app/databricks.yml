@@ -34,7 +34,7 @@ variables:
     description: "Full name (catalog.schema.volume) of the agent skills UC volume created by ground-truth-infra"
     default: ${var.catalog}.${var.schema_name}.agent_skills
   exec_dashboard_url:
-    description: "Executive AI/BI dashboard published URL (https://...). Mapped to env GT_EXEC_DASHBOARD_URL in app.yaml. Session 23 supplies the real URL via deploy.sh --var."
+    description: "Executive AI/BI dashboard published URL (https://...). Mapped to env GT_EXEC_DASHBOARD_URL in resources/app.app.yml config.env. Session 23 supplies the real URL via deploy.sh --var."
     default: ""
   feedback_repo_url:
     description: "https URL of the Git repo that holds mg-genie-feedback-* branches (no .git suffix needed). Mapped to env GT_FEEDBACK_REPO_URL via resources/app.app.yml config.env; the server builds FeedbackBranch.htmlUrl from it. Empty = htmlUrl null. Override with --var feedback_repo_url=<url>."

@@ -1,48 +1,10 @@
-# Run node directly (same as `pnpm run start`) so SIGTERM from the platform reaches
-# the server process and its graceful shutdown handler (server/lib/shutdown.ts),
-# instead of going through a pnpm wrapper that prints `[ELIFECYCLE] Command failed`.
-command: ['node', '--env-file-if-exists=./.env', './dist/server.js']
-env:
-  - name: NODE_ENV
-    value: production
-
-  # ── App resource bindings (injected by platform from databricks.yml resources) ──
-  - name: DATABRICKS_SERVING_ENDPOINT_NAME
-    valueFrom: agents-serving-endpoint
-  - name: MLFLOW_EXPERIMENT_ID
-    valueFrom: agents-mlflow-experiment
-  - name: DATABRICKS_WAREHOUSE_ID
-    valueFrom: sql-warehouse
-  - name: DATABRICKS_JOB_ID
-    valueFrom: job
-  - name: LAKEBASE_ENDPOINT
-    valueFrom: postgres
-  # DATABRICKS_VOLUME_AGENT_SKILLS is set in resources/app.app.yml config.env
-  # (valueFrom: agents-skills left the agents plugin without a volume path).
-
-  # ── RBAC bootstrap ──
-  # M2M SPN client_id from the m2m-client-id secret resource (resources/app.app.yml).
-  # The resource must be attached via `bundle deploy` before any plain `apps deploy`.
-  - name: GT_BOOTSTRAP_ADMIN_IDS
-    valueFrom: m2m-client-id
-  - name: GT_ADMIN_EMAILS
-    value: matthew.giglia@databricks.com
-
-  # ── Runtime config ──
-  # Overridden at deploy time by app.app.yml config.env → ${var.exec_dashboard_url}.
-  # deploy.sh resolves the URL from the infra bundle's executive dashboard resource.
-  - name: GT_EXEC_DASHBOARD_URL
-    value: ""
-  # Overridden at deploy time by app.app.yml config.env → ${var.feedback_repo_url}
-  # (bundle input variable, default = this project's GitHub repo). Empty = no
-  # feedback-branch links. A plain string can't use valueFrom (resources only).
-  - name: GT_FEEDBACK_REPO_URL
-    value: ""
-
-  # ── OpenTelemetry ──
-  # Record every trace unconditionally. Without this, the default parent-based
-  # sampler follows the platform proxy's sampling decision and drops most spans,
-  # leaving otel_spans near-empty. See:
-  # https://docs.databricks.com/aws/en/dev-tools/databricks-apps/observability/
-  - name: OTEL_TRACES_SAMPLER
-    value: always_on
+# app.yaml: intentionally empty. Do not add `command` or `env` here.
+#
+# The app's runtime command and env live ONLY in resources/app.app.yml under
+# `resources.apps.app.config`. When that bundle `config` block is set it REPLACES
+# this file's command + env, so anything here would be silently ignored.
+# (2026-10-28: a duplicate env list here hid missing valueFrom bindings until a
+# clean deploy failed with "Warehouse ID not found".)
+#
+# Deploy with deploy.sh / `databricks bundle deploy`, not a plain
+# `databricks apps deploy`, which would start the app with no env at all.
