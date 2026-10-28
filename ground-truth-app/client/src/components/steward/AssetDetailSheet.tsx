@@ -4,10 +4,16 @@
 // Session 54 · Build 5 · wave 5-2 (S4): ui/Sheet (required accessible name),
 // loading / error states, versions timeline as a list, and an `actions` slot
 // rendered in the sheet footer (session 56 mounts "Share to Slack" there).
+// Session 56 · Build 5 · wave 5-3: the footer shows "Share to Slack" for
+// steward/admin when /api/config slackShareEnabled is true (G5 Option A),
+// followed by any `actions`. The share dialog stacks on top of the sheet;
+// closing it returns focus to the Share button.
 
+import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Asset } from '../../../../shared/contracts';
 import { useAsset, useAssetVersions } from '../../lib/api';
+import { ShareToSlackButton, ShareToSlackDialog, useSlackShareAvailable } from '../share';
 import { Badge, InlineAlert, SkeletonGroup } from '../ui';
 import { Sheet } from '../ui/Sheet';
 
@@ -33,14 +39,13 @@ export function AssetDetailSheet({ assetId, open, onOpenChange, actions }: Asset
 function LoadedAssetSheet({ assetId, open, onOpenChange, actions }: AssetDetailSheetProps & { assetId: string }) {
   const asset = useAsset(assetId);
   const loaded = asset.isSuccess ? asset.data : null;
-  const extra = loaded && actions ? actions(loaded) : null;
 
   return (
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
       title={loaded ? loaded.displayName || loaded.name : 'Asset detail'}
-      footer={extra ? <div className="flex flex-wrap gap-2">{extra}</div> : undefined}
+      footer={loaded ? <AssetFooterActions asset={loaded} actions={actions} /> : undefined}
     >
       <div data-testid="steward-asset-detail-root">
         {asset.isPending ? (
@@ -54,6 +59,36 @@ function LoadedAssetSheet({ assetId, open, onOpenChange, actions }: AssetDetailS
         )}
       </div>
     </Sheet>
+  );
+}
+
+/** Share to Slack (steward/admin, flag on) + the caller's `actions`; nothing when both are empty. */
+function AssetFooterActions({ asset, actions }: { asset: Asset; actions?: (asset: Asset) => ReactNode }) {
+  const canShare = useSlackShareAvailable();
+  const [shareOpen, setShareOpen] = useState(false);
+  const shareButtonRef = useRef<HTMLButtonElement>(null);
+  const extra = actions ? actions(asset) : null;
+  if (!canShare && !extra) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {canShare ? (
+        <>
+          <ShareToSlackButton
+            ref={shareButtonRef}
+            testId="steward-asset-share-button"
+            size="default"
+            onClick={() => setShareOpen(true)}
+          />
+          <ShareToSlackDialog
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+            target={{ kind: 'asset', asset }}
+            returnFocusRef={shareButtonRef}
+          />
+        </>
+      ) : null}
+      {extra}
+    </div>
   );
 }
 

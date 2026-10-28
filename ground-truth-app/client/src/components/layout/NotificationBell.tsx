@@ -7,6 +7,11 @@
 // Escape closes and returns focus to the bell (KB K6). Offline disables
 // "Mark all read". `notificationActions` is the slot for per-item actions
 // (session 56 mounts "Share to Slack" there).
+// Session 56 · Build 5 · wave 5-3: each item shows "Share to Slack" for
+// steward/admin when /api/config slackShareEnabled is true (checked per item,
+// so nothing extra is fetched until the list renders), followed by any
+// `notificationActions`. Sharing closes the popover and opens the dialog at
+// the bell level; closing the dialog returns focus to the bell.
 
 import { useCallback, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -20,6 +25,8 @@ import {
 import { formatRelativeTime } from '../../lib/time';
 import { useOnlineStatus } from '../../lib/useOnlineStatus';
 import { cn } from '../../lib/utils';
+import { ShareToSlackButton, ShareToSlackDialog, useSlackShareAvailable } from '../share';
+import type { ShareTarget } from '../share';
 import { Icon } from '../ui/Icon';
 import { InlineAlert } from '../ui/InlineAlert';
 import { SkeletonGroup } from '../ui/Skeleton';
@@ -52,6 +59,14 @@ export function NotificationBell({ notificationActions }: NotificationBellProps 
   const failed = unread.isError;
   const count = unread.data?.count;
   const close = useCallback(() => setOpen(false), []);
+
+  const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const startShare = useCallback((notification: Notification) => {
+    setOpen(false);
+    setShareTarget({ kind: 'notification', notification });
+    setShareOpen(true);
+  }, []);
 
   return (
     <div className="group relative">
@@ -150,7 +165,7 @@ export function NotificationBell({ notificationActions }: NotificationBellProps 
                     <p className="text-xs text-muted-foreground">
                       <time dateTime={n.createdAt}>{formatRelativeTime(n.createdAt)}</time>
                     </p>
-                    {notificationActions ? <div className="mt-1 flex gap-2">{notificationActions(n)}</div> : null}
+                    <NotificationItemActions notification={n} onShare={startShare} extra={notificationActions} />
                   </div>
                 </li>
               ))}
@@ -158,6 +173,33 @@ export function NotificationBell({ notificationActions }: NotificationBellProps 
           )}
         </div>
       </ShellPopover>
+
+      <ShareToSlackDialog open={shareOpen} onOpenChange={setShareOpen} target={shareTarget} returnFocusRef={bellRef} />
+    </div>
+  );
+}
+
+interface NotificationItemActionsProps {
+  notification: Notification;
+  onShare: (notification: Notification) => void;
+  extra?: (notification: Notification) => ReactNode;
+}
+
+/** Share to Slack (steward/admin, flag on) + the caller's `notificationActions`. */
+function NotificationItemActions({ notification, onShare, extra }: NotificationItemActionsProps) {
+  const canShare = useSlackShareAvailable();
+  const custom = extra ? extra(notification) : null;
+  if (!canShare && !custom) return null;
+  return (
+    <div className="mt-1 flex flex-wrap gap-2">
+      {canShare ? (
+        <ShareToSlackButton
+          testId="shell-notification-share-button"
+          subject={notification.title}
+          onClick={() => onShare(notification)}
+        />
+      ) : null}
+      {custom}
     </div>
   );
 }
