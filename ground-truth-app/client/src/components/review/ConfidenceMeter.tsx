@@ -1,53 +1,53 @@
-// client/src/components/review/ConfidenceMeter.tsx
+// @a11y-strict
+// client/src/components/review/ConfidenceMeter.tsx — confidence meter on the review card
 // Session 17 · Wave 1 · --confidence-* token bands + numeric value
+// Session 51 · Build 5 · wave 5-2 · role="meter" "Confidence 71%", "71% confidence · 11 votes" text (brief S1)
 
-import { Badge } from '@databricks/appkit-ui/react';
-import { ShieldCheck } from 'lucide-react';
 import type { AssetStatus, ConfidenceScore } from '../../../../shared/contracts';
+import { Badge, Icon } from '../ui';
+
+/** Band token for a confidence percentage (ui_brand_plan: low < 40 <= mid < 70 <= high). */
+export function confidenceColor(pct: number): string {
+  if (pct >= 70) return 'var(--confidence-high)';
+  if (pct >= 40) return 'var(--confidence-mid)';
+  return 'var(--confidence-low)';
+}
 
 interface ConfidenceMeterProps {
   confidence: ConfidenceScore | null;
   status: AssetStatus;
 }
 
-function bandColor(pct: number): string {
-  if (pct >= 70) return 'var(--confidence-high)';
-  if (pct >= 40) return 'var(--confidence-mid)';
-  return 'var(--confidence-low)';
-}
-
 export function ConfidenceMeter({ confidence, status }: ConfidenceMeterProps) {
   const pct = confidence ? Math.round(confidence.confidence * 100) : 0;
-  const isCertified = status === 'CERTIFIED';
-  const color = bandColor(pct);
+  const votes = confidence?.totalVotes ?? 0;
+  const color = confidenceColor(pct);
+  const text = confidence ? `${pct}% confidence · ${votes} ${votes === 1 ? 'vote' : 'votes'}` : 'No votes yet';
 
   return (
-    <div className="flex items-center gap-2">
+    <div data-testid="review-card-confidence" className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="text-muted-foreground">Confidence</span>
+        <span className="font-bold tabular-nums" style={{ color }}>
+          {text}
+        </span>
+      </div>
       <div
-        className="flex-1 h-2 rounded-full bg-muted overflow-hidden"
-        role="progressbar"
+        role="meter"
+        aria-label={`Confidence ${pct}%`}
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`Confidence ${pct}%`}
+        className="h-2 overflow-hidden rounded-full bg-muted"
       >
-        <div
-          className="h-full rounded-full transition-all duration-normal"
-          style={{ width: `${pct}%`, backgroundColor: color }}
-        />
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
-      <span
-        className="text-xs font-medium tabular-nums w-10 text-right"
-        style={{ color }}
-      >
-        {pct}%
-      </span>
-      {isCertified && (
-        <Badge variant="default" className="gap-1">
-          <ShieldCheck className="h-3 w-3" />
+      {status === 'CERTIFIED' ? (
+        <Badge tone="success" className="gap-1 self-start">
+          <Icon name="shield" size={14} />
           Certified
         </Badge>
-      )}
+      ) : null}
     </div>
   );
 }

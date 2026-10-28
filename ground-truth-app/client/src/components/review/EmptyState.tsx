@@ -1,17 +1,46 @@
-// client/src/components/review/EmptyState.tsx
+// @a11y-strict
+// client/src/components/review/EmptyState.tsx — S1 empty state ("All caught up!")
 // Session 12 · Wave 4
+// Session 51 · Build 5 · wave 5-2 · EmptyPanel + data-quality-3 illustration (no lucide PartyPopper, F6);
+// "Switch campaign" only with a campaign filter, "View leaderboard" always (screen_inventory S1).
 
-import { PartyPopper } from 'lucide-react';
+import { Button } from '@databricks/appkit-ui/react';
+import { Link } from 'react-router';
+import { EmptyPanel } from '../ui';
 
-export function EmptyState() {
+interface EmptyStateProps {
+  campaignFiltered: boolean;
+  /** Moves focus to the campaign filter. */
+  onSwitchCampaign: () => void;
+}
+
+export function EmptyState({ campaignFiltered, onSwitchCampaign }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-      <PartyPopper className="h-12 w-12 text-muted-foreground" />
-      <h2 className="text-xl font-semibold">All caught up!</h2>
-      <p className="text-muted-foreground text-sm max-w-xs">
-        There are no assets waiting for your review right now. Check back later
-        or switch campaigns.
-      </p>
+    <div data-testid="review-empty-root">
+      <EmptyPanel
+        illustration="data-quality-3"
+        title="All caught up!"
+        description={
+          campaignFiltered
+            ? "There's nothing waiting for your review in this campaign."
+            : "There's nothing waiting for your review right now."
+        }
+        action={
+          <div className="flex flex-wrap justify-center gap-2">
+            {campaignFiltered ? (
+              <Button variant="outline" className="min-h-[44px]" onClick={onSwitchCampaign}>
+                Switch campaign
+              </Button>
+            ) : null}
+            <Link
+              to="/leaderboard"
+              className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              View leaderboard
+            </Link>
+          </div>
+        }
+      />
     </div>
   );
 }
