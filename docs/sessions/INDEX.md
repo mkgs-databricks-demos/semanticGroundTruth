@@ -5,7 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
-| 2026-10-28 | 5-1 | 50 | [Share to Slack server: slackMcp client, SlackShareService, routes, flag, ai-gateway scope; contract-suite patch needed (run 229891579528310)](2026-10-28_w5-1-50-slack-share-server.md) | edit | blocked | `mg-genie-build-5` |
+| 2026-10-28 | 5-1 | 50 | [Share to Slack server: slackMcp client, SlackShareService, routes, flag, ai-gateway scope; contract-suite patch applied by owner 1996517 (run 229891579528310)](2026-10-28_w5-1-50-slack-share-server.md) | edit | pass | `mg-genie-build-5` |
 | 2026-10-28 | 5-1 | 49 | [Shell (S0, S11), lazy routes, ThemeSync, build-5 API hooks (run 229891579528310)](2026-10-28_w5-1-49-shell-and-api-hooks.md) | edit | pass | `mg-genie-build-5` |
 | 2026-10-27 | 5-0 | 44 | [Contracts + server fixes: htmlUrl, slackShareEnabled, resurfacedFromSkip, 3 Share to Slack route stubs (run 229891579528310, w5-0 repair)](2026-10-27_w5-0-44-contracts-and-server-fixes.md) | edit | pass | `mg-genie-build-5` |
 | 2026-10-27 | 5-0 | 42 | [Design-system port: tokens, icons, UI primitives; 6 catalog SVGs downloaded by owner (run 229891579528310, w5-0 repair)](2026-10-27_w5-0-42-design-system-port.md) | edit | pass | `mg-genie-build-5` |

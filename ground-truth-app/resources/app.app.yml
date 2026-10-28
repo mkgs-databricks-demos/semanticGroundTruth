@@ -26,12 +26,16 @@ resources:
       lifecycle:
         started: true
       # On behalf of user (OBO) API scopes — the app acts as the logged-in user for these APIs.
-      # Available scopes: sql, genie, files, model-serving
+      # Available scopes: sql, genie, files, model-serving, ai-gateway
+      # ai-gateway (build 5 session 50): Share to Slack calls the Unity Gateway MCP
+      # system.ai.slack as the signed-in user. Adding a scope makes every user
+      # consent again once on their next open of the app.
       user_api_scopes:
         - sql
         - genie
         - files
         - model-serving
+        - ai-gateway
 
       # OpenTelemetry — logs, metrics, and traces to Unity Catalog.
       # Platform captures system logs + login events automatically.
