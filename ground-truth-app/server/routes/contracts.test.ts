@@ -26,12 +26,13 @@ function roleOf(handlers: RequestHandler[]): RoleMiddleware[] {
 }
 
 describe('route registrations vs ROUTE_CONTRACTS', () => {
-  it('registers exactly the 50 contracted routes, each once', () => {
+  // 50 + the 3 build-5 Share to Slack routes (slack.ts, 501 stubs until session 50).
+  it('registers exactly the 53 contracted routes, each once', () => {
     const registered = registrations.map((r) => key(r.method, r.path)).sort();
     const contracted = ROUTE_CONTRACTS.map((c) => key(c.method, c.path)).sort();
     expect(new Set(registered).size).toBe(registered.length);
     expect(registered).toEqual(contracted);
-    expect(registered).toHaveLength(50);
+    expect(registered).toHaveLength(53);
   });
 
   it('registers the 9 session-33 routes', () => {
