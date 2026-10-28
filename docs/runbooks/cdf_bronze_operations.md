@@ -166,16 +166,28 @@ The text equals bronze `_record_key` for the referenced row. Source columns and 
 
 ## 6. Lakehouse Monitoring on bronze (G11)
 
-Resource: `ground-truth-infra/resources/monitors/bronze_lakebase_cdf.quality_monitor.yml` (`quality_monitors.bronze_lakebase_cdf`), deployed with the infra bundle.
+Resource: `ground-truth-infra/resources/monitors/bronze_lakebase_cdf.quality_monitor.yml` (`quality_monitors.bronze_lakebase_cdf`), deployed with the infra bundle **to the `prod` target only** (owner decision D-B5-4, 2026-10-28).
+
+**Why prod-only.** The shared `fevm-hls-fde` metastore is at its 1000 quality-monitor limit. Creating the dev monitor returns `429 RESOURCE_EXHAUSTED: Cannot create Monitor because it exceeds the number of limit 1000`, and the CLI retries the 429 instead of failing, so `bundle deploy --target dev` hangs (build 5 session 57). The project owns no other monitors, so it cannot free capacity, and dev only carries test-scale vote traffic (the original G11 call was "prod only, once vote volume justifies it"). The resource is defined under `targets.prod.resources` in the YAML file. Dev has no monitor and no profile / drift tables; do not create one by hand.
+
+**Verified (build 5 session 58, 2026-10-28):** `bundle summary --target dev` lists no `Quality Monitors`, `w.quality_monitors.get` on the dev table returns `ResourceDoesNotExist`, and the dev deploy completes (no 429 hang). `bundle validate --strict --target prod` passes, and `bundle summary --target prod` lists `quality_monitors.bronze_lakebase_cdf`.
+
+**Re-enable in dev** once quota allows (a metastore admin raises the limit, or monitors are freed):
+
+1. Check capacity first. Do not test it by creating a throwaway monitor by hand; ask the metastore admin to confirm the monitor count is under the limit.
+2. In the YAML file, move the `quality_monitors.bronze_lakebase_cdf` block from `targets.prod.resources` to a top-level `resources:` key (same fields), so every target gets it. Leave the comment header in sync.
+3. `bundle validate --strict --target dev`, then `./deploy.sh --target dev --infra`. If the deploy stalls on `quality_monitors.bronze_lakebase_cdf`, the quota is still exhausted: cancel and move the block back.
+4. Refresh once by hand (below) and check that the two metric tables appear.
 
 | Setting | Value |
 |---|---|
-| Monitored table | `<catalog>.<schema>.bronze_lakebase_cdf` (dev: `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth`) |
+| Targets | `prod` only (D-B5-4); dev has none |
+| Monitored table | `<catalog>.<schema>.bronze_lakebase_cdf` (prod: `prod_ground_truth.semantic_ground_truth`) |
 | Profile | TimeSeries on `_timestamp` (CDF commit time), granularities `1 hour`, `1 day` |
 | Slices | `_source_table` (one slice per Postgres table, plus the whole table) |
 | Output schema | the project schema (same as the table) |
 | Assets | `${workspace.root_path}/monitoring/bronze_lakebase_cdf` (generated dashboard) |
-| Schedule | daily 06:00 UTC; **paused in dev** (development mode pauses all schedules, like `cdf_bronze_refresh`) |
+| Schedule | daily 06:00 UTC (`0 0 6 * * ?`, `UTC`). Prod runs in production mode, so the schedule is kept. Development mode drops a monitor's schedule entirely, and the API rejects `schedule.pause_status`, which matters only if the monitor is moved back to dev |
 | Notifications | none |
 
 **Output tables** (created in the project schema on the first refresh):
@@ -185,7 +197,7 @@ Resource: `ground-truth-infra/resources/monitors/bronze_lakebase_cdf.quality_mon
 
 Useful checks: rows per source table per hour (`column_name = ':table'`, `slice_key = '_source_table'`), and `percent_null` on `_record_key` (must stay 0).
 
-**Refresh by hand** (dev, or after a re-snapshot recovery, §1):
+**Refresh by hand** (after a re-snapshot recovery, §1, or in dev if the monitor is re-enabled there):
 
 * UI: Catalog Explorer, the table, **Quality** tab, **Refresh metrics**.
 * SDK: `w.quality_monitors.run_refresh(table_name="<catalog>.<schema>.bronze_lakebase_cdf")`, then `w.quality_monitors.list_refreshes(table_name=...)` until the refresh is `SUCCESS`.
