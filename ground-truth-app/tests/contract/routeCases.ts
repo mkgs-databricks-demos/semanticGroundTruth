@@ -13,6 +13,7 @@ import type { UserContext } from '../../server/lib/context';
 import { DEFAULT_SETTINGS } from '../../server/lib/config';
 import { DEFAULT_USER_SETTINGS } from '../../server/services/settings/userSettingsService';
 import type { FakeStore } from './fakeStore';
+import { FAKE_SLACK_CHANNELS, fakeSlack } from './fakeSlack';
 import {
   ADMIN,
   ASSETS,
@@ -122,13 +123,12 @@ const noConfidenceCard = (store: FakeStore, assetId: string, reviewed: number) =
   resurfacedFromSkip: false,
 });
 
-/** Share to Slack stubs (build 5 session 44): handlers land in session 50. */
-const SLACK_STUB = 'session 50 (Share to Slack handlers)';
-const SLACK_NA = {
-  404: { na: `stub until ${SLACK_STUB}: no notification / asset lookup yet` },
-  429: { na: `stub until ${SLACK_STUB}: no system.ai.slack call yet` },
-  500: { na: `stub until ${SLACK_STUB}: handler makes no data-layer call` },
-  502: { na: `stub until ${SLACK_STUB}: no system.ai.slack call yet` },
+/** Share to Slack (build 5 session 50): fake system.ai.slack modes (fakeSlack.ts). */
+const slackMode = (mode: typeof fakeSlack.mode) => () => { fakeSlack.mode = mode; };
+/** A notification addressed to the steward role (stewards may share it). */
+const STEWARD_NOTIFICATION_ID = GEN(900);
+const addStewardNotification = (s: FakeStore) => {
+  s.notifications.push({ ...NOTIFICATIONS[1], id: STEWARD_NOTIFICATION_ID, userId: 'steward', status: 'sent', readAt: null });
 };
 const SHARE_BODY = { channelId: 'C0123ABCD', mode: 'draft', message: 'Please review.' };
 
@@ -607,20 +607,49 @@ export const ROUTE_CASES: Record<string, RouteCase> = {
     },
   },
 
-  // ── slack.ts (build 5: 501 stubs until session 50) ──
+  // ── slack.ts (build 5: contract session 44, handlers session 50) ──
   'POST /api/notifications/:id/share-slack': {
-    stub: SLACK_STUB,
-    happy: { params: { id: NOTIFICATIONS[0].id }, body: SHARE_BODY, expected: () => null },
-    errors: { 400: { params: { id: NOTIFICATIONS[0].id }, body: { channelId: 'C0123ABCD', mode: 'post' } }, ...SLACK_NA },
+    happy: {
+      params: { id: STEWARD_NOTIFICATION_ID },
+      body: SHARE_BODY,
+      setup: addStewardNotification,
+      expected: () => ({ status: 'drafted' }),
+      after: (s) => {
+        if (s.slackShares.length !== 1 || s.slackShares[0].status !== 'sent') throw new Error('expected one audit row');
+      },
+    },
+    errors: {
+      400: { params: { id: NOTIFICATIONS[0].id }, body: { channelId: 'C0123ABCD', mode: 'post' } },
+      // NOTIFICATIONS[0] is addressed to the reviewer: not visible to a steward.
+      404: { params: { id: NOTIFICATIONS[0].id }, body: SHARE_BODY },
+      429: { params: { id: STEWARD_NOTIFICATION_ID }, body: SHARE_BODY, setup: (s) => { addStewardNotification(s); slackMode('rate_limited')(); } },
+      502: { params: { id: STEWARD_NOTIFICATION_ID }, body: SHARE_BODY, setup: (s) => { addStewardNotification(s); slackMode('down')(); } },
+    },
   },
   'POST /api/assets/:assetId/share-slack': {
-    stub: SLACK_STUB,
-    happy: { params: { assetId: IDS.A1 }, body: SHARE_BODY, expected: () => null },
-    errors: { 400: { params: { assetId: 'not-a-uuid' }, body: SHARE_BODY }, ...SLACK_NA },
+    happy: {
+      params: { assetId: IDS.A1 },
+      body: SHARE_BODY,
+      expected: () => ({ status: 'drafted' }),
+      after: (s) => {
+        if (s.slackShares.length !== 1) throw new Error('expected one audit row');
+      },
+    },
+    errors: {
+      400: { params: { assetId: 'not-a-uuid' }, body: SHARE_BODY },
+      404: { params: { assetId: IDS.UNKNOWN }, body: SHARE_BODY },
+      429: { params: { assetId: IDS.A1 }, body: SHARE_BODY, setup: slackMode('rate_limited') },
+      502: { params: { assetId: IDS.A1 }, body: SHARE_BODY, setup: slackMode('down') },
+    },
   },
   'GET /api/slack/channels': {
-    stub: SLACK_STUB,
-    happy: { query: { query: 'data-stewards' }, expected: () => null },
-    errors: { 400: { query: { query: 'x'.repeat(201) } }, ...SLACK_NA },
+    happy: { query: { query: 'data-stewards' }, expected: () => FAKE_SLACK_CHANNELS },
+    errors: {
+      400: { query: { query: 'x'.repeat(201) } },
+      404: { na: 'only when GT_SLACK_SHARE_ENABLED=false (server/services/notification/slackShare.test.ts)' },
+      429: { query: {}, setup: slackMode('rate_limited') },
+      500: { na: 'handler makes no data-layer call (system.ai.slack only)' },
+      502: { query: {}, setup: slackMode('down') },
+    },
   },
 };

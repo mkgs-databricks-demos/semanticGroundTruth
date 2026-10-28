@@ -24,6 +24,7 @@ import { assertTransition } from '../../server/services/campaign';
 import type { MembershipService } from '../../server/services/membership';
 import type { MetricViewService } from '../../server/services/metricView';
 import type { NotificationService } from '../../server/services/notification';
+import type { SlackShareAudit } from '../../server/services/notification/notificationService';
 import type { ReviewEngine } from '../../server/services/review';
 import { computeConfidence, deriveStatus, wilsonLowerBound } from '../../server/services/review/wilsonScore';
 import type { UserSettingsService } from '../../server/services/settings';
@@ -128,6 +129,8 @@ export class FakeStore {
   mcpSessions = new Map<string, { current_asset_id: string; campaign_id: string | null; updated_at: string }>();
   /** Steward notifications the fake steward service sent (eventType + batchId), in order. */
   stewardNotifications: { eventType: string; batchId: string }[] = [];
+  /** Share to Slack audit rows (NotificationService.recordSlackShare), in order. */
+  slackShares: SlackShareAudit[] = [];
 
   now(): string {
     return new Date(this.clockMs).toISOString();
@@ -347,7 +350,7 @@ type ReviewFake = Pick<ReviewEngine, 'getNext' | 'getNextWithMeta' | 'submitVote
 type AssetsFake = Pick<AssetRegistry, 'list' | 'get' | 'listVersions' | 'register' | 'listSynonyms' | 'addSynonym' | 'voteSynonym' | 'removeSynonym' | 'listExamples' | 'addExample' | 'voteExample'>;
 type CampaignsFake = Pick<CampaignManager, 'list' | 'create' | 'get' | 'updateStatus' | 'runFreshnessCheck'>;
 type MetricViewsFake = Pick<MetricViewService, 'listCatalogs' | 'listSchemas' | 'listMetricViews' | 'list' | 'get' | 'validate'>;
-type NotificationsFake = Pick<NotificationService, 'list' | 'unreadCount' | 'markRead' | 'getPreferences' | 'updatePreferences'>;
+type NotificationsFake = Pick<NotificationService, 'list' | 'unreadCount' | 'markRead' | 'getPreferences' | 'updatePreferences' | 'getVisible' | 'recordSlackShare'>;
 type MembershipFake = Pick<MembershipService, 'listGroups' | 'addMember' | 'removeMember'>;
 type StewardFake = Pick<StewardService, 'feedbackQueue' | 'conflicts' | 'resolveConflict' | 'listFeedbackBranches' | 'upsertFeedbackBranch' | 'updateFeedbackBranchStatus'>;
 type SettingsFake = Pick<UserSettingsService, 'get' | 'update'>;
@@ -389,6 +392,10 @@ export function createFakeDb(store: FakeStore): FakeDb {
         updated_at: store.now(),
       });
       return [];
+    }
+    if (/FROM app\.confidence_scores/.test(text)) {
+      const assetId = String(params[0]);
+      return store.assets.some((a) => a.id === assetId) ? [{ confidence: store.confidence(assetId).confidence }] : [];
     }
     throw new Error(`FakeDb: unexpected SQL: ${text.slice(0, 80)}`);
   };
@@ -657,6 +664,12 @@ export function createFakeServices(store: FakeStore): Services {
       return targets.length;
     },
     getPreferences: async (userId) => clone(store.preferences.filter((p) => p.userId === userId)).sort((a, b) => a.eventType.localeCompare(b.eventType)),
+    getVisible: async (id, userId, roles = []) =>
+      clone(store.notifications.find((n) => n.id === id && (n.userId === userId || (roles as string[]).includes(n.userId))) ?? null),
+    recordSlackShare: async (audit) => {
+      store.slackShares.push(clone(audit));
+      return store.newId();
+    },
     updatePreferences: async (userId, prefs) => {
       for (const p of prefs) {
         store.preferences = store.preferences.filter((x) => !(x.userId === userId && x.eventType === p.eventType));

@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ErrorResponseSchema, ROUTE_CONTRACTS, routeKey } from '../../shared/contracts/schemas';
 import { ERROR_CODE_FOR_STATUS, callRoute, newEnv, userBelow } from './harness';
 import { ROUTE_CASES, errorPlan } from './routeCases';
+import { fakeSlack } from './fakeSlack';
 import type { CallInput } from './routeCases';
 
 vi.mock('../../server/services/sources', async (importOriginal) => ({
@@ -17,8 +18,24 @@ vi.mock('../../server/services/sources', async (importOriginal) => ({
   SourceService: (await import('./fakeStore')).FakeSourceService,
 }));
 
+// Share to Slack (build 5 session 50): never call system.ai.slack from tests.
+vi.mock('../../server/services/notification/destinations/slackMcp', async (importOriginal) => {
+  const orig = await importOriginal<typeof import('../../server/services/notification/destinations/slackMcp')>();
+  const { AppError } = await import('../../server/lib/errors');
+  const { createFakeSlackClient } = await import('./fakeSlack');
+  return {
+    ...orig,
+    SlackMcpClient: createFakeSlackClient({
+      login: (url) => new orig.SlackLoginRequiredError(url),
+      rateLimited: () => new AppError('RATE_LIMITED', 'Slack rate limit reached; try again later', { retryAfterSeconds: 30 }),
+      down: () => new AppError('UPSTREAM_ERROR', 'system.ai.slack returned HTTP 503'),
+    }),
+  };
+});
+
 afterEach(() => {
   delete process.env.GT_EXEC_DASHBOARD_URL;
+  fakeSlack.mode = 'ok';
 });
 
 /** Input for a generated error case (errorPlan kind 'generated'): 401, 403 or 500. */
