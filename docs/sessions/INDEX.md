@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-28 | 5-4 | 57 | [Converge infra: post_deploy_setup idempotent (20536fcd kept), metric view UUID ids, dry-run, batch reject; blocked on quality-monitor 429 quota + remote branch delete (run 229891579528310)](2026-10-28_w5-4-57-infra-converge-setup-metric-views.md) | converge | blocked | `mg-genie-build-5` |
 | 2026-10-28 | 5-3 | 55 | [Steward triage: Feedback queue (S8), Conflicts (S9), Feedback branches (S10); S9/S10 tests + confirm-dialog focus fix by owner after step limit (run 229891579528310, w5-3 repair)](2026-10-28_w5-3-55-steward-triage-screens.md) | edit | pass | `mg-genie-build-5` |
 | 2026-10-28 | 5-3 | 56 | [Share to Slack UI; owner applied the AppLayout/StewardPage GET /api/config test patch (run 229891579528310, w5-3 repair)](2026-10-28_w5-3-56-share-to-slack-ui.md) | edit | pass | `mg-genie-build-5` |
 | 2026-10-28 | 5-3 | 56 | [Share to Slack UI (dialog + bell + asset sheet); blocked on unowned AppLayout/StewardPage tests needing a GET /api/config handler (run 229891579528310)](2026-10-28_w5-3-56-share-to-slack-ui.md) | edit | blocked | `mg-genie-build-5` |
