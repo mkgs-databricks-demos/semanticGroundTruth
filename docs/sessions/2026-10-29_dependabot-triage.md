@@ -1,6 +1,6 @@
 # Dependabot triage: 57 alerts on `main` @ `9198d2d` (2026-10-29)
 
-**Status:** on `mg-genie-dependabot-triage`. **Done (owner-approved 2026-10-29):** removed the Figma export's `_code/package.json` and `_code/pnpm-lock.yaml` (19 Figma rows), and applied the app change set (30 rows; `pnpm audit` 42 -> 12). **zod 4.6.7 tried and not applied:** it breaks the MCP App card size budget (see Results). **Waiting for the owner:** the zod budget decision, and dismissing the 10 not-reachable app alerts on GitHub.
+**Status:** on `mg-genie-dependabot-triage`. **Done (owner-approved 2026-10-29):** removed the Figma export's `_code/package.json` and `_code/pnpm-lock.yaml` (19 Figma rows), and applied the app change set (30 rows; `pnpm audit` 42 -> 12). **zod 4.6.7 tried and not applied:** it breaks the MCP App card size budget (see Results). **Waiting for the owner:** the zod budget decision, and dismissing the 10 not-reachable app alerts on GitHub. Follow-ups: [`../requests/2026-10-29_dependabot-follow-ups.md`](../requests/2026-10-29_dependabot-follow-ups.md).
 
 ## Source and method
 
@@ -192,4 +192,5 @@ Gotcha: an override experiment's lockfile keeps caret-range consumers on the exp
 * Deleted `docs/design/ui/figma/_code/package.json` and `docs/design/ui/figma/_code/pnpm-lock.yaml`.
 * `ground-truth-app/pnpm-workspace.yaml` (7 overrides), `ground-truth-app/package.json` (`vitest` 4.1.12, inert `overrides` copy synced), `ground-truth-app/pnpm-lock.yaml` (regenerated).
 * `PROJECT_MEMORY.md` and `ground-truth-app/PROJECT_MEMORY.md` (status rows, App Stack, Finding 17).
+* Added `docs/requests/2026-10-29_dependabot-follow-ups.md` (10 items) and its row in `docs/requests/README.md`.
 * All committed on `mg-genie-dependabot-triage` (from `main` @ `9198d2d`).
