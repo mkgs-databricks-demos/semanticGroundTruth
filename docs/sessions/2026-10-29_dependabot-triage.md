@@ -193,4 +193,5 @@ Gotcha: an override experiment's lockfile keeps caret-range consumers on the exp
 * `ground-truth-app/pnpm-workspace.yaml` (7 overrides), `ground-truth-app/package.json` (`vitest` 4.1.12, inert `overrides` copy synced), `ground-truth-app/pnpm-lock.yaml` (regenerated).
 * `PROJECT_MEMORY.md` and `ground-truth-app/PROJECT_MEMORY.md` (status rows, App Stack, Finding 17).
 * Added `docs/requests/2026-10-29_dependabot-follow-ups.md` (10 items) and its row in `docs/requests/README.md`.
+* Follow-up 3: added `ground-truth-app/server/lib/otelEnvCheck.ts` + `otelEnvCheck.test.ts` (8 tests) and one call in `server/server.ts` after the startup marker. Checks on an exact rsync: vitest 62 files, 1891 pass / 2 skipped; both `tsc -b` 0 errors; eslint clean on the new files (the `server.ts` `no-unsafe-argument` at `adoptAppKitHttpServer` was already there); `pnpm run build` OK; entry chunk 302.56 kB gzip; `bundle validate --strict --target dev` OK.
 * All committed on `mg-genie-dependabot-triage` (from `main` @ `9198d2d`).

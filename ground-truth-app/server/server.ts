@@ -7,6 +7,7 @@ import { createDb } from './lib/db';
 import { ConfigStore } from './lib/config';
 import { EventBus } from './lib/events';
 import { logger } from './lib/logger';
+import { logOtelEnvCheck } from './lib/otelEnvCheck';
 import { runMigrations } from './migrations';
 import { createServices } from './services';
 import { seedSampleAssets } from './seed';
@@ -95,6 +96,7 @@ createApp({
     // 7. Startup marker
     const port = process.env.PORT || 8000;
     logger.info(`listening on port ${port}`);
+    logOtelEnvCheck();
 
     // 8. Background timers
     const freshnessTimer = setInterval(() => {

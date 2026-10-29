@@ -34,8 +34,10 @@ Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when
 ## 3. Check for platform-injected OTel env (P2, app)
 
 * **Why:** the dismissals in item 4 rely on the Prometheus exporter and Jaeger propagator never loading. They load only if `OTEL_METRICS_EXPORTER` includes `prometheus` or `OTEL_PROPAGATORS` includes `jaeger`. `resources/app.app.yml` sets neither, but the Apps platform injects its own OTel env.
-* **Change:** log the names and values of `OTEL_METRICS_EXPORTER` and `OTEL_PROPAGATORS` once at startup (no secrets), or read them from a one-off diagnostic route; check the app logs.
-* **Done when:** both are unset or contain neither `prometheus` nor `jaeger`, and the result is recorded in the triage report.
+* **Confirmed in code (2026-10-29):** `@mlflow/core` 0.4.0 is the only `NodeSDK` caller and passes only `spanProcessors`, so `sdk-node` 0.205.0 reads both settings from env: `PrometheusExporter` only when `OTEL_METRICS_EXPORTER` lists `prometheus` (unset means otlp), `JaegerPropagator` only when `OTEL_PROPAGATORS` lists `jaeger`.
+* **Change (done, branch `mg-genie-dependabot-triage`):** `server/lib/otelEnvCheck.ts` logs one line right after `listening on port`: `info` "OTel env check: Prometheus exporter and Jaeger propagator not enabled", or `warn` if either is enabled. The JSON fields are `check: "otel_env"`, `metricsExporters`, `propagators`, `prometheusExporter`, `jaegerPropagator`, and `otelVarNames` (names only; OTLP headers can carry credentials). 8 tests in `server/lib/otelEnvCheck.test.ts`.
+* **Remaining:** after item 2's deploy, find the line in the app logs (Apps UI Logs tab, or the app's OTel logs table, filtering on `otel_env`) and record the values in the triage report.
+* **Done when:** the deployed line shows `prometheusExporter: false` and `jaegerPropagator: false`, and it is recorded in the triage report. If either is `true`, item 4 becomes a fix instead of a dismissal.
 
 ## 4. Dismiss the not-reachable alerts (P2, root / owner, after 3)
 
