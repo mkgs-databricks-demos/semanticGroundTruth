@@ -2,14 +2,14 @@
 
 **Source:** the Dependabot triage on branch `mg-genie-dependabot-triage` (commits `e33b1d8`, `f66faae`), report [`../sessions/2026-10-29_dependabot-triage.md`](../sessions/2026-10-29_dependabot-triage.md), `ground-truth-app/PROJECT_MEMORY.md` Finding 17.
 
-**Closed:** 3 (OTel env check: deployed line shows neither component enabled; commit `31b1b85`, deployment `01f1d3976c2d12cf810f52e0f5d24bb5`).
+**Closed:** 2 (dev deployment `01f1d3976c2d` verified: probes 12/12, `deploy_verification` 9/0, soak clean, `api_contract_tests` run `1079527457244820` 153 / 0); 3 (OTel env check: deployed line shows neither component enabled; commit `31b1b85`, deployment `01f1d3976c2d12cf810f52e0f5d24bb5`).
 
 Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when convenient.
 
 | # | P | Bundle | Item |
 |---|---|--------|------|
 | 1 | P1 | root / owner | Open and merge the PR for `mg-genie-dependabot-triage` |
-| 2 | P2 | app | Deploy the override set to dev and verify it (deployed, probes 12/12, `deploy_verification` 9/0, soak clean; only `api_contract_tests` left) |
+| 2 | P2 | app | ~~Deploy the override set to dev and verify it~~ closed |
 | 3 | P2 | app | ~~Confirm the deployed app has no platform-injected `OTEL_METRICS_EXPORTER` or `OTEL_PROPAGATORS`~~ closed |
 | 4 | P2 | root / owner | Dismiss the 10 not-reachable OTel alerts on GitHub (unblocked by 3) |
 | 5 | P2 | app / owner | zod GHSA-mrhx (high): decide on the MCP App card budget, or wait for AppKit |
@@ -31,7 +31,7 @@ Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when
 * **Change:** after item 1, deploy the app with `bundle run app` (not raw `apps deploy`; see the 2026-10-29 AppKit session), then run the post-deploy probes and `deploy_verification`.
 * **Done when:** deployment id recorded, probes 12/12, `deploy_verification` SUCCESS, 10 min soak with 0 error lines; `api_contract_tests` still 153 / 0.
 * **Status (2026-10-29):** `bundle run app --target dev` from the Git folder at `31b1b85` -> deployment `01f1d3976c2d12cf810f52e0f5d24bb5` SUCCEEDED, app RUNNING (about 3 min UNAVAILABLE during the build). First startup minute in the OTel logs table: 847 lines, 0 error lines, one `listening on port 8000`, no `Cannot find module` / `package`.
-* **Verified (2026-10-29, deployment `01f1d3976c2d`):** probes 12/12 as the M2M SPN (the 12 `runtime_targets.app.probes` in `docs/plans/build-5/waves.json`: `/health`, `/api/me` admin, `/api/campaigns`, `/api/config` x2, `/api/me/settings`, `/api/review/stats/me`, `/settings`, `/steward/feedback-branches`, `icons.manifest.json`, `dm-sans-regular.ttf`, MCP initialize `semantic-ground-truth` 0.1.0). `deploy_verification` (job `359858966042356`) run `92961586664054` SUCCESS, 9 passed / 0 failed, the same checks as the previous baseline run `263699809540741`. Soak 12:56-13:07Z: 144 log rows, 0 error and 0 warn lines, 1 start (no restarts), no missing module/package; 27 traces, 0 error spans. **Remaining:** `api_contract_tests` (expect 153 / 0).
+* **Verified (2026-10-29, deployment `01f1d3976c2d`):** probes 12/12 as the M2M SPN (the 12 `runtime_targets.app.probes` in `docs/plans/build-5/waves.json`: `/health`, `/api/me` admin, `/api/campaigns`, `/api/config` x2, `/api/me/settings`, `/api/review/stats/me`, `/settings`, `/steward/feedback-branches`, `icons.manifest.json`, `dm-sans-regular.ttf`, MCP initialize `semantic-ground-truth` 0.1.0). `deploy_verification` (job `359858966042356`) run `92961586664054` SUCCESS, 9 passed / 0 failed, the same checks as the previous baseline run `263699809540741`. Soak 12:56-13:07Z: 144 log rows, 0 error and 0 warn lines, 1 start (no restarts), no missing module/package; 27 traces, 0 error spans. `api_contract_tests` (job `443124502254957`) run `1079527457244820` SUCCESS: 153 pass / 0 fail / 201 `skipped_live` / 100% coverage, the same as build 5's run `281019161761628`. **Closed.**
 
 ## 3. Check for platform-injected OTel env (P2, app)
 
