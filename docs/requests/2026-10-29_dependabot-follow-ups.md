@@ -22,8 +22,7 @@ Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when
 ## 1. Open and merge the PR (P1, root / owner)
 
 * **State:** branch pushed; nothing is on `main`. The 19 Figma alerts and the 30 fixed app rows only close when the branch merges.
-* **PR title:** `Dependabot triage: remove Figma export manifest, app security overrides (pnpm audit 42 -> 12)`
-* **PR description (summary):** removes `docs/design/ui/figma/_code/package.json` + `pnpm-lock.yaml` (19 alerts, `react-router` 7.13.1, `vite` 8.0.5; nothing used them). Adds `pnpm-workspace.yaml` overrides `dompurify` 3.4.17, `echarts` 6.1.0, `js-yaml@4.3.1` -> 4.3.2, `yaml` 2.8.3, `qs` 6.16.1, `fast-uri` 3.1.9, `systeminformation` 5.33.18, and `vitest` 4.1.12. `zod` stays 4.3.6 (item 5). Checks: frozen install, lockfile-only byte-identical, vitest 1883 / 2 skipped, both `tsc -b`, `pnpm run build`, entry chunk 302.56 kB gzip, MCP card and contract schema byte-identical, `bundle validate --strict --target dev`. Not deployed.
+* **Scope:** the Figma export manifest removal, the 7 overrides + `vitest` 4.1.12, and the docs; checks are listed in the triage report's Results section.
 * **Done when:** merged; the Dependabot page for `main` drops the Figma and fixed app alerts.
 
 ## 2. Deploy the override set to dev (P2, app)
