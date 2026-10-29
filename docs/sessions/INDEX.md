@@ -5,6 +5,7 @@ Per-bundle sessions live in `<bundle>/docs/sessions/`.
 
 | Date | Wave | ID | Summary | Mode | Status | Branch |
 |------|------|-----|---------|------|--------|--------|
+| 2026-10-29 | 5-7..5-11 | owner | [Owner: AppKit 0.84.0 -> 0.89.0 (MLflow ESM 'Cannot find module' fix) + committed typegen artifacts; deployment 01f1d3029bf1 stable, w5-7 repair 820282825386912 -> waves 5-7..5-10 pass, 5-11 waits on M5; ~6 min dev outage from a raw apps.deploy (run 229891579528310)](2026-10-29_build-5-owner-unblock-appkit-0-89.md) | owner | pass | `mg-genie-build-5` |
 | 2026-10-28 | 5-11 | 64 | [Manual acceptance: BLOCKED on M5, worksheet build-5_manual_checks.md has 47/47 blank result cells and no deployment id; no changes (run 229891579528310)](2026-10-28_w5-11-64-manual-acceptance.md) | edit | blocked | `mg-genie-build-5` |
 | 2026-10-28 | 5-10 | 63 | [Build 5 summary — Figma redesign, steward triage, Share to Slack, infra/agent hardening, Chromium gate (waves 5-0..5-9 pass; 5-11 manual acceptance pending M5)](2026-10-28_build-5-summary.md) | edit | pass | `mg-genie-build-5` |
 | 2026-10-28 | 5-10 | 63 | [Docs: build-5 summary, manual-check worksheet (build-5_manual_checks.md), PROJECT_MEMORY x4, runbooks, build-4 follow-ups closed, build-5 follow-ups, gap analysis §7 (run 229891579528310)](2026-10-28_w5-10-63-docs-and-summary.md) | edit | pass | `mg-genie-build-5` |
