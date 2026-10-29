@@ -1,6 +1,9 @@
 # resources/jobs/post_deploy_setup.job.yml
 # Post-deploy setup: automates manual steps that can't be DAB-declared.
-# Auto-triggered by job_run resource on every `bundle deploy`.
+# Triggered by the run_post_deploy job_run resource (config changes only) and by
+# `./deploy.sh --target <t> --infra`, which always runs it with run_setup=true and waits
+# (build 5, session 46): a bundle deploy resets feedback_pipeline.author_feedback_branch to
+# its notebook placeholder, and setup_job_params turns it back into a genie_task.
 # Design source: docs/plans/post_deploy_automation_plan.md
 #
 # Gate: check_run_setup condition_task — skips all tasks when run_setup=false
@@ -25,12 +28,31 @@ resources:
           default: ""
         - name: app_sp_client_id
           default: ""
+        # Target name passed to the notebooks that need it (default: this bundle's target).
+        - name: bundle_target
+          default: "${bundle.target}"
+        # setup_genie_automation: the author_feedback_branch configuration_id read by deploy.sh just
+        # before the infra deploy reset the task (reused, so the first run does not create a new one).
+        - name: previous_configuration_id
+          default: ""
+        # setup_genie_automation: delete other feedback-author automations (one per target).
+        - name: cleanup_duplicates
+          default: "true"
+        # setup_genie_automation: extra automation ids to delete once (comma-separated).
+        - name: duplicate_automation_ids
+          default: ""
         - name: m2m_client_id_dbs_key
           default: "${var.m2m_client_id_dbs_key}"
         - name: m2m_client_secret_dbs_key
           default: "${var.m2m_client_secret_dbs_key}"
         - name: m2m_oauth_scopes
           default: "${var.m2m_oauth_scopes}"
+
+      # One run at a time; a run started while another is active (e.g. the run_post_deploy job_run
+      # and deploy.sh's run_post_deploy_setup) waits in the queue instead of being skipped.
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
 
       environments:
         - environment_key: serverless
@@ -56,7 +78,7 @@ resources:
           notebook_task:
             notebook_path: ../../src/notebooks/ensure_m2m_service_principal.py
             base_parameters:
-              bundle_target: "${bundle.target}"
+              bundle_target: "{{job.parameters.bundle_target}}"
               secret_scope_name: "${resources.secret_scopes.ground_truth_secret_scope.name}"
               m2m_spn_prefix: "${var.m2m_spn_prefix}"
               m2m_client_id_dbs_key: "{{job.parameters.m2m_client_id_dbs_key}}"
@@ -107,7 +129,7 @@ resources:
           environment_key: serverless
 
         - task_key: setup_genie_automation
-          description: "Create or update the Genie Code automation (scheduled insight) for the feedback pipeline"
+          description: "Reuse and update the one Genie Code automation for the feedback pipeline (create only if none exists); delete duplicates"
           depends_on:
             - task_key: check_run_setup
               outcome: "true"
@@ -117,6 +139,11 @@ resources:
               catalog: "${var.catalog}"
               schema: "${resources.schemas.ground_truth_schema.name}"
               git_folder_id: "4271072627166222"
+              bundle_target: "{{job.parameters.bundle_target}}"
+              feedback_job_id: "${resources.jobs.feedback_pipeline.id}"
+              previous_configuration_id: "{{job.parameters.previous_configuration_id}}"
+              cleanup_duplicates: "{{job.parameters.cleanup_duplicates}}"
+              duplicate_ids: "{{job.parameters.duplicate_automation_ids}}"
           environment_key: serverless
 
         - task_key: setup_job_params
@@ -151,10 +178,14 @@ resources:
               outcome: "true"
           notebook_task:
             notebook_path: ../../src/notebooks/setup_cdf_config.py
+            # Keys must equal the notebook's widget names (database, source_schema, catalog, schema),
+            # the same as setup_lakebase_cdf.job.yml. The old lakebase_branch_id key matched no widget,
+            # so `database` stayed empty.
             base_parameters:
+              database: "${resources.postgres_databases.app_db.id}"
+              source_schema: "app"
               catalog: "${var.catalog}"
               schema: "${resources.schemas.ground_truth_schema.name}"
-              lakebase_branch_id: "${resources.postgres_branches.production.id}"
           environment_key: serverless
 
       email_notifications:

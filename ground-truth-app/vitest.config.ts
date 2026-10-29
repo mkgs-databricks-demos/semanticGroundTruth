@@ -15,6 +15,11 @@ export default defineConfig({
     // vitest in prebuild, and those lines landed in the app's BUILD logs as
     // ERROR rows that the runtime gate counts. Failing tests still show logs.
     silent: 'passed-only',
+    // The Apps build runs vitest in prebuild with the app env (resources/app.app.yml config.env), which sets
+    // NODE_ENV=production. React then loads its production build, which has no
+    // act(), and every jsdom component test fails ("React.act is not a function"),
+    // failing the deploy. Tests always run React in development mode.
+    env: { NODE_ENV: 'test' },
     exclude: ['**/node_modules/**', '**/dist/**', '**/.databricks/**', '**/.venv/**'],
     projects: [
       {

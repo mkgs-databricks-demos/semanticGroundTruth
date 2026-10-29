@@ -6,10 +6,29 @@ What must exist before each bundle deploys, which permissions the deployer needs
 
 1. **`ground-truth-infra` first.** It owns the schema, warehouse, Lakebase, secret scope, M2M SPN, jobs, the bronze pipeline, the executive dashboard, and the `agent_skills` volume (`ground-truth-infra/resources/agent_skills.volume.yml`, managed volume, `prevent_destroy`).
 2. **`ground-truth-app` second.** Its `agents-skills` resource (`READ_VOLUME` on `${var.agents_skills_path}`, default `<catalog>.<schema>.agent_skills`) needs the infra volume to exist. App migrations create the Lakebase `app` schema.
-3. **Data plane** (from `ground-truth-infra/`): `setup_lakebase_cdf` -> `cdf_bronze` -> `metric_view_deploy`. Run `post_deploy_setup` with `run_setup=true` after every infra deploy, so `feedback_pipeline.author_feedback_branch` is a `genie_task` again (see [`feedback_pipeline.md`](feedback_pipeline.md)).
+3. **Data plane** (from `ground-truth-infra/`): `setup_lakebase_cdf` -> `cdf_bronze` -> `metric_view_deploy`. `post_deploy_setup` must run with `run_setup=true` after every infra deploy so `feedback_pipeline.author_feedback_branch` is a `genie_task` again (see [`feedback_pipeline.md`](feedback_pipeline.md)); `./deploy.sh` does this for you (next section).
 4. **`ground-truth-agent` last** (Genie space, operations dashboard, `agent_verification`).
 
 `./deploy.sh --target dev` deploys the bundles in this order (infra -> app -> agent); the data-plane jobs are run separately (root `README.md`, "End-to-end deploy"). On a fresh environment the infra bundle is deployed again after the app exists, so the scope permissions can name the app SPN.
+
+## Infra deploys always run `post_deploy_setup`
+
+Rule (build 5, follow-up 2): **deploy infra with `./deploy.sh --target <t> --infra`** (or the all-bundles `./deploy.sh --target <t>`), not with a bare `databricks bundle deploy`.
+
+* **Why:** bundle YAML cannot express a `genie_task`, so every infra `bundle deploy` resets `feedback_pipeline.author_feedback_branch` to its notebook placeholder, which fails when the pipeline runs. `post_deploy_setup` (`setup_genie_automation`, then `setup_job_params`) turns it back into a `genie_task`.
+* **What `deploy.sh` does:** it deploys infra with `--var run_setup=false` (so the `run_post_deploy` job_run, which fires only on config changes, is a gated no-op), then runs `bundle run post_deploy_setup --params run_setup=true` and waits. A failed run stops the script (exit 1) and prints the run URL; fix the failing task and re-run `./deploy.sh --target <t> --infra`. It does the same after the second infra deploy that a first-time `./deploy.sh` makes once the app SPN exists.
+* **`--run-setup`** is kept as a no-op alias, so older commands still work.
+* **One automation:** `setup_genie_automation` reuses the automation already on the job, else the id it recorded in `<bundle root_path>/setup_state/genie_automation.json` (dev: `/Workspace/Users/<you>/.bundle/ground-truth-infra/dev/setup_state/`; outside the synced `files/`, so a deploy keeps it), else the newest one with its display name. It updates that automation in place and creates one only when none exists, so two runs give the same `configuration_id`. Unscheduled automations are not returned by the list API, which is why build 4 created a new one per run. With `cleanup_duplicates=true` (job parameter, default) it deletes the other feedback-author automations it knows of; pass old ids once in the job parameter `duplicate_automation_ids` (comma-separated, full `genie_code/users/...` names or bare ids). Only automations whose prompt starts with the feedback-author prefix (or that have the expected name) are deleted.
+* **Bare `bundle deploy`** (e.g. a converge session's `deploy_commands`): follow it with `databricks bundle run post_deploy_setup --target <t> --params run_setup=true` from `ground-truth-infra/`.
+* Revisit when Declarative Automation Bundles support `genie_task`.
+* Verified in build 5 (session 57): three `post_deploy_setup` runs kept the same `configuration_id` (`20536fcd...`) and left `author_feedback_branch` a `genie_task`.
+
+## Share to Slack: `ai-gateway` user scope (build 5)
+
+* Build 5 (session 50) added `ai-gateway` to `user_api_scopes` in `ground-truth-app/resources/app.app.yml`, because Share to Slack calls `system.ai.slack` (`/ai-gateway/mcp-services/system.ai.slack`) with the **user's** OBO token. The app SPN never posts to Slack.
+* After the first deploy with this scope, **every user consents again once** when they next open the app. That is expected, not an error.
+* Owner, once per workspace: reconnect `system.ai.slack` in Catalog Explorer (per-user OAuth), then check that `slack_send_message` is listed by its `tools/list`. Until a user has connected, the share routes answer HTTP 200 with `needs_slack_login` (and an optional `loginUrl`).
+* Only stewards and admins can share; automated tests mock the MCP client, and live use is `draft` mode until the owner's Send check in `docs/sessions/build-5_manual_checks.md`.
 
 ## Deployer permissions
 

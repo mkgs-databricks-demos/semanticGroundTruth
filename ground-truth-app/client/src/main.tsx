@@ -1,5 +1,8 @@
+// @a11y-strict
 // client/src/main.tsx — entry point
 // Session 16 · Wave 0 · Adds ThemeProvider (next-themes) and MotionConfig (framer-motion)
+// Session 49 · Build 5 · wave 5-1: storage key shared with ThemeSync (which
+// seeds the theme from GET /api/me/settings inside the router root).
 
 import {
   ResourceStatusIndicator,
@@ -14,6 +17,7 @@ import './index.css';
 import App from './App.tsx';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
 import { createQueryClient } from './lib/api/queryClient';
+import { THEME_STORAGE_KEY } from './lib/settings/ThemeSync';
 
 const queryClient = createQueryClient();
 
@@ -24,7 +28,7 @@ createRoot(document.getElementById('root')!).render(
         attribute="class"
         defaultTheme="system"
         enableSystem
-        storageKey="sgt-theme"
+        storageKey={THEME_STORAGE_KEY}
         disableTransitionOnChange
       >
         <MotionConfig reducedMotion="user">

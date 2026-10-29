@@ -69,8 +69,12 @@ import type {
   FeedbackQueueItem,
   FeedbackQueueQuery,
   ResolveConflictRequest,
+  ShareSlackRequest,
+  ShareSlackResponse,
   SkipRequest,
   SkipResponse,
+  SlackChannelsQuery,
+  SlackChannelsResponse,
   UpdateFeedbackBranchStatusRequest,
   UpdateUserSettingsRequest,
   UpsertFeedbackBranchRequest,
@@ -419,7 +423,39 @@ export async function updateFeedbackBranchStatus(
   );
 }
 
-/** Grouped view of the session-33 endpoints (plain object, not a TS namespace). */
+// ── Share to Slack (G5 Option A; contract session 44, handlers session 50) ──
+// Steward/admin only; the server posts with the user's OBO token.
+
+export async function getSlackChannels(
+  query?: SlackChannelsQuery,
+): Promise<SlackChannelsResponse> {
+  const q = query?.query?.trim();
+  return apiGet<SlackChannelsResponse>('/api/slack/channels', q ? { query: q } : undefined);
+}
+
+export async function shareNotificationToSlack(
+  notificationId: string,
+  body: ShareSlackRequest,
+): Promise<ShareSlackResponse> {
+  return apiSend<ShareSlackResponse>(
+    'POST',
+    `/api/notifications/${encodeURIComponent(notificationId)}/share-slack`,
+    body,
+  );
+}
+
+export async function shareAssetToSlack(
+  assetId: string,
+  body: ShareSlackRequest,
+): Promise<ShareSlackResponse> {
+  return apiSend<ShareSlackResponse>(
+    'POST',
+    `/api/assets/${encodeURIComponent(assetId)}/share-slack`,
+    body,
+  );
+}
+
+/** Grouped view of the session-33 and build-5 endpoints (plain object, not a TS namespace). */
 export const api = {
   review: { skip: skipCard },
   me: { getSettings: getMySettings, updateSettings: updateMySettings },
@@ -430,6 +466,11 @@ export const api = {
     feedbackBranches: getFeedbackBranches,
     upsertFeedbackBranch,
     updateFeedbackBranchStatus,
+  },
+  slack: {
+    channels: getSlackChannels,
+    shareNotification: shareNotificationToSlack,
+    shareAsset: shareAssetToSlack,
   },
 } as const;
 

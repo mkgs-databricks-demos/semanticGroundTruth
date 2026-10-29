@@ -10,6 +10,7 @@ import type { Services } from '../../services';
 import type { UserContext } from '../../lib/context';
 import { hasRole } from '../../lib/context';
 import { ReviewCardSchema } from '../../../shared/contracts/schemas';
+import { EDIT_VOTE_NEEDS_VALUE_MESSAGE, hasProposedEdit } from '../../../shared/contracts/api';
 import type { ReviewCard } from '../../../shared/contracts/review';
 import { McpSessionStore } from '../session';
 import {
@@ -62,6 +63,12 @@ export function registerReviewTools(
       'Returns the vote result and the next card.',
     ui: REVIEW_CARD_UI,
     handler: async (args) => {
+      // Same rule as VoteBodySchema (the tool input is a plain shape, so it is checked here).
+      if (args.vote_type === 'edit' && !hasProposedEdit(args.edits)) {
+        throw badRequest(EDIT_VOTE_NEEDS_VALUE_MESSAGE, {
+          issues: [{ path: ['edits'], message: EDIT_VOTE_NEEDS_VALUE_MESSAGE }],
+        });
+      }
       let assetId = args.asset_id;
       if (!assetId) {
         const session = await sessions.get(user.userId);

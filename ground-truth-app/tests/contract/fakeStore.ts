@@ -24,12 +24,14 @@ import { assertTransition } from '../../server/services/campaign';
 import type { MembershipService } from '../../server/services/membership';
 import type { MetricViewService } from '../../server/services/metricView';
 import type { NotificationService } from '../../server/services/notification';
+import type { SlackShareAudit } from '../../server/services/notification/notificationService';
 import type { ReviewEngine } from '../../server/services/review';
 import { computeConfidence, deriveStatus, wilsonLowerBound } from '../../server/services/review/wilsonScore';
 import type { UserSettingsService } from '../../server/services/settings';
 import { DEFAULT_USER_SETTINGS } from '../../server/services/settings/userSettingsService';
 import type { StewardService, TriageVoteRow } from '../../server/services/steward/stewardService';
-import { detectConflicts, resolutionFor } from '../../server/services/steward/stewardService';
+import { detectConflicts, resolutionFor, shouldNotifyOnUpsert } from '../../server/services/steward/stewardService';
+import { feedbackBranchHtmlUrl } from '../../server/services/steward/feedbackRepo';
 import type { SourceService } from '../../server/services/sources';
 import type {
   AppGroup,
@@ -59,6 +61,7 @@ import {
   CATALOGS,
   EXAMPLES,
   FEEDBACK_BATCHES,
+  FEEDBACK_REPO_URL,
   GROUPS,
   METRIC_VIEW,
   METRIC_VIEW_FQN,
@@ -124,6 +127,10 @@ export class FakeStore {
   config: AppSettings = { ...clone(DEFAULT_SETTINGS) };
   sources: AssetSource[] = clone(SOURCES);
   mcpSessions = new Map<string, { current_asset_id: string; campaign_id: string | null; updated_at: string }>();
+  /** Steward notifications the fake steward service sent (eventType + batchId), in order. */
+  stewardNotifications: { eventType: string; batchId: string }[] = [];
+  /** Share to Slack audit rows (NotificationService.recordSlackShare), in order. */
+  slackShares: SlackShareAudit[] = [];
 
   now(): string {
     return new Date(this.clockMs).toISOString();
@@ -288,6 +295,8 @@ export class FakeStore {
       ...(campaign ? { campaign: { campaignId: campaign.id, name: campaign.name } } : {}),
       reason: campaign ? 'campaign' : 'low_confidence',
       progress: { reviewed: scope.filter((a) => voted.has(a.id)).length, total: scope.length },
+      // Same rule as ReviewEngine: everything in cooldown, or skipped before (cooldown passed).
+      resurfacedFromSkip: resurfacedFromSkip || (cooldownMs > 0 && lastSkip(pick.id) !== undefined),
     };
     return { card, resurfacedFromSkip };
   }
@@ -303,6 +312,7 @@ export class FakeStore {
       createdAt: b.createdAt,
       completedAt: b.completedAt,
       reviewedBy: b.reviewedBy,
+      htmlUrl: feedbackBranchHtmlUrl(FEEDBACK_REPO_URL, b.branchName),
     };
   }
 
@@ -340,7 +350,7 @@ type ReviewFake = Pick<ReviewEngine, 'getNext' | 'getNextWithMeta' | 'submitVote
 type AssetsFake = Pick<AssetRegistry, 'list' | 'get' | 'listVersions' | 'register' | 'listSynonyms' | 'addSynonym' | 'voteSynonym' | 'removeSynonym' | 'listExamples' | 'addExample' | 'voteExample'>;
 type CampaignsFake = Pick<CampaignManager, 'list' | 'create' | 'get' | 'updateStatus' | 'runFreshnessCheck'>;
 type MetricViewsFake = Pick<MetricViewService, 'listCatalogs' | 'listSchemas' | 'listMetricViews' | 'list' | 'get' | 'validate'>;
-type NotificationsFake = Pick<NotificationService, 'list' | 'unreadCount' | 'markRead' | 'getPreferences' | 'updatePreferences'>;
+type NotificationsFake = Pick<NotificationService, 'list' | 'unreadCount' | 'markRead' | 'getPreferences' | 'updatePreferences' | 'getVisible' | 'recordSlackShare'>;
 type MembershipFake = Pick<MembershipService, 'listGroups' | 'addMember' | 'removeMember'>;
 type StewardFake = Pick<StewardService, 'feedbackQueue' | 'conflicts' | 'resolveConflict' | 'listFeedbackBranches' | 'upsertFeedbackBranch' | 'updateFeedbackBranchStatus'>;
 type SettingsFake = Pick<UserSettingsService, 'get' | 'update'>;
@@ -382,6 +392,10 @@ export function createFakeDb(store: FakeStore): FakeDb {
         updated_at: store.now(),
       });
       return [];
+    }
+    if (/FROM app\.confidence_scores/.test(text)) {
+      const assetId = String(params[0]);
+      return store.assets.some((a) => a.id === assetId) ? [{ confidence: store.confidence(assetId).confidence }] : [];
     }
     throw new Error(`FakeDb: unexpected SQL: ${text.slice(0, 80)}`);
   };
@@ -650,6 +664,12 @@ export function createFakeServices(store: FakeStore): Services {
       return targets.length;
     },
     getPreferences: async (userId) => clone(store.preferences.filter((p) => p.userId === userId)).sort((a, b) => a.eventType.localeCompare(b.eventType)),
+    getVisible: async (id, userId, roles = []) =>
+      clone(store.notifications.find((n) => n.id === id && (n.userId === userId || (roles as string[]).includes(n.userId))) ?? null),
+    recordSlackShare: async (audit) => {
+      store.slackShares.push(clone(audit));
+      return store.newId();
+    },
     updatePreferences: async (userId, prefs) => {
       for (const p of prefs) {
         store.preferences = store.preferences.filter((x) => !(x.userId === userId && x.eventType === p.eventType));
@@ -735,6 +755,7 @@ export function createFakeServices(store: FakeStore): Services {
         ? store.batches.find((b) => b.id === req.batchId)
         : store.batches.find((b) => b.branchName === req.branchName);
       if (req.batchId && !existing) throw notFound(`Feedback batch not found: ${req.batchId}`);
+      const previousStatus = existing ? existing.status : null;
       const completes = req.status === 'proposed' || req.status === 'failed';
       const batch: FeedbackBatch = existing ?? {
         id: store.newId(),
@@ -756,6 +777,12 @@ export function createFakeServices(store: FakeStore): Services {
       batch.summary = req.summary ?? batch.summary;
       if (completes) batch.completedAt = store.now();
       if (!existing) store.batches.push(batch);
+      if (shouldNotifyOnUpsert(previousStatus, req.status)) {
+        store.stewardNotifications.push({
+          eventType: req.status === 'failed' ? 'feedback.failed' : 'feedback.branch_ready',
+          batchId: batch.id,
+        });
+      }
       return { branch: store.branch(batch), created: !existing };
     },
     updateFeedbackBranchStatus: async (user, batchId, req) => {

@@ -8,12 +8,58 @@ resources:
       description: "A Databricks App powered by AppKit"
       source_code_path: ../
 
-      # Override app.yaml env vars with bundle-variable values at deploy time.
+      # SINGLE SOURCE of the app's runtime command + env. app.yaml is a comment stub.
+      # When `config` is set, the bundle's command + env REPLACE app.yaml's (the
+      # deployment lists only these env names). Until 2026-10-28 only three vars were
+      # here and the app.yaml valueFrom bindings were silently lost; the app only
+      # started because a gitignored local .env in the dev Git folder was uploaded
+      # with the source and read via --env-file-if-exists. A clean worktree deploy
+      # (no .env) failed with "Warehouse ID not found".
       # deploy.sh passes --var exec_dashboard_url=<url> from the infra dashboard resource.
       config:
+        # Run node directly (same as `pnpm run start`) so SIGTERM from the platform
+        # reaches the server process and its graceful shutdown handler
+        # (server/lib/shutdown.ts), instead of going through a pnpm wrapper that
+        # prints `[ELIFECYCLE] Command failed`.
+        command: ['node', '--env-file-if-exists=./.env', './dist/server.js']
         env:
+          # Also seen by the Apps build (prebuild runs vitest), hence the
+          # NODE_ENV=test pin in vitest.config.ts.
+          - name: NODE_ENV
+            value: production
+          # ── App resource bindings (resource names under `resources:` below) ──
+          # value_from works only for app resources (secrets, warehouses, ...), not
+          # plain strings; DATABRICKS_VOLUME_AGENT_SKILLS is a plain value below
+          # (value_from: agents-skills left the agents plugin without a volume path).
+          - name: DATABRICKS_SERVING_ENDPOINT_NAME
+            value_from: agents-serving-endpoint
+          - name: MLFLOW_EXPERIMENT_ID
+            value_from: agents-mlflow-experiment
+          - name: DATABRICKS_WAREHOUSE_ID
+            value_from: sql-warehouse
+          - name: DATABRICKS_JOB_ID
+            value_from: job
+          - name: LAKEBASE_ENDPOINT
+            value_from: postgres
+          # ── RBAC bootstrap ──
+          # M2M SPN client_id from the m2m-client-id secret resource below.
+          - name: GT_BOOTSTRAP_ADMIN_IDS
+            value_from: m2m-client-id
+          - name: GT_ADMIN_EMAILS
+            value: matthew.giglia@databricks.com
+          # ── OpenTelemetry ──
+          # Record every trace unconditionally. Without this, the default parent-based
+          # sampler follows the platform proxy's sampling decision and drops most
+          # spans, leaving otel_spans near-empty. See:
+          # https://docs.databricks.com/aws/en/dev-tools/databricks-apps/observability/
+          - name: OTEL_TRACES_SAMPLER
+            value: always_on
+          # ── Bundle-variable values ──
           - name: GT_EXEC_DASHBOARD_URL
             value: "${var.exec_dashboard_url}"
+          # Feedback-branch links (FeedbackBranch.htmlUrl); bundle input var feedback_repo_url.
+          - name: GT_FEEDBACK_REPO_URL
+            value: "${var.feedback_repo_url}"
           # AppKit agents plugin: catalog skills volume (/Volumes/... form required).
           # Must match the agents-skills resource below.
           - name: DATABRICKS_VOLUME_AGENT_SKILLS
@@ -23,12 +69,16 @@ resources:
       lifecycle:
         started: true
       # On behalf of user (OBO) API scopes — the app acts as the logged-in user for these APIs.
-      # Available scopes: sql, genie, files, model-serving
+      # Available scopes: sql, genie, files, model-serving, ai-gateway
+      # ai-gateway (build 5 session 50): Share to Slack calls the Unity Gateway MCP
+      # system.ai.slack as the signed-in user. Adding a scope makes every user
+      # consent again once on their next open of the app.
       user_api_scopes:
         - sql
         - genie
         - files
         - model-serving
+        - ai-gateway
 
       # OpenTelemetry — logs, metrics, and traces to Unity Catalog.
       # Platform captures system logs + login events automatically.

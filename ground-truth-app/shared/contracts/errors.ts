@@ -10,6 +10,10 @@ export const ERROR_CODES = [
   'SOURCE_ACCESS_DENIED',
   'UPSTREAM_ERROR',
   'INTERNAL',
+  // Build 5 (session 44): Share to Slack. RATE_LIMITED = Unity Gateway / Slack 429
+  // (session 50); NOT_IMPLEMENTED = a contracted route whose handler is a stub.
+  'RATE_LIMITED',
+  'NOT_IMPLEMENTED',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
@@ -22,6 +26,8 @@ export const ERROR_STATUS: Record<ErrorCode, number> = {
   SOURCE_ACCESS_DENIED: 403,
   UPSTREAM_ERROR: 502,
   INTERNAL: 500,
+  RATE_LIMITED: 429,
+  NOT_IMPLEMENTED: 501,
 };
 
 export interface ErrorResponse {

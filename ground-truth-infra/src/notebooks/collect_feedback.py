@@ -5,9 +5,11 @@
 # MAGIC
 # MAGIC **Job:** `feedback_pipeline`, task 1 of 4 (`collect_feedback` → `check_has_feedback` → `author_feedback_branch` → `register_feedback_branch`).
 # MAGIC
-# MAGIC Reads **unprocessed edit votes** from the Lakebase CDF Delta table `lb_votes_history` (latest row per vote `id`, deletes dropped), groups them by asset, resolves each edited field (majority, then most recent) and appends one row per asset to `feedback_staging` under a new `batch_id`. Approve/reject votes are not feedback and are never staged; skips live in `app.review_skips` and are not votes at all. Edit votes with only free-text feedback (no edited field) are left for the steward feedback queue.
+# MAGIC Reads **unprocessed edit votes** from the Lakebase CDF Delta table `lb_votes_history` (latest row per vote `id`, deletes dropped), groups them by asset, resolves each edited field (majority, then most recent) and appends one row per asset to `feedback_staging` under a new `batch_id`. Approve/reject votes are not feedback and are never staged; skips live in `app.review_skips` and are not votes at all. Edit votes with only free-text feedback (no edited field) cannot be authored: they are recorded once in `feedback_vote_dispositions` with `processed_reason = 'no_proposed_value'` (build 5, follow-up 6) and reported as the task value `no_value_vote_ids`. The pipeline cannot set `app.votes.is_processed` itself (only the app writes Lakebase; it marks the `voteIds` of a registered batch), so the app side of follow-up 6 (reject new edit votes without a value, and mark these recorded votes processed) is separate.
 # MAGIC
-# MAGIC **Task values:** `batch_id`, `vote_count`, `asset_count`, `feedback_table`, `run_date` (`yyyymmdd`, UTC). `check_has_feedback` ends the run successfully when `vote_count` is 0.
+# MAGIC **`dry_run`** (default `false`): read and print only; nothing is staged or recorded, and `vote_count` is 0 so the run ends at `check_has_feedback`.
+# MAGIC
+# MAGIC **Task values:** `batch_id`, `vote_count`, `asset_count`, `feedback_table`, `run_date` (`yyyymmdd`, UTC), `no_value_vote_ids` (JSON list), `no_value_vote_count`. `check_has_feedback` ends the run successfully when `vote_count` is 0.
 # MAGIC
 # MAGIC **Design source:** L300-04 §Step 1, L200-C6, `docs/plans/27_infra_feedback_pipeline_genie_task.md`. Pure helpers are unit-tested in `tests/test_feedback_pipeline.py`.
 
@@ -17,11 +19,13 @@
 dbutils.widgets.text("catalog", "", "Catalog")
 dbutils.widgets.text("schema", "", "Schema")
 dbutils.widgets.text("branch_prefix", "mg-genie-feedback-", "Feedback branch prefix")
+dbutils.widgets.text("dry_run", "false", "Read and print only; stage and record nothing (true/false)")
 
 catalog = dbutils.widgets.get("catalog").strip()
 schema = dbutils.widgets.get("schema").strip()
 branch_prefix = dbutils.widgets.get("branch_prefix").strip()
-print(f"catalog={catalog}, schema={schema}, branch_prefix={branch_prefix}")
+dry_run_param = dbutils.widgets.get("dry_run")
+print(f"catalog={catalog}, schema={schema}, branch_prefix={branch_prefix}, dry_run={dry_run_param}")
 
 # COMMAND ----------
 
@@ -34,6 +38,7 @@ from datetime import datetime, timezone
 
 FEEDBACK_BRANCH_PREFIX = "mg-genie-feedback-"
 EDIT_FIELDS = ("description", "plain_english_logic", "display_name")
+NO_PROPOSED_VALUE = "no_proposed_value"
 _IDENT = re.compile(r"^[A-Za-z0-9_]+$")
 
 
@@ -51,6 +56,17 @@ def validate_branch_prefix(prefix):
             f"branch_prefix must be exactly {FEEDBACK_BRANCH_PREFIX!r}, got {prefix!r}"
         )
     return prefix
+
+
+def parse_bool(text, default=False):
+    if text is None or str(text).strip() == "":
+        return default
+    value = str(text).strip().lower()
+    if value in ("true", "1", "yes"):
+        return True
+    if value in ("false", "0", "no"):
+        return False
+    raise ValueError(f"Not a boolean: {text!r}")
 
 
 def run_date_str(now=None):
@@ -90,6 +106,41 @@ def select_unprocessed_edits(rows):
         and not r.get("is_processed")
         and any(_clean(r.get(f"edit_{f}")) for f in EDIT_FIELDS)
     ]
+
+
+def has_proposed_value(row):
+    return any(_clean(row.get(f"edit_{f}")) for f in EDIT_FIELDS)
+
+
+def select_edits_without_value(rows):
+    """Unprocessed edit votes that propose no field value (free-text feedback only). They can never
+    be authored into a branch, so they are recorded with processed_reason 'no_proposed_value'."""
+    return [
+        r
+        for r in rows
+        if r.get("vote_type") == "edit" and not r.get("is_processed") and not has_proposed_value(r)
+    ]
+
+
+def disposition_rows(votes, reason, recorded_at, already_recorded=()):
+    """One feedback_vote_dispositions row per vote id not yet recorded (sorted by vote id)."""
+    seen = set(already_recorded)
+    out = []
+    for v in sorted(votes, key=lambda v: v["id"]):
+        if v["id"] in seen:
+            continue
+        seen.add(v["id"])
+        out.append(
+            {
+                "vote_id": v["id"],
+                "asset_id": v.get("asset_id"),
+                "user_id": v.get("user_id"),
+                "feedback": _clean(v.get("feedback")),
+                "processed_reason": reason,
+                "recorded_at": recorded_at,
+            }
+        )
+    return out
 
 
 def resolve_field(proposals):
@@ -191,8 +242,12 @@ vote_rows = [
         WHERE vote_type = 'edit'
     """).collect()
 ]
-votes = select_unprocessed_edits(latest_non_deleted(vote_rows))
-print(f"edit vote CDF rows: {len(vote_rows)}; unprocessed edit votes with a proposed value: {len(votes)}")
+latest_votes = latest_non_deleted(vote_rows)
+votes = select_unprocessed_edits(latest_votes)
+no_value_votes = select_edits_without_value(latest_votes)
+dry_run = parse_bool(dry_run_param)
+print(f"edit vote CDF rows: {len(vote_rows)}; unprocessed edit votes with a proposed value: {len(votes)}; "
+      f"without a proposed value ({NO_PROPOSED_VALUE}): {len(no_value_votes)}")
 
 # COMMAND ----------
 
@@ -227,6 +282,10 @@ import uuid
 from pyspark.sql import types as T
 
 staged = group_edit_votes(votes, assets)
+if dry_run:
+    for r in staged:
+        print(f"dry_run: would stage asset {r['asset_id']} ({r['vote_count']} vote(s)): {r['resolved_json']}")
+    staged = []
 vote_count = sum(r["vote_count"] for r in staged)
 asset_count = len(staged)
 batch_id = str(uuid.uuid4()) if staged else ""
@@ -265,7 +324,7 @@ if staged:
     )
     print(f"Staged batch {batch_id}: {asset_count} asset(s), {vote_count} vote(s) -> {feedback_table}")
 else:
-    print("No unprocessed edit votes; nothing staged. check_has_feedback will end the run.")
+    print(("dry_run: " if dry_run else "") + "No edit votes staged. check_has_feedback will end the run.")
 
 for key, value in {
     "batch_id": batch_id,
@@ -276,3 +335,49 @@ for key, value in {
 }.items():
     dbutils.jobs.taskValues.set(key=key, value=value)
 print(f"task values: batch_id={batch_id!r}, vote_count={vote_count}, asset_count={asset_count}, run_date={run_date}")
+
+# COMMAND ----------
+
+# DBTITLE 1,Record edit votes without a proposed value (no_proposed_value)
+# Follow-up 6 (pipeline side): free-text-only edit votes can never be authored. Record each once with
+# processed_reason = 'no_proposed_value' and report the ids. app.votes.is_processed is written only by
+# the app (it marks the voteIds of a registered batch); the pipeline does not write Lakebase.
+dispositions_table = f"{fq}.feedback_vote_dispositions"
+no_value_ids = sorted(v["id"] for v in no_value_votes)
+
+if dry_run:
+    for v in sorted(no_value_votes, key=lambda v: v["id"]):
+        print(f"dry_run: would record vote {v['id']} (asset {v['asset_id']}) as processed, reason {NO_PROPOSED_VALUE}")
+elif no_value_votes:
+    spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS {dispositions_table} (
+          vote_id STRING NOT NULL,
+          asset_id STRING,
+          user_id STRING,
+          feedback STRING,
+          processed_reason STRING NOT NULL,
+          recorded_at TIMESTAMP NOT NULL
+        )
+        COMMENT 'Edit votes the feedback pipeline will not author, with the reason (written by collect_feedback)'
+    """)
+    recorded = {r.vote_id for r in spark.sql(f"SELECT vote_id FROM {dispositions_table}").collect()}
+    new_rows = disposition_rows(no_value_votes, NO_PROPOSED_VALUE, datetime.now(timezone.utc), recorded)
+    if new_rows:
+        disposition_schema = T.StructType(
+            [
+                T.StructField("vote_id", T.StringType(), False),
+                T.StructField("asset_id", T.StringType(), True),
+                T.StructField("user_id", T.StringType(), True),
+                T.StructField("feedback", T.StringType(), True),
+                T.StructField("processed_reason", T.StringType(), False),
+                T.StructField("recorded_at", T.TimestampType(), False),
+            ]
+        )
+        spark.createDataFrame(new_rows, disposition_schema).write.format("delta").mode("append").saveAsTable(dispositions_table)
+    print(f"{len(no_value_ids)} edit vote(s) without a proposed value; {len(new_rows)} newly recorded in {dispositions_table}")
+else:
+    print("No edit votes without a proposed value.")
+
+dbutils.jobs.taskValues.set(key="no_value_vote_ids", value=json.dumps(no_value_ids))
+dbutils.jobs.taskValues.set(key="no_value_vote_count", value=len(no_value_ids))
+print(f"task values: no_value_vote_count={len(no_value_ids)}, no_value_vote_ids={no_value_ids}")

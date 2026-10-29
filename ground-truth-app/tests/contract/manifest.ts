@@ -25,6 +25,18 @@ export const UI_TOOLS: readonly string[] = ['review_get_next', 'review_submit_vo
 
 export const MANIFEST_SCHEMA_FILE = 'shared/contracts/generated/contracts.schema.json';
 
+/**
+ * Routes the live job must not call at all, with the reason it records as
+ * skipped_live for every case. Share to Slack posts with the caller's OBO token
+ * through system.ai.slack, which the job's M2M SPN does not have (build 5
+ * session 44; covered in-process by routes.contract.test.ts).
+ */
+export const SKIPPED_LIVE: Readonly<Record<string, string>> = {
+  'POST /api/notifications/:id/share-slack': 'obo-only',
+  'POST /api/assets/:assetId/share-slack': 'obo-only',
+  'GET /api/slack/channels': 'obo-only',
+};
+
 type Ref = { $ref: string };
 
 export interface ManifestRoute {
@@ -39,6 +51,8 @@ export interface ManifestRoute {
   query?: Ref;
   params?: Ref;
   response: Ref;
+  /** The live job records every case of this route as skipped_live with this reason (SKIPPED_LIVE). */
+  skippedLive?: string;
 }
 
 export interface ManifestTool {
@@ -84,6 +98,7 @@ export function buildContractManifest(): ContractManifest {
       ...(js.query ? { query: js.query } : {}),
       ...(js.params ? { params: js.params } : {}),
       response: js.response,
+      ...(SKIPPED_LIVE[key] ? { skippedLive: SKIPPED_LIVE[key] } : {}),
     };
   });
 

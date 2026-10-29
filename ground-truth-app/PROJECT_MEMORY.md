@@ -48,7 +48,7 @@
 
 | Layer | Technology | Version |
 |-------|------------|--------|
-| Runtime | Node.js (Databricks AppKit) | AppKit v0.84.0 |
+| Runtime | Node.js (Databricks AppKit) | AppKit v0.89.0 (Node >= 22) |
 | Package manager | pnpm | 11.0.8 |
 | Language | TypeScript | 5.9.3 |
 | Server framework | Express (via AppKit `server()` plugin) | — |
@@ -58,7 +58,7 @@
 | Routing | react-router | 7.18.4 (build 4 audit) |
 | MCP App | `@modelcontextprotocol/ext-apps` | 1.7.5 |
 | UI test tooling | `@testing-library/react` / `user-event` / `jest-dom`, `jsdom`, `vitest-axe` | 16.3.3 / 14.6.8 / 7.0.1, 30.1.3, 0.1.0 |
-| UI components | `@databricks/appkit-ui` | 0.84.0 |
+| UI components | `@databricks/appkit-ui` | 0.89.0 |
 | Testing | vitest | 4.1.9 |
 | Linting | eslint + prettier | 9.39.1 / 3.6.2 |
 
@@ -88,13 +88,13 @@
 | `exec_dashboard_url` | Executive AI/BI dashboard published URL → `GT_EXEC_DASHBOARD_URL` (via `resources/app.app.yml` `config.env`) | deploy.sh builds it from the infra `executive` dashboard ID | Dev target value is the real published URL `https://fevm-hls-fde.cloud.databricks.com/dashboardsv3/01f1cf0b38d31b7cbac5bdac6cafe3eb/published` (`resources.dashboards.executive`); deploy.sh rebuilds the same URL. Update it if the dashboard is recreated. Global default `""` |
 | `agents_skills_path` | Agent skills UC volume (`catalog.schema.volume`) | Default `${var.catalog}.${var.schema_name}.agent_skills` (infra volume) | `hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.agent_skills` |
 
-> **Agent skills (2026-10-26):** sources are `agent_skills/<skill>/SKILL.md` (`review-guide`, `scoring-model`, `tracer-bullets`; moved from `server/agents/skills/`). AppKit reads `DATABRICKS_VOLUME_AGENT_SKILLS` at boot; it is set in `app.app.yml` `config.env` because an `app.yaml` `valueFrom` for the volume did not reach AppKit. Do not edit the volume by hand.
+> **Agent skills (2026-10-26):** sources are `agent_skills/<skill>/SKILL.md` (`review-guide`, `scoring-model`, `tracer-bullets`; moved from `server/agents/skills/`). AppKit reads `DATABRICKS_VOLUME_AGENT_SKILLS` at boot; it is set in `app.app.yml` `config.env` (no `app.yaml` env reaches the app: the bundle `config` block replaces it). Do not edit the volume by hand.
 
 ### App Configuration
 
 | File | Purpose |
 |------|---------|
-| `app.yaml` | App runtime config — command, env vars (valueFrom resource bindings) |
+| `app.yaml` | Comment stub only. App runtime command + env (incl. `value_from` resource bindings) live in `resources/app.app.yml` `config` |
 | `appkit.plugins.json` | Plugin manifest — resource bindings, env var mappings, scaffolding rules |
 | `.env` | Local dev env vars (gitignored) |
 | `.env.example` | Template for `.env` |
@@ -166,7 +166,7 @@ All scaffold-time placeholders replaced with infra-owned values:
 
 ## OpenTelemetry
 
-Declared in `databricks.yml` via `telemetry_export_destinations` (CLI ≥ 0.294.0). Platform auto-creates tables on first deploy. `OTEL_TRACES_SAMPLER=always_on` in `app.yaml` ensures all spans are recorded.
+Declared in `databricks.yml` via `telemetry_export_destinations` (CLI ≥ 0.294.0). Platform auto-creates tables on first deploy. `OTEL_TRACES_SAMPLER=always_on` in `resources/app.app.yml` `config.env` ensures all spans are recorded.
 
 | Signal | Table |
 |--------|-------|
@@ -261,13 +261,15 @@ OAuth secret scopes are immutable — must generate a new secret.
 5. **`app_db` parent = `production` branch.** Use `postgres_branches.production.id` for `LAKEBASE_BRANCH`, NOT `development`.
 6. **`deploy_bundle()` must pass `extra_args` to both validate AND deploy.** Fixed in deploy.sh.
 7. **OTel prefix: `semantic_ground_truth_`** (not `ground_truth_app_`). Matches app display name pattern.
-8. **`OTEL_TRACES_SAMPLER=always_on` required in `app.yaml`.** Without it, default parent-based sampler drops most spans.
-9. **`app.yaml` does not interpolate `${var.*}`.** Pass bundle variables to the runtime through `resources/app.app.yml` `config.env` (overrides `app.yaml` env), as done for `GT_EXEC_DASHBOARD_URL`.
+8. **`OTEL_TRACES_SAMPLER=always_on` required in `resources/app.app.yml` `config.env`.** Without it, default parent-based sampler drops most spans.
+9. **All runtime env lives in `resources/app.app.yml` `config` (single source); `app.yaml` is a comment stub.** The bundle `config` block REPLACES `app.yaml` command + env entirely (not a per-variable merge). Until 2026-10-28 the env was duplicated in `app.yaml`, the `value_from` bindings never reached the app, and it only started because a gitignored local `.env` was uploaded with the source; a clean worktree deploy failed with `Warehouse ID not found`. Use `value_from` for resource bindings and `${var.*}` for bundle variables there.
 10. **The Apps build runs vitest (`prebuild`).** vitest's default include also matches `.test.ts` files inside the container's Python `.venv/` (gradio), so `vitest.config.ts` must exclude `**/.venv/**`.
 11. **Secret scope READ for the app SPN is owned by the infra bundle.** The infra scope `permissions` block is authoritative and removes the READ that the app's `m2m-client-id` secret resource grants. The app bundle state still reports "unchanged". `grant_app_permissions` re-grants READ after every app deploy.
 12. **Unattended `bundle deploy` fails at `apps update` (`400 Invalid delegation claim present in Ctx`).** A scheduled Genie Code task has no user delegation claim, and the plan always contains a no-op `config.env` update (values are redacted by the API). Deploy code with `bundle run app --target dev`; apply config changes with an interactive `bundle deploy`.
-13. **Never redeploy with a plain `apps deploy` (API/UI).** Without the bundle env vars it builds with `NODE_ENV=production`, the `prebuild` client test fails (`React.act` is not a function) and the app goes `UNAVAILABLE`. Use `bundle run app` or stop/start.
+13. **Never redeploy with a plain `apps deploy` (API/UI).** Without the bundle env vars it builds with `NODE_ENV=production`, the `prebuild` client test fails (`React.act` is not a function) and the app goes `UNAVAILABLE`. Use `bundle run app` or stop/start. This includes the SDK `w.apps.deploy(source_code_path=...)`: with `app.yaml` a comment stub the deployment fails with `No command to run` and still becomes active (2026-10-28, about 6 min `UNAVAILABLE`). You cannot copy `env_vars` from an old deployment: `GET` redacts values.
 14. **AppKit's `server()` registers its own `GET /health`** before `extend()` callbacks; `server/routes/health.ts` `removeEarlierHealthRoutes` drops it so the contract route answers (session 40).
+15. **AppKit 0.84.0-0.88.1 break MLflow agent tracing under Node ESM** (extensionless `@mlflow/core/dist/...` deep imports, `Cannot find module`). Stay on >= 0.89.0.
+16. **AppKit >= 0.89.0 typegen artifacts must be committed.** `prebuild` runs `appkit generate-types --wait`. If the warehouse can't describe a query and `shared/appkit-types/analytics.d.ts` is missing, the build fails (`TypegenFatalError`). Keep `analytics.d.ts` + `metric-views.d.ts` committed. Regenerate them with `appkit generate-types --wait` (warehouse access needed) when `config/queries/*.sql` changes. `serving.d.ts` stays git-ignored.
 15. **`vitest.config.ts` `silent: 'passed-only'`.** Passing error-path tests log `"level":"error"`; in the Apps BUILD logs those lines tripped the build-waves error gate (session 36).
 
 ---
@@ -284,6 +286,8 @@ OAuth secret scopes are immutable — must generate a new secret.
 | 2026-10-24 | **Brand + gaps build (run `745271774924215`)** ✅ | Branch `mg-genie-ui-brand-and-gaps`. Session 16: Databricks brand tokens (`client/src/theme/tokens.ts` + `index.css` `:root`/`.dark`), `ThemeProvider` (class, system default, `sgt-theme`) + `MotionConfig reducedMotion="user"`, self-hosted DM Sans/DM Mono, title/manifest, header symbol + 3-state toggle, `contrast.test.ts`; D1 = Lava 700 primary. Session 17: 0 hard-coded palette classes, vote tokens/icons/shortcuts (←/→/↑/S) + live region, `LogicView`, `DashboardLink` from `/api/config`, `a11y-static.test.ts`. Session 19: MCP card light/dark CSS variables + test. Session 20: `GET /api/config`, `exec_dashboard_url` var, `grant_app_permissions` re-grants scope READ, `deploy_verification` checks ACL + `/api/config`, `prebuild` runs vitest. Session 23 (converge, 3 attempts): vitest `.venv` exclude, glossaryParser subdomain flush, `'skip'` in `VOTE_TYPES`, optional `Asset.synonyms`, strict `useRef`; stable deployment `01f1cf13577d1d66a5fb26679855e41d`, 21 vitest files + `tsc -b` green, all 6 probes pass, `deploy_verification` run `4617382917183` pass. `6771630`: dashboard URL moved from hard-coded `app.yaml` to deploy.sh → `--var` → `config.env`. Post-build: real brandfolder symbol SVGs + favicons via `src/notebooks/download_brand_assets` (`05e8c1a`, `d3aefe3`); dev `exec_dashboard_url` default because the Apps API rejects an empty `config.env` value (`bd45836`); redeployed `01f1cf6c934d17048daca183beca9788`. Open: re-check `/api/config` via `deploy.sh --app`; `EmptyState.tsx` still uses a lucide icon (plan §5 wants Databricks primary icons); Lakebase `votes.vote_type` CHECK lacks `skip`; manual Lighthouse/keyboard/toggle checks. Runbook: `../docs/runbooks/ui_theming.md`. |
 | 2026-10-26 | **Build 4 (runs `110489694161084` + `655172288447819`)** | Branch `mg-genie-build-4`. Session 25: contracts + migration 009 (skips not votes, user settings, steward triage). 26: Node toolchain proven in a build task, `@modelcontextprotocol/ext-apps` 1.7.5 + Testing Library/jsdom/vitest-axe, audit high+critical 18 -> 13, vitest `node` + `client` projects. 33: skip endpoint, settings, steward APIs, `validate(spec)` on every route. 34: `review_skip_card`, 13 contract-validated tools, MCP App review card. 35: in-process contract suite + live `api_contract_tests`. Owner (2026-10-26): `agent_skills/` + `sync_agent_skills`, OTel `TABLE` resources. 36 (converge): `{ items }` structuredContent, `forbidden()` in `requireObo`, deployment `01f1d13e...` stable, 927 tests. `e7c8736`: `voteIds` marked processed. 40 (converge): 404 checks in real services, `/health` route fix, `displayName` default, deployment `01f1d180ccfa147db429fdda372aea06`; contract run `687515436484443` 147 pass / 0 fail / 100%; vitest 932, both `tsc -b` exit 0. |
 | 2026-10-27 | **Build 4 closed (owner, interactive)** | Interactive `bundle deploy` (incl. app update, no delegation error) -> deployment `01f1d178b131` with `e7c8736`; probes 8/8. Votes `644eff17`/`4f81557c` marked processed by re-registering `mg-genie-feedback-20261026` via `POST /api/steward/feedback-branches` with `voteIds` (no `batchId` -> upsert by branch name, same row `21bb95ea`; it re-sent `feedback.branch_ready`, follow-up 5). `api_contract_tests` task `max_retries: 0`; deployment `01f1d1bf1da21e6d9178db9ae66ac99e`, probes 8/8. Session: `../docs/sessions/2026-10-27_build-4-unblock-and-close.md`. |
+| 2026-10-28 | **Build 5 (run `229891579528310`, waves 5-0..5-9)** | Branch `mg-genie-build-5`. 42: brand-value tokens (D-B5-1) + `warning-text`, Databricks icon set (`client/public/brand/icons/`, `icons.manifest.json`, no CDN), 11 UI primitives. 43: UI test harness (`client/src/test/**`, schema-checked `mockApi`, axe, keyboard, `@a11y-strict`). 44: `FeedbackBranch.htmlUrl`, `slackShareEnabled`, `resurfacedFromSkip`, edit votes need a proposed value (400), notify only on create or status change, 53 routes. 45: `@mlflow/core` 0.4.0 (pinned to the AppKit peer), `GT_MLFLOW_TRACES` flag, `pnpm run check:bundle`. 49-56: every screen ported from the Figma Make export (S0-S11), lazy `/steward/**` `/executive` `/admin` `/settings`, steward Feedback queue / Conflicts / Feedback branches, Share to Slack (OBO through `system.ai.slack`, steward/admin only, new `ai-gateway` user scope so users consent once). 60 + owner: AppKit / AppKit UI 0.84.0 -> **0.89.0** (older versions deep-import `@mlflow/core` without `.js` and fail under Node ESM); keep `shared/appkit-types/*.d.ts` committed (0.89.0 `generate-types` is fatal offline); `lucide-react` removed; entry chunk 235.18 kB gzip. Owner: `NODE_ENV=test` pin for vitest; `resources/app.app.yml` `config` is the single source of command + env (`app.yaml` is a stub); `GT_FEEDBACK_REPO_URL`. 61: live contract harness build-5 checks, 153 pass / 0 fail / 201 `skipped_live`. 62: `ui_visual_checks` 44/44; dark tokens also under `:root.dark` (AppKit `prefers-color-scheme` selector beat `.dark`); outline status buttons on `bg-card`. Gotcha: Apps log ingestion tags any line containing `error:` as ERROR (test titles renamed). vitest 1883 pass; deployment `01f1d3145f051b5fbddf309e716f8304` (12/12 probes). Unattended `bundle deploy` still fails at `apps update` (use `bundle run app`; owner terminal deploy pending). Manual checks pending wave 5-11. Summary: `../docs/sessions/2026-10-28_build-5-summary.md`. |
+| 2026-10-29 | **AppKit 0.89.0 (owner, wave 5-7 unblock)** | `@databricks/appkit` + `appkit-ui` 0.84.0 -> 0.89.0, committed `shared/appkit-types/{analytics,metric-views}.d.ts`. Deployment `01f1d3029bf11f6ba728ead47406d68a`: 12/12 probes, `deploy_verification` `263699809540741` SUCCESS, 10 min soak 0 error lines. Later redeployed by session 62 as `01f1d3145f05`. Session: `../docs/sessions/2026-10-29_build-5-owner-unblock-appkit-0-89.md`. |
 
 ---
 

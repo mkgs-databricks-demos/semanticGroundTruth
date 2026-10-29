@@ -1,61 +1,86 @@
-// client/src/components/review/RejectSheet.tsx
+// @a11y-strict
+// client/src/components/review/RejectSheet.tsx — Reject sheet: optional "What's wrong?" feedback
 // Session 12 · Wave 4
+// Session 51 · Build 5 · wave 5-2 · ui Sheet primitive (right on md+, bottom on phones), 4000-char
+// counter, destructive "Reject" with closeIcon, spinner while submitting (brief S1). Feedback is
+// optional (screen_inventory S1, VoteBody.feedback?); the textarea gets focus on open (KB K1).
 
-import { useState } from 'react';
-import {
-  Button,
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  Textarea,
-} from '@databricks/appkit-ui/react';
-import type { VoteBody } from '../../../../shared/contracts';
+import { useEffect, useId, useState } from 'react';
+import { Button, Textarea } from '@databricks/appkit-ui/react';
+import { Icon, Sheet } from '../ui';
+import { sheetSide } from './media';
+import { Spinner } from './VoteBar';
+
+export const FEEDBACK_MAX = 4000;
 
 interface RejectSheetProps {
-  assetId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (body: VoteBody) => void;
-  disabled?: boolean;
+  assetName: string;
+  /** Trimmed feedback, or undefined when the reviewer left it empty. */
+  onSubmit: (feedback: string | undefined) => void;
+  submitting: boolean;
 }
 
-export function RejectSheet({ assetId, open, onOpenChange, onSubmit, disabled }: RejectSheetProps) {
-  const [reason, setReason] = useState('');
+export function RejectSheet({ open, onOpenChange, assetName, onSubmit, submitting }: RejectSheetProps) {
+  const fieldId = useId();
+  const countId = useId();
+  const [text, setText] = useState('');
 
-  const handleSubmit = () => {
-    onSubmit({
-      assetId,
-      voteType: 'reject',
-      feedback: reason || undefined,
-    });
+  useEffect(() => {
+    if (open) setText('');
+  }, [open]);
+
+  const submit = () => {
+    if (submitting) return;
+    const feedback = text.trim();
+    onSubmit(feedback ? feedback : undefined);
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>Reject asset</SheetTitle>
-        </SheetHeader>
-        <div className="mt-4 space-y-4">
-          <div>
-            <label htmlFor="reject-reason" className="text-sm font-medium">
-              Reason (optional)
-            </label>
-            <Textarea
-              id="reject-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={3}
-              className="mt-1"
-              placeholder="Why is this definition incorrect or incomplete?"
-            />
-          </div>
-          <Button variant="destructive" onClick={handleSubmit} disabled={disabled} className="w-full">
-            Confirm reject
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      side={sheetSide()}
+      title="Reject definition"
+      description={`Tell the steward what needs attention in ${assetName}.`}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" className="min-h-[44px]" disabled={submitting} onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            data-testid="review-reject-sheet-submit"
+            className="min-h-[44px] gap-1.5"
+            disabled={submitting}
+            onClick={submit}
+          >
+            {submitting ? <Spinner /> : <Icon name="close" size={16} />}
+            Reject
           </Button>
         </div>
-      </SheetContent>
+      }
+    >
+      <div className="flex flex-col gap-2">
+        <label htmlFor={fieldId} className="text-sm font-bold">
+          What&apos;s wrong? <span className="font-normal text-muted-foreground">Optional</span>
+        </label>
+        <Textarea
+          id={fieldId}
+          autoFocus
+          rows={6}
+          maxLength={FEEDBACK_MAX}
+          value={text}
+          disabled={submitting}
+          aria-describedby={countId}
+          placeholder="Help the steward understand what needs attention"
+          onChange={(e) => setText(e.target.value)}
+        />
+        <p id={countId} className="text-xs text-muted-foreground tabular-nums">
+          {text.length} / {FEEDBACK_MAX}
+        </p>
+      </div>
     </Sheet>
   );
 }

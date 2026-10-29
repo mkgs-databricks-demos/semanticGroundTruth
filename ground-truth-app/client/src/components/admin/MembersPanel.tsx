@@ -1,279 +1,174 @@
+// @a11y-strict
 // client/src/components/admin/MembersPanel.tsx — app group membership management
 // Session 10 · Wave 1 · No enum, no namespace, no default export
+// Session 54 · Build 5 · wave 5-2 (S6): one section per app group, empty-group
+// copy, remove with a confirm alertdialog, last-admin 409 CONFLICT as an inline
+// alert, per-group add / remove errors, writes disabled offline.
 
-import { useState } from 'react';
-import {
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Input,
-  Skeleton,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@databricks/appkit-ui/react';
-import {
-  AlertCircle,
-  Loader2,
-  Plus,
-  Trash2,
-  Users,
-} from 'lucide-react';
+import { useId, useState } from 'react';
+import type { FormEvent } from 'react';
+import { Button, Input } from '@databricks/appkit-ui/react';
 import type { AppGroup, AppGroupMember } from '../../../../shared/contracts';
 import { APP_GROUP_ROLE } from '../../../../shared/contracts';
-import type { AppGroupName } from '../../../../shared/contracts';
-import {
-  useAdminGroups,
-  useAddGroupMember,
-  useRemoveGroupMember,
-} from '../../lib/api/hooks';
-import type { ApiError } from '../../lib/api/http';
+import { useAddGroupMember, useAdminGroups, useRemoveGroupMember } from '../../lib/api/hooks';
+import { ApiError } from '../../lib/api/http';
+import { Badge, Icon, InlineAlert, SkeletonGroup } from '../ui';
+import type { BadgeTone } from '../ui';
+import { ConfirmDialog } from './ConfirmDialog';
 
-const ROLE_COLOR: Record<string, 'default' | 'secondary' | 'outline'> = {
-  admin: 'default',
-  steward: 'secondary',
+export const EMPTY_GROUP_TEXT = 'No members. Add an email or service principal id.';
+export const LAST_ADMIN_MESSAGE = "You can't remove the last admin.";
+
+const ROLE_TONE: Record<string, BadgeTone> = {
+  admin: 'info',
+  steward: 'success',
   reviewer: 'outline',
 };
 
-export function MembersPanel() {
+export function MembersPanel({ disabled = false }: { disabled?: boolean }) {
   const groupsQ = useAdminGroups();
-  const addM = useAddGroupMember();
-  const removeM = useRemoveGroupMember();
 
-  const [addingTo, setAddingTo] = useState<AppGroupName | null>(null);
-  const [newMemberId, setNewMemberId] = useState('');
-  const [confirmRemove, setConfirmRemove] = useState<{
-    group: AppGroupName;
-    memberId: string;
-  } | null>(null);
-
-  const mutError = addM.error ?? removeM.error;
-
-  async function handleAdd(groupName: AppGroupName) {
-    if (!newMemberId.trim()) return;
-    await addM.mutateAsync({
-      groupName,
-      body: { memberId: newMemberId.trim().toLowerCase() },
-    });
-    setNewMemberId('');
-    setAddingTo(null);
+  if (groupsQ.isPending) {
+    return <SkeletonGroup label="Loading members" lines={6} />;
   }
 
-  async function handleRemove(groupName: AppGroupName, memberId: string) {
-    await removeM.mutateAsync({ groupName, memberId });
-    setConfirmRemove(null);
-  }
-
-  if (groupsQ.isLoading) {
+  if (groupsQ.isError) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Members</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </CardContent>
-      </Card>
+      <InlineAlert
+        title="Couldn't load members"
+        onRetry={() => void groupsQ.refetch()}
+        retrying={groupsQ.isFetching}
+      >
+        {groupsQ.error.message}
+      </InlineAlert>
     );
   }
 
-  const groups: AppGroup[] = groupsQ.data ?? [];
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5" /> Members
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Error banner */}
-        {mutError && (
-          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive flex items-start gap-2">
-            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>{(mutError as ApiError | Error).message}</span>
-          </div>
-        )}
-
-        {groups.map((group) => (
-          <GroupSection
-            key={group.name}
-            group={group}
-            isAdding={addingTo === group.name}
-            newMemberId={addingTo === group.name ? newMemberId : ''}
-            confirmRemove={
-              confirmRemove?.group === group.name ? confirmRemove.memberId : null
-            }
-            isAddPending={addM.isPending}
-            isRemovePending={removeM.isPending}
-            onStartAdd={() => {
-              setAddingTo(group.name);
-              setNewMemberId('');
-            }}
-            onCancelAdd={() => setAddingTo(null)}
-            onMemberIdChange={setNewMemberId}
-            onAdd={() => void handleAdd(group.name)}
-            onConfirmRemove={(memberId) =>
-              setConfirmRemove({ group: group.name, memberId })
-            }
-            onCancelRemove={() => setConfirmRemove(null)}
-            onRemove={(memberId) => void handleRemove(group.name, memberId)}
-          />
-        ))}
-      </CardContent>
-    </Card>
+    <div className="flex flex-col gap-4">
+      {groupsQ.data.map((group) => (
+        <GroupSection key={group.name} group={group} disabled={disabled} />
+      ))}
+    </div>
   );
 }
 
-// ── GroupSection ────────────────────────────────────────────────────────
-
-interface GroupSectionProps {
-  group: AppGroup;
-  isAdding: boolean;
-  newMemberId: string;
-  confirmRemove: string | null;
-  isAddPending: boolean;
-  isRemovePending: boolean;
-  onStartAdd: () => void;
-  onCancelAdd: () => void;
-  onMemberIdChange: (v: string) => void;
-  onAdd: () => void;
-  onConfirmRemove: (memberId: string) => void;
-  onCancelRemove: () => void;
-  onRemove: (memberId: string) => void;
+function isLastAdminConflict(error: unknown): boolean {
+  return error instanceof ApiError && (error.code === 'CONFLICT' || error.status === 409);
 }
 
-function GroupSection({
-  group,
-  isAdding,
-  newMemberId,
-  confirmRemove,
-  isAddPending,
-  isRemovePending,
-  onStartAdd,
-  onCancelAdd,
-  onMemberIdChange,
-  onAdd,
-  onConfirmRemove,
-  onCancelRemove,
-  onRemove,
-}: GroupSectionProps) {
-  const role = APP_GROUP_ROLE[group.name];
-  const colorVariant = ROLE_COLOR[role] ?? 'outline';
+function GroupSection({ group, disabled }: { group: AppGroup; disabled: boolean }) {
+  const headingId = useId();
+  const inputId = useId();
+  const add = useAddGroupMember();
+  const remove = useRemoveGroupMember();
+  const [memberId, setMemberId] = useState('');
+  const [pendingRemove, setPendingRemove] = useState<string | null>(null);
+  const role = APP_GROUP_ROLE[group.name] ?? group.role;
+
+  function handleAdd(e: FormEvent) {
+    e.preventDefault();
+    const id = memberId.trim().toLowerCase();
+    if (!id || disabled) return;
+    add.mutate({ groupName: group.name, body: { memberId: id } }, { onSuccess: () => setMemberId('') });
+  }
+
+  function handleRemove() {
+    if (!pendingRemove) return;
+    remove.mutate({ groupName: group.name, memberId: pendingRemove });
+    setPendingRemove(null);
+  }
+
+  const lastAdmin = isLastAdminConflict(remove.error);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">{group.name}</span>
-          <Badge variant={colorVariant}>{role}</Badge>
-          {group.description && (
-            <span className="text-xs text-muted-foreground">
-              {group.description}
-            </span>
-          )}
-        </div>
-        <Button variant="ghost" size="sm" onClick={onStartAdd}>
-          <Plus className="h-4 w-4 mr-1" /> Add
-        </Button>
+    <section
+      aria-labelledby={headingId}
+      data-testid="admin-members-group"
+      data-group={group.name}
+      className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 id={headingId} className="font-mono text-sm font-bold">
+          {group.name}
+        </h3>
+        <Badge tone={ROLE_TONE[role] ?? 'outline'}>{role}</Badge>
+        {group.description ? <p className="w-full text-sm text-muted-foreground">{group.description}</p> : null}
       </div>
 
-      {/* Add member form */}
-      {isAdding && (
-        <div className="flex gap-2 mb-2">
-          <Input
-            value={newMemberId}
-            onChange={(e) => onMemberIdChange(e.target.value)}
-            placeholder="Email or SPN application ID"
-            className="flex-1"
-            onKeyDown={(e) => { if (e.key === 'Enter') onAdd(); }}
-          />
-          <Button
-            size="sm"
-            onClick={onAdd}
-            disabled={!newMemberId.trim() || isAddPending}
-          >
-            {isAddPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              'Add'
-            )}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onCancelAdd}>
-            Cancel
-          </Button>
-        </div>
+      {group.members.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{EMPTY_GROUP_TEXT}</p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-border">
+          {group.members.map((m: AppGroupMember) => (
+            <li key={m.memberId} className="flex items-center gap-3 py-2">
+              <div className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate font-mono text-sm">{m.memberId}</span>
+                <span className="text-xs text-muted-foreground">
+                  Added by {m.addedBy} on {new Date(m.addedAt).toLocaleDateString('en-US')}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="min-h-[44px] min-w-[44px]"
+                aria-label={`Remove ${m.memberId} from ${group.name}`}
+                data-testid="admin-members-remove"
+                data-member-id={m.memberId}
+                disabled={disabled || remove.isPending}
+                onClick={() => setPendingRemove(m.memberId)}
+              >
+                <Icon name="trash" />
+              </Button>
+            </li>
+          ))}
+        </ul>
       )}
 
-      {/* Member table */}
-      {group.members.length === 0 ? (
-        <p className="text-sm text-muted-foreground pl-2">No members.</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Member</TableHead>
-              <TableHead>Added by</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="w-24" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {group.members.map((m: AppGroupMember) => (
-              <TableRow key={m.memberId}>
-                <TableCell className="font-medium">{m.memberId}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {m.addedBy}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {new Date(m.addedAt).toLocaleDateString()}
-                </TableCell>
-                <TableCell>
-                  {confirmRemove === m.memberId ? (
-                    <div className="flex gap-1">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => onRemove(m.memberId)}
-                        disabled={isRemovePending}
-                      >
-                        {isRemovePending ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          'Confirm'
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={onCancelRemove}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onConfirmRemove(m.memberId)}
-                    >
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
+      {remove.isError ? (
+        <InlineAlert title={lastAdmin ? LAST_ADMIN_MESSAGE : "Couldn't remove the member"}>
+          {lastAdmin ? 'Add another admin first, then remove this one.' : remove.error.message}
+        </InlineAlert>
+      ) : null}
+      {add.isError ? <InlineAlert title="Couldn't add the member">{add.error.message}</InlineAlert> : null}
+
+      <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-2">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <label htmlFor={inputId} className="text-sm font-medium">
+            Add member
+          </label>
+          <Input
+            id={inputId}
+            value={memberId}
+            onChange={(e) => setMemberId(e.target.value)}
+            placeholder="Email or service principal id"
+            className="font-mono"
+            disabled={disabled}
+            data-testid="admin-members-add-input"
+          />
+        </div>
+        <Button
+          type="submit"
+          variant="outline"
+          className="min-h-[44px] gap-1.5"
+          disabled={disabled || !memberId.trim() || add.isPending}
+          data-testid="admin-members-add-submit"
+        >
+          <Icon name="plus" />
+          {add.isPending ? 'Adding…' : 'Add'}
+        </Button>
+      </form>
+
+      <ConfirmDialog
+        open={pendingRemove !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingRemove(null);
+        }}
+        title={`Remove ${pendingRemove ?? ''}?`}
+        description={`They lose the ${role} role from ${group.name}.`}
+        confirmLabel="Remove"
+        onConfirm={handleRemove}
+      />
+    </section>
   );
 }

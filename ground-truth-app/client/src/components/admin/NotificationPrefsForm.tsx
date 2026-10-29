@@ -1,3 +1,4 @@
+// @a11y-strict
 // client/src/components/admin/NotificationPrefsForm.tsx — notification preferences editor
 // Session 13 · Wave 4 · No enum, no namespace, no default export
 

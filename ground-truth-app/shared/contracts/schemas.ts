@@ -55,6 +55,8 @@ import type {
   RegisterAssetResult,
   ScanSourceResponse,
   SchemaEntry,
+  ShareSlackResponse,
+  SlackChannel,
   UnreadCountResponse,
   ValidateResult,
   VoteResult,
@@ -79,6 +81,7 @@ import {
   MarkReadBodySchema,
   MetricViewFullNameParamSchema,
   MetricViewListQuerySchema,
+  NotificationIdParamSchema,
   NotificationListQuerySchema,
   RegisterAssetBodySchema,
   RegisterSourceBodySchema,
@@ -86,7 +89,9 @@ import {
   ResolveConflictRequestSchema,
   ReviewableQuerySchema,
   RunQueryBodySchema,
+  ShareSlackRequestSchema,
   SkipRequestSchema,
+  SlackChannelsQuerySchema,
   SourceIdParamSchema,
   SynonymBodySchema,
   UpdateCampaignStatusBodySchema,
@@ -122,6 +127,7 @@ import {
   NOTIFICATION_STATUSES,
   ROLES,
   SKIP_REASONS,
+  SLACK_SHARE_STATUSES,
   SOURCE_TYPES,
   THEMES,
   VOTE_SOURCES,
@@ -473,6 +479,7 @@ export const FeedbackBranchSchema = z.object({
   createdAt: ts,
   completedAt: ts.nullable(),
   reviewedBy: z.string().nullable(),
+  htmlUrl: z.string().url().nullable(),
 });
 
 // ── Composite responses (review.ts, api.ts) ──────────────────────────────────
@@ -485,6 +492,7 @@ export const ReviewCardSchema = z.object({
   campaign: z.object({ campaignId: id, name: z.string() }).optional(),
   reason: z.enum(SURFACING_REASONS),
   progress: z.object({ reviewed: count, total: count }),
+  resurfacedFromSkip: z.boolean().optional(),
 });
 
 export const VoteResultSchema = z.object({
@@ -516,6 +524,19 @@ export const RegisterAssetResultSchema = z.object({
 export const FreshnessCheckResultSchema = z.object({
   campaignId: z.string().nullable(),
   added: count,
+});
+
+// ── Share to Slack (build 5 session 44; handlers session 50) ──
+
+export const ShareSlackResponseSchema = z.object({
+  status: z.enum(SLACK_SHARE_STATUSES),
+  permalink: z.string().url().optional(),
+  loginUrl: z.string().url().optional(),
+});
+
+export const SlackChannelSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
 });
 
 export const MarkReadResponseSchema = z.object({ updated: count });
@@ -598,6 +619,7 @@ const AUTH = [401, 403, 500];
 const AUTH_400 = [400, 401, 403, 500];
 const AUTH_404 = [400, 401, 403, 404, 500];
 const UPSTREAM = [400, 401, 403, 404, 500, 502];
+const SLACK = [400, 401, 403, 404, 429, 500, 502];
 
 export const ROUTE_CONTRACTS: readonly RouteContract[] = [
   // ── health.ts, config.ts, me.ts ──
@@ -667,6 +689,14 @@ export const ROUTE_CONTRACTS: readonly RouteContract[] = [
   { method: 'GET', path: '/api/steward/feedback-branches', role: 'steward', query: FeedbackBranchListQuerySchema, response: z.array(FeedbackBranchSchema), status: 200, errors: AUTH_400 },
   { method: 'POST', path: '/api/steward/feedback-branches', role: 'admin', request: UpsertFeedbackBranchRequestSchema, response: FeedbackBranchSchema, status: 201, errors: AUTH_404 },
   { method: 'POST', path: '/api/steward/feedback-branches/:batchId/status', role: 'steward', params: BatchIdParamSchema, request: UpdateFeedbackBranchStatusRequestSchema, response: FeedbackBranchSchema, status: 200, errors: [400, 401, 403, 404, 409, 500] },
+
+  // ── slack.ts (build 5: contract session 44, handlers session 50) ──
+  // Steward or admin (requireRole is a minimum). 404 = unknown notification /
+  // asset or GT_SLACK_SHARE_ENABLED=false; 429 = Unity Gateway / Slack rate
+  // limit; 502 = system.ai.slack error. Live contract job: skipped (OBO only).
+  { method: 'POST', path: '/api/notifications/:id/share-slack', role: 'steward', params: NotificationIdParamSchema, request: ShareSlackRequestSchema, response: ShareSlackResponseSchema, status: 200, errors: SLACK },
+  { method: 'POST', path: '/api/assets/:assetId/share-slack', role: 'steward', params: AssetIdParamSchema, request: ShareSlackRequestSchema, response: ShareSlackResponseSchema, status: 200, errors: SLACK },
+  { method: 'GET', path: '/api/slack/channels', role: 'steward', query: SlackChannelsQuerySchema, response: z.array(SlackChannelSchema), status: 200, errors: SLACK },
 ];
 
 /** Stable key for a route contract, e.g. "GET /api/assets/:assetId". */
@@ -759,6 +789,8 @@ const NAMED_SCHEMAS: readonly [string, z.ZodType][] = [
   ['VoteResult', VoteResultSchema],
   ['ScoringConfig', ScoringConfigSchema],
   ['AppRuntimeConfig', AppRuntimeConfigSchema],
+  ['ShareSlackResponse', ShareSlackResponseSchema],
+  ['SlackChannel', SlackChannelSchema],
 ];
 
 /** $defs key for a route part, e.g. "GET /api/assets/:assetId" -> res_GET_api_assets_assetId. */
@@ -938,4 +970,6 @@ export type ContractTypeChecks = [
   Expect<Same<Out<typeof ImportAssetsResponseSchema>, ImportAssetsResponse>>,
   Expect<Same<Out<typeof ErrorResponseSchema>, ErrorResponse>>,
   Expect<Same<Out<typeof ScoringConfigSchema>, ScoringConfig>>,
+  Expect<Same<Out<typeof ShareSlackResponseSchema>, ShareSlackResponse>>,
+  Expect<Same<Out<typeof SlackChannelSchema>, SlackChannel>>,
 ];

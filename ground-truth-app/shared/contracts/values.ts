@@ -102,6 +102,21 @@ export type ConflictResolution = (typeof CONFLICT_RESOLUTIONS)[number];
 export const EDIT_FIELDS = ['description', 'plain_english_logic', 'display_name'] as const;
 export type EditField = (typeof EDIT_FIELDS)[number];
 
+// ── Share to Slack (G5 Option A, build 5 session 44; routes in session 50) ──
+// User-initiated, steward/admin only, through system.ai.slack with the user's
+// OBO token (docs/research/05_slack_mcp_notifications.md).
+
+/** 'draft' writes a Slack draft for the caller; 'send' posts to the channel. */
+export const SLACK_SHARE_MODES = ['send', 'draft'] as const;
+export type SlackShareMode = (typeof SLACK_SHARE_MODES)[number];
+
+/** needs_slack_login: the user has not connected system.ai.slack (JSON-RPC -32042). */
+export const SLACK_SHARE_STATUSES = ['sent', 'drafted', 'needs_slack_login'] as const;
+export type SlackShareStatus = (typeof SLACK_SHARE_STATUSES)[number];
+
+/** Max length of the optional note a user adds to a share (whole Slack message max is 3,000). */
+export const SLACK_SHARE_MESSAGE_MAX = 2000;
+
 // ── App groups (conventions §3) ────────────────────────────────────────
 
 export const APP_GROUP_NAMES = [

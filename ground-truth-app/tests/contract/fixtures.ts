@@ -26,6 +26,9 @@ export const NOW = '2026-10-25T12:00:00.000Z';
 export const CREATED = '2026-10-01T09:00:00.000Z';
 export const UPDATED = '2026-10-20T09:00:00.000Z';
 
+/** Feedback repo web URL the fake steward service uses for FeedbackBranch.htmlUrl (build 5). */
+export const FEEDBACK_REPO_URL = 'https://github.com/example-org/semantic-ground-truth';
+
 // RFC 9562 v4-shaped ids (zod 4 uuid() checks version and variant bits).
 const uid = (prefix: string, n: number) => `${prefix}0000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 

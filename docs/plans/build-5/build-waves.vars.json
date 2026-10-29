@@ -1,0 +1,10 @@
+{
+  "project_name": "Semantic Ground Truth Build 5",
+  "instance_suffix": "-sgt-build-5",
+  "build_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth",
+  "build_branch": "mg-genie-build-5",
+  "manifest_path": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/docs/plans/build-5/waves.json",
+  "skills_catalog": "hls_fde_dev",
+  "skills_schema": "dev_matthew_giglia_build_waves",
+  "create_skills_schema": "false"
+}

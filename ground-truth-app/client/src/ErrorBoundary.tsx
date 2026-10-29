@@ -1,6 +1,12 @@
+// @a11y-strict
+// client/src/ErrorBoundary.tsx — last-resort boundary around the whole app
+// Session 49 · Build 5 · wave 5-1: renders the S11 app-error page (Reload +
+// "Technical details" disclosure) instead of showing the stack to everyone.
+// Route render errors are caught first by the router's errorElement.
+
 import React, { Component } from 'react';
 import type { ReactNode } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@databricks/appkit-ui/react';
+import { AppError } from './pages/fallback/AppErrorPage';
 
 interface Props {
   children: ReactNode;
@@ -37,37 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="min-h-screen bg-background p-4">
-          <Card className="max-w-2xl mx-auto mt-8">
-            <CardHeader>
-              <CardTitle className="text-destructive">Application Error</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold mb-2">Error Message:</h3>
-                  <pre className="bg-muted p-3 rounded text-sm overflow-auto">{this.state.error?.toString()}</pre>
-                </div>
-                {this.state.errorInfo && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Component Stack:</h3>
-                    <pre className="bg-muted p-3 rounded text-sm overflow-auto">
-                      {this.state.errorInfo.componentStack}
-                    </pre>
-                  </div>
-                )}
-                {this.state.error?.stack && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Stack Trace:</h3>
-                    <pre className="bg-muted p-3 rounded text-sm overflow-auto max-h-96">{this.state.error.stack}</pre>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      );
+      return <AppError error={this.state.error} componentStack={this.state.errorInfo?.componentStack} />;
     }
 
     return this.props.children;

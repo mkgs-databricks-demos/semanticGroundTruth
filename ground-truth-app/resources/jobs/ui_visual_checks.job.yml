@@ -1,0 +1,49 @@
+# resources/jobs/ui_visual_checks.job.yml
+# Headless Chromium (Playwright) + axe visual/accessibility checks against the deployed app
+# (session 48, build 5; owner decision D-B5-2). 11 routes x light/dark x 1440x900/390x844 = 44 cells,
+# one row per cell in <catalog>.<schema>.ui_visual_results, full-page screenshots in the
+# ui_visual_checks volume (ground-truth-infra), fails on any failing cell.
+# Runbook: docs/runbooks/ui_visual_checks.md
+#
+# Serverless (no cluster spec), no schedule: run after a deploy, e.g.
+#   databricks bundle run ui_visual_checks --target dev
+# Name follows api_contract_tests: dev = [dev matthew_giglia] dev-semantic-ground-truth-ui-visual-checks
+#
+# Dependencies (playwright, axe-playwright-python, pillow, numpy) are installed by the notebook's
+# first cell: serverless notebook tasks take their environment from the notebook, not from a job
+# `environments` entry. Chromium's 4 missing system libraries are unpacked rootless under /tmp.
+
+resources:
+  jobs:
+    ui_visual_checks:
+      name: ${var.app_display_name}-ui-visual-checks
+      parameters:
+        - name: app_name
+          default: ${var.app_display_name}
+        - name: secret_scope
+          default: ${var.secret_scope_name}
+        - name: client_id_key
+          default: ${var.m2m_client_id_key}
+        - name: client_secret_key
+          default: ${var.m2m_client_secret_key}
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema_name}
+        # Managed volume created by ground-truth-infra (resources/ui_visual_checks.volume.yml).
+        - name: output_volume
+          default: /Volumes/${var.catalog}/${var.schema_name}/ui_visual_checks
+        # Figma export screenshots for the report-only figma_similarity column. The app bundle
+        # does not sync docs/, so this points at the Git folder; empty or missing = similarity null.
+        - name: figma_dir
+          default: /Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/docs/design/ui/figma
+      tasks:
+        - task_key: ui_visual_checks
+          # No retries (same reason as api_contract_tests): a retry keeps {{job.run_id}} and appends
+          # a second set of 44 rows for the same run. Re-run the job instead.
+          max_retries: 0
+          timeout_seconds: 3600
+          notebook_task:
+            notebook_path: ../../src/notebooks/ui_visual_checks.ipynb
+            base_parameters:
+              run_id: "{{job.run_id}}"

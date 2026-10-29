@@ -1,7 +1,10 @@
 // client/src/lib/api/hooks.ts — React Query v5 hooks for every non-health route
 // Session 10 · Wave 3 · No enum, no namespace, no default export
+// Session 49 · Build 5 · wave 5-1: review session counters, steward badge
+// counts, `enabled` option on the steward lists, Share to Slack hooks.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 import type {
   AddGroupMemberBody,
   CampaignListQuery,
@@ -20,6 +23,8 @@ import type {
   FeedbackQueueQuery,
   ResolveConflictRequest,
   UpdateFeedbackBranchStatusRequest,
+  ShareSlackRequest,
+  SlackChannelsQuery,
 } from '../../../../shared/contracts';
 
 import {
@@ -71,6 +76,9 @@ import {
   resolveConflict,
   getFeedbackBranches,
   updateFeedbackBranchStatus,
+  getSlackChannels,
+  shareNotificationToSlack,
+  shareAssetToSlack,
 } from './endpoints';
 import { queryKeys } from './keys';
 
@@ -143,10 +151,11 @@ export function useCampaign(id: string) {
   });
 }
 
-export function useNotifications(params?: NotificationListQuery) {
+export function useNotifications(params?: NotificationListQuery, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.notifications(params as Record<string, unknown>),
     queryFn: () => getNotifications(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -202,6 +211,7 @@ export function useSubmitVote() {
   return useMutation({
     mutationFn: submitVote,
     onSuccess: (result) => {
+      bumpReviewSession(queryClient, 'reviewed');
       if ('next' in result) {
         queryClient.setQueryData(queryKeys.nextCard(), result.next ?? null);
       }
@@ -441,6 +451,7 @@ export function useSkipCard() {
   return useMutation({
     mutationFn: skipCard,
     onSuccess: () => {
+      bumpReviewSession(queryClient, 'skipped');
       void queryClient.invalidateQueries({ queryKey: ['review', 'next'] });
       void queryClient.invalidateQueries({ queryKey: queryKeys.userStats });
       void queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
@@ -466,17 +477,24 @@ export function useUpdateMySettings() {
   });
 }
 
-export function useFeedbackQueue(params?: Partial<FeedbackQueueQuery>) {
+/** Options shared by the steward list hooks (e.g. wait until `GET /api/me` says steward). */
+export interface QueryToggle {
+  enabled?: boolean;
+}
+
+export function useFeedbackQueue(params?: Partial<FeedbackQueueQuery>, options?: QueryToggle) {
   return useQuery({
     queryKey: queryKeys.feedbackQueue(params as Record<string, unknown>),
     queryFn: () => getFeedbackQueue(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
-export function useConflicts(params?: ConflictsQuery) {
+export function useConflicts(params?: ConflictsQuery, options?: QueryToggle) {
   return useQuery({
     queryKey: queryKeys.conflicts(params as Record<string, unknown>),
     queryFn: () => getConflicts(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -491,10 +509,11 @@ export function useResolveConflict() {
   });
 }
 
-export function useFeedbackBranches(params?: FeedbackBranchListQuery) {
+export function useFeedbackBranches(params?: FeedbackBranchListQuery, options?: QueryToggle) {
   return useQuery({
     queryKey: queryKeys.feedbackBranches(params as Record<string, unknown>),
     queryFn: () => getFeedbackBranches(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -514,5 +533,106 @@ export function useRuntimeConfig() {
     queryKey: queryKeys.runtimeConfig,
     queryFn: getRuntimeConfig,
     staleTime: 5 * 60_000, // 5 min — rarely changes
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Review session counters (build 5, S1 session-complete panel)
+// ─────────────────────────────────────────────────────────────────────
+
+/** Cards handled since the session started (votes + skips), client-side only. */
+export interface ReviewSessionStats {
+  reviewed: number;
+  skipped: number;
+  /** reviewed + skipped: compared with UserSettings.cardsPerSession. */
+  total: number;
+}
+
+export const EMPTY_REVIEW_SESSION: ReviewSessionStats = { reviewed: 0, skipped: 0, total: 0 };
+
+function readReviewSession(qc: QueryClient): ReviewSessionStats {
+  return qc.getQueryData<ReviewSessionStats>(queryKeys.reviewSession) ?? EMPTY_REVIEW_SESSION;
+}
+
+function bumpReviewSession(qc: QueryClient, field: 'reviewed' | 'skipped'): void {
+  const current = readReviewSession(qc);
+  const next = { ...current, [field]: current[field] + 1 };
+  qc.setQueryData<ReviewSessionStats>(queryKeys.reviewSession, { ...next, total: next.reviewed + next.skipped });
+}
+
+/**
+ * Votes and skips sent in this browser session (useSubmitVote / useSkipCard
+ * count them on success). Never fetched: an invalidation just re-reads the
+ * cache. `reset()` starts a new session ("Keep going").
+ */
+export function useReviewSessionStats() {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({
+    queryKey: queryKeys.reviewSession,
+    queryFn: () => readReviewSession(queryClient),
+    initialData: () => readReviewSession(queryClient),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+  const reset = () => {
+    queryClient.setQueryData<ReviewSessionStats>(queryKeys.reviewSession, EMPTY_REVIEW_SESSION);
+  };
+  return { ...(data ?? EMPTY_REVIEW_SESSION), reset };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Steward sub-nav badge counts (build 5, S0)
+// ─────────────────────────────────────────────────────────────────────
+
+/** `null` while loading or when the list request failed (the badge is hidden). */
+export interface StewardBadgeCounts {
+  /** Assets waiting for triage: Paged total of the pending feedback queue. */
+  feedbackQueue: number | null;
+  /** Assets with competing edit proposals. */
+  conflicts: number | null;
+  /** Feedback branches waiting for a steward (status `proposed`). */
+  feedbackBranches: number | null;
+}
+
+/** Badge counts from the three steward list endpoints; no request unless `enabled`. */
+export function useStewardBadgeCounts(enabled: boolean): StewardBadgeCounts {
+  const queue = useFeedbackQueue(undefined, { enabled });
+  const conflicts = useConflicts(undefined, { enabled });
+  const branches = useFeedbackBranches(undefined, { enabled });
+  return {
+    feedbackQueue: queue.data ? queue.data.total : null,
+    conflicts: conflicts.data ? conflicts.data.length : null,
+    feedbackBranches: branches.data
+      ? branches.data.filter((b) => b.status === 'proposed').length
+      : null,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Share to Slack (G5 Option A; UI in session 56)
+// ─────────────────────────────────────────────────────────────────────
+
+/** Channel search for the share dialog; the caller debounces `query`. */
+export function useSlackChannels(params?: SlackChannelsQuery, options?: QueryToggle) {
+  const q = params?.query?.trim() ?? '';
+  return useQuery({
+    queryKey: queryKeys.slackChannels(q),
+    queryFn: () => getSlackChannels(q ? { query: q } : undefined),
+    enabled: options?.enabled ?? true,
+    staleTime: 60_000,
+  });
+}
+
+export function useShareNotificationToSlack() {
+  return useMutation({
+    mutationFn: (vars: { notificationId: string; body: ShareSlackRequest }) =>
+      shareNotificationToSlack(vars.notificationId, vars.body),
+  });
+}
+
+export function useShareAssetToSlack() {
+  return useMutation({
+    mutationFn: (vars: { assetId: string; body: ShareSlackRequest }) =>
+      shareAssetToSlack(vars.assetId, vars.body),
   });
 }

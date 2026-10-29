@@ -1,0 +1,22 @@
+# resources/ui_visual_checks.volume.yml
+# Managed UC volume for the ui_visual_checks job screenshots (session 48, build 5).
+#
+# Layout: /Volumes/<catalog>/<schema>/ui_visual_checks/<run_id>/<route>__<theme>__<viewport>.png
+# Written by ground-truth-app's ui_visual_checks job (parameter output_volume points here).
+# Runbook: docs/runbooks/ui_visual_checks.md
+#
+# Grants: none in this file. The M2M SPN's READ VOLUME + WRITE VOLUME grant is applied with its
+# other UC grants by ground-truth-app's app_post_deploy_setup job (grant_app_permissions notebook,
+# visual_checks_volume parameter), because the SPN's application id is only known at runtime
+# (ensure_m2m_service_principal). This bundle deploys first, so the volume exists by then.
+
+resources:
+  volumes:
+    ui_visual_checks:
+      catalog_name: ${resources.schemas.ground_truth_schema.catalog_name}
+      schema_name: ${resources.schemas.ground_truth_schema.name}
+      name: ui_visual_checks
+      volume_type: MANAGED
+      comment: "Screenshots from the ui_visual_checks job (headless Chromium against the Ground Truth app), one folder per job run"
+      lifecycle:
+        prevent_destroy: true

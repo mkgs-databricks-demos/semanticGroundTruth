@@ -1,3 +1,4 @@
+// @a11y-strict
 // client/src/components/leaderboard/BadgeList.tsx — badge labels for gamification
 // Session 13 · Wave 4 · No enum, no namespace, no default export
 

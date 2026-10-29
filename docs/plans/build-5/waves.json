@@ -1,0 +1,677 @@
+{
+  "version": 1,
+  "description": "Semantic Ground Truth build 5 (sessions 42-64): Figma Make redesign with Databricks brand values, steward triage screens, Share to Slack (G5 Option A), MLflow agent traces, infra post-deploy hardening, metric view UUID ids, Lakehouse Monitoring (G11), Chromium visual gate, manual acceptance wave. Owner decisions 2026-10-27: docs/plans/build-5/build_conventions.md. Earlier builds: docs/plans/waves.json (history only).",
+  "workflow": {"mode": "git"},
+  "repo_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth",
+  "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth",
+  "branch": "mg-genie-build-5",
+  "bundle_target": "dev",
+  "status_dir": ".build-status",
+  "plans_dir": "docs/plans/build-5",
+  "sessions_dir": "docs/sessions",
+  "context_files": [
+    "docs/plans/build-5/build_conventions.md",
+    "docs/plans/build_conventions.md",
+    "PROJECT_MEMORY.md",
+    "docs/plans/app/build_conventions.md",
+    "docs/runbooks/node_toolchain_genie_code.md",
+    "ground-truth-app/PROJECT_MEMORY.md",
+    "ground-truth-infra/PROJECT_MEMORY.md",
+    "ground-truth-agent/PROJECT_MEMORY.md",
+    "docs/requests/2026-10-27_build-4-follow-ups.md",
+    "docs/design/ui/screen_inventory.md",
+    "docs/design/ui/ui_test_strategy.md",
+    "docs/design/ui/figma_make_brief.md",
+    "docs/design/ui/figma/README.md",
+    "docs/plans/ui_brand_plan.md",
+    "docs/design/L200-C3_card_ui.md",
+    "docs/research/05_slack_mcp_notifications.md",
+    "docs/plans/gap_analysis_2026-10.md"
+  ],
+  "task_retries": {"max_retries": 2, "min_retry_interval_seconds": 60},
+  "probe_auth": {
+    "secret_scope": "semantic_ground_truth_credentials",
+    "client_id_key": "m2m_client_id_dev",
+    "client_secret_key": "m2m_client_secret_dev"
+  },
+  "runtime_targets": {
+    "app": {
+      "type": "app",
+      "name": "dev-semantic-ground-truth",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-app",
+      "resource_key": "app",
+      "deploy_commands": ["bundle deploy --target dev", "bundle run app --target dev"],
+      "telemetry": {
+        "logs_table": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_logs",
+        "traces_table": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_spans",
+        "trace_service_name": "dev-semantic-ground-truth",
+        "error_patterns": ["error TS\\d+", "Error building app", "Unhandled", "UnhandledPromiseRejection", "FATAL", "Cannot find module", "\"level\"\\s*:\\s*\"(error|fatal)\""],
+        "ignore_patterns": ["Updated file:", "Skipping query type generation", "App did not respect SIGTERM timeout", "\\[ELIFECYCLE\\] Command failed"],
+        "required_markers": ["listening on"]
+      },
+      "stability": {"soak_minutes": 10, "max_errors": 0, "min_traces": 1, "traces_wait_minutes": 5},
+      "probes": [
+        {"path": "/health", "expect_status": 200, "response_regex": "\"status\":\"ok\""},
+        {"path": "/api/me", "expect_status": 200, "response_regex": "\"roles\":\\[[^\\]]*\"admin\""},
+        {"path": "/api/campaigns", "expect_status": 200},
+        {"path": "/api/config", "expect_status": 200, "response_regex": "\"executive_dashboard_url\":\"https://"},
+        {"path": "/api/config", "expect_status": 200, "response_regex": "\"slackShareEnabled\":(true|false)"},
+        {"path": "/api/me/settings", "expect_status": 200, "response_regex": "\"theme\":\"(system|light|dark)\""},
+        {"path": "/api/review/stats/me", "expect_status": 200, "response_regex": "\"skippedCount\":\\d+"},
+        {"path": "/settings", "expect_status": 200, "response_regex": "<html"},
+        {"path": "/steward/feedback-branches", "expect_status": 200, "response_regex": "<html"},
+        {"path": "/brand/icons/icons.manifest.json", "expect_status": 200},
+        {"path": "/fonts/dm-sans-regular.ttf", "expect_status": 200},
+        {"path": "/mcp", "method": "POST", "mcp_initialize": true}
+      ]
+    },
+    "app_deploy_verification": {
+      "type": "job",
+      "name": "[dev matthew_giglia] dev-semantic-ground-truth-deploy-verification",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-app",
+      "resource_key": "deploy_verification",
+      "deploy_commands": ["bundle deploy --target dev", "bundle run deploy_verification --target dev"]
+    },
+    "api_contract_tests": {
+      "type": "job",
+      "name": "[dev matthew_giglia] dev-semantic-ground-truth-api-contract-tests",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-app",
+      "resource_key": "api_contract_tests",
+      "deploy_commands": ["bundle deploy --target dev", "bundle run api_contract_tests --target dev"]
+    },
+    "api_contract_results": {
+      "type": "table",
+      "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.api_contract_results",
+      "required_columns": ["run_id", "check_id", "kind", "method", "path_or_tool", "expected", "actual", "status", "duration_ms", "ts"],
+      "min_rows": 1
+    },
+    "ui_visual_checks": {
+      "type": "job",
+      "name": "[dev matthew_giglia] dev-semantic-ground-truth-ui-visual-checks",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-app",
+      "resource_key": "ui_visual_checks",
+      "deploy_commands": ["bundle deploy --target dev", "bundle run ui_visual_checks --target dev"]
+    },
+    "ui_visual_results": {
+      "type": "table",
+      "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.ui_visual_results",
+      "required_columns": ["run_id", "route", "theme", "viewport", "status", "axe_violations", "axe_serious", "console_errors", "failed_requests", "h1_count", "bg_ok", "focus_ok", "figma_similarity", "screenshot_path", "duration_ms", "ts"],
+      "min_rows": 44
+    },
+    "post_deploy_setup": {
+      "type": "job",
+      "name": "[dev matthew_giglia] Semantic Ground Truth \u2014 Post-Deploy Setup",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-infra",
+      "resource_key": "post_deploy_setup",
+      "deploy_commands": ["bundle deploy --target dev --var=run_setup=false", "bundle run post_deploy_setup --target dev --params run_setup=true"]
+    },
+    "infra_metric_view_deploy": {
+      "type": "job",
+      "name": "[dev matthew_giglia] Semantic Ground Truth \u2014 Deploy Metric Views",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-infra",
+      "resource_key": "metric_view_deploy",
+      "deploy_commands": ["bundle deploy --target dev --var=run_setup=false", "bundle run metric_view_deploy --target dev"]
+    },
+    "mv_review_activity": {
+      "type": "table",
+      "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.mv_review_activity"
+    },
+    "bronze_lakebase_cdf": {
+      "type": "table",
+      "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.bronze_lakebase_cdf",
+      "required_columns": ["_source_table", "_source_history_table", "_record_key", "_pg_change_type", "_pg_lsn", "_pg_xid", "_timestamp", "_sort_by", "_ingested_at", "data"],
+      "min_rows": 1,
+      "require_fresh_deployment": false
+    },
+    "bronze_cdf_profile_metrics": {
+      "type": "table",
+      "name": "hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.bronze_lakebase_cdf_profile_metrics",
+      "min_rows": 1,
+      "require_fresh_deployment": false
+    },
+    "agent_ops_dashboard": {
+      "type": "dashboard",
+      "name": "[dev matthew_giglia] Semantic Ground Truth \u2014 Operations",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-agent",
+      "deploy_commands": ["bundle deploy --target dev"],
+      "warehouse_id": "0ea84986a23a47c3",
+      "execute_datasets": true
+    },
+    "agent_verification": {
+      "type": "job",
+      "name": "[dev matthew_giglia] Ground Truth Agent \u2014 Verification",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-agent",
+      "resource_key": "agent_verification",
+      "deploy_commands": ["bundle deploy --target dev", "bundle run agent_verification --target dev"]
+    },
+    "agent_space": {
+      "type": "genie_space",
+      "name": "[dev matthew_giglia] Ground Truth Operations",
+      "bundle_root": "/Workspace/Users/matthew.giglia@databricks.com/semanticGroundTruth/ground-truth-agent",
+      "resource_key": "ground_truth_ops",
+      "require_fresh_deployment": false,
+      "deploy_commands": ["bundle deploy --target dev"],
+      "warehouse_id": "0ea84986a23a47c3",
+      "check_example_sql": true,
+      "probe_questions": ["How many votes were cast in total?", "How many assets are in each status?"],
+      "probe_mode": "warn",
+      "probe_timeout_seconds": 120
+    }
+  },
+  "waves": [
+    {
+      "wave_id": "5-0",
+      "build": "5",
+      "name": "Foundations: design system, test harness, contracts, deps, infra fixes, metric view ids, monitoring, visual-checks job",
+      "gate": [
+        "All wave 5-0 sessions have status pass",
+        "vitest: from ground-truth-app in /tmp/gt-gate-5-0 with the Node toolchain of docs/runbooks/node_toolchain_genie_code.md: pnpm install --frozen-lockfile && pnpm exec vitest run passes",
+        "tsc: pnpm exec tsc -b passes for server and client in the same copy",
+        "pytest: python -m pytest ground-truth-infra/tests ground-truth-app/src/notebooks/tests passes",
+        "client/src/theme/tokens-parity.test.ts exists and reports 0 mismatches against client/src/theme/figma-variables.json",
+        "ground-truth-app/client/public/brand/icons/icons.manifest.json exists and every entry has attachment_id or source starting with substitute:",
+        "ground-truth-app/server/routes/slack.ts registers the 3 Slack share routes listed in ROUTE_CONTRACTS",
+        "no *.lvdash.json file changed in this wave"
+      ],
+      "required_checks": ["vitest", "tsc", "pytest"],
+      "validate_bundles": [
+        {"root": "ground-truth-infra", "target": "dev"},
+        {"root": "ground-truth-app", "target": "dev"},
+        {"root": "ground-truth-agent", "target": "dev"}
+      ],
+      "sessions": [
+        {
+          "session_id": "42",
+          "title": "Design-system port: brand-value tokens, icons, UI primitives",
+          "plan_file": "42_design_system_port.md",
+          "mode": "edit",
+          "scope": "Correct 4 brand primitives and add warning-text (D-B5-1); token parity test vs the Figma variables copy; contrast for vote/confidence/warning-text; brand icons + manifest incl. the 6 missing ids; UI primitives with tests.",
+          "owned_paths": [
+            "ground-truth-app/client/src/theme/tokens.ts",
+            "ground-truth-app/client/src/theme/contrast.test.ts",
+            "ground-truth-app/client/src/theme/tokens-parity.test.ts",
+            "ground-truth-app/client/src/theme/figma-variables.json",
+            "ground-truth-app/client/src/index.css",
+            "ground-truth-app/client/src/components/ui/**",
+            "ground-truth-app/client/public/brand/**"
+          ],
+          "timeout_minutes": 120
+        },
+        {
+          "session_id": "43",
+          "title": "UI test harness: render helpers, schema-checked mockApi, fixtures, axe, keyboard, strict a11y marker",
+          "plan_file": "43_ui_test_harness.md",
+          "mode": "edit",
+          "scope": "Harness of ui_test_strategy.md \u00a71-\u00a77 with meta-tests; opt-in @a11y-strict rules in a11y-static.test.ts; no new dependencies.",
+          "owned_paths": [
+            "ground-truth-app/client/src/test/**",
+            "ground-truth-app/client/src/theme/a11y-static.test.ts",
+            "ground-truth-app/vitest.config.ts"
+          ],
+          "timeout_minutes": 120
+        },
+        {
+          "session_id": "44",
+          "title": "Contracts + server: htmlUrl, resurfacedFromSkip, notify once, edit-vote validation, Slack share contract + stubs",
+          "plan_file": "44_contracts_and_server_fixes.md",
+          "mode": "edit",
+          "scope": "All build-5 contract changes (follow-ups 5, 6, 11; G5 routes as 501 stubs; slackShareEnabled in config) with unit and contract-manifest updates.",
+          "owned_paths": [
+            "ground-truth-app/shared/contracts/**",
+            "ground-truth-app/server/services/steward/**",
+            "ground-truth-app/server/services/review/**",
+            "ground-truth-app/server/routes/review.ts",
+            "ground-truth-app/server/routes/steward.ts",
+            "ground-truth-app/server/routes/slack.ts",
+            "ground-truth-app/server/routes/index.ts",
+            "ground-truth-app/server/routes/config.ts",
+            "ground-truth-app/server/mcp/tools/**",
+            "ground-truth-app/tests/contract/**"
+          ],
+          "timeout_minutes": 120
+        },
+        {
+          "session_id": "45",
+          "title": "App dependencies: @mlflow/core agent traces, bundle-size script",
+          "plan_file": "45_app_deps_and_mlflow_traces.md",
+          "mode": "edit",
+          "scope": "Only session that edits package.json and pnpm-lock.yaml; MLflow traces for agent chat (never fail a request); check-bundle-size script.",
+          "owned_paths": [
+            "ground-truth-app/package.json",
+            "ground-truth-app/pnpm-lock.yaml",
+            "ground-truth-app/server/lib/tracing/**",
+            "ground-truth-app/server/agents/**",
+            "ground-truth-app/scripts/check-bundle-size.mjs"
+          ],
+          "timeout_minutes": 120
+        },
+        {
+          "session_id": "46",
+          "title": "Infra post-deploy hardening: one Genie automation, deploy.sh always runs setup, unprocessed edits, leftovers",
+          "plan_file": "46_infra_post_deploy_hardening.md",
+          "mode": "edit",
+          "scope": "Follow-ups 1, 2, 6 (pipeline side), 8. Static only; runtime proof in session 57.",
+          "owned_paths": [
+            "ground-truth-infra/src/notebooks/setup_genie_automation.py",
+            "ground-truth-infra/src/notebooks/genie_automation_lib.py",
+            "ground-truth-infra/src/notebooks/setup_cdf_config.py",
+            "ground-truth-infra/src/notebooks/setup_job_params.py",
+            "ground-truth-infra/src/notebooks/collect_feedback.py",
+            "ground-truth-infra/resources/jobs/post_deploy_setup.job.yml",
+            "ground-truth-infra/tests/test_genie_automation_lib.py",
+            "ground-truth-infra/tests/test_collect_feedback.py",
+            "deploy.sh",
+            "docs/runbooks/deploy_order_and_permissions.md"
+          ],
+          "timeout_minutes": 90
+        },
+        {
+          "session_id": "47",
+          "title": "Metric view UUID-string ids + Lakehouse Monitoring on bronze (G11)",
+          "plan_file": "47_metric_view_ids_and_monitoring.md",
+          "mode": "edit",
+          "scope": "Follow-up 4 via metric view dimension expressions (no dashboard JSON edits); quality monitor resource on bronze_lakebase_cdf; consumer audit.",
+          "owned_paths": [
+            "ground-truth-infra/fixtures/metric_views/**",
+            "ground-truth-infra/resources/monitors/**",
+            "ground-truth-infra/databricks.yml",
+            "ground-truth-infra/tests/test_metric_view_ids.py",
+            "ground-truth-agent/resources/ground_truth_ops.genie_space.yml",
+            "docs/runbooks/cdf_bronze_operations.md"
+          ],
+          "timeout_minutes": 90
+        },
+        {
+          "session_id": "48",
+          "title": "ui_visual_checks job: headless Chromium + axe against the deployed app",
+          "plan_file": "48_ui_visual_checks_job.md",
+          "mode": "edit",
+          "scope": "Serverless Playwright job (rootless Chromium deps), 44-cell matrix, results table, screenshots volume, pure helpers with pytest. Runs for real in session 62.",
+          "owned_paths": [
+            "ground-truth-app/resources/jobs/ui_visual_checks.job.yml",
+            "ground-truth-app/src/notebooks/ui_visual_checks.ipynb",
+            "ground-truth-app/src/notebooks/ui_visual_lib.py",
+            "ground-truth-app/src/notebooks/tests/**",
+            "ground-truth-app/src/notebooks/vendor/**",
+            "ground-truth-infra/resources/ui_visual_checks.volume.yml",
+            "docs/runbooks/ui_visual_checks.md"
+          ],
+          "timeout_minutes": 120
+        }
+      ]
+    },
+    {
+      "wave_id": "5-1",
+      "build": "5",
+      "name": "Shell, routes, API hooks; Share to Slack server",
+      "gate": [
+        "All wave 5-1 sessions have status pass",
+        "vitest: pnpm install --frozen-lockfile && pnpm exec vitest run passes in /tmp/gt-gate-5-1 (Node toolchain runbook)",
+        "tsc: pnpm exec tsc -b passes for server and client",
+        "client/src/App.tsx routes /settings, /steward/feedback-queue, /steward/conflicts, /steward/feedback-branches and lazy-loads /steward/**, /executive, /admin, /settings",
+        "server/routes/slack.ts no longer returns 501"
+      ],
+      "required_checks": ["vitest", "tsc"],
+      "validate_bundles": [{"root": "ground-truth-app", "target": "dev"}],
+      "sessions": [
+        {
+          "session_id": "49",
+          "title": "Shell (S0, S11), routes, theme from settings, API hooks for build 5",
+          "plan_file": "49_shell_and_api_hooks.md",
+          "mode": "edit",
+          "scope": "Header variant A, nav, steward sub-nav, skip link, offline banner, bell; lazy routes + placeholders; ThemeSync; every build-5 hook in lib/api; S0/S11 tests.",
+          "owned_paths": [
+            "ground-truth-app/client/src/App.tsx",
+            "ground-truth-app/client/src/main.tsx",
+            "ground-truth-app/client/src/ErrorBoundary.tsx",
+            "ground-truth-app/client/src/components/layout/**",
+            "ground-truth-app/client/src/lib/**",
+            "ground-truth-app/client/src/pages/settings/**",
+            "ground-truth-app/client/src/pages/steward/FeedbackQueuePage.tsx",
+            "ground-truth-app/client/src/pages/steward/ConflictsPage.tsx",
+            "ground-truth-app/client/src/pages/steward/FeedbackBranchesPage.tsx",
+            "ground-truth-app/client/src/pages/fallback/**"
+          ],
+          "depends_on": ["42", "43", "44"],
+          "timeout_minutes": 150
+        },
+        {
+          "session_id": "50",
+          "title": "Share to Slack server (system.ai.slack, OBO, steward/admin)",
+          "plan_file": "50_slack_share_server.md",
+          "mode": "edit",
+          "scope": "MCP JSON-RPC client with the user's token, 3 routes, audit rows, feature flag, ai-gateway user scope.",
+          "owned_paths": [
+            "ground-truth-app/server/services/notification/**",
+            "ground-truth-app/server/routes/slack.ts",
+            "ground-truth-app/server/routes/notifications.ts",
+            "ground-truth-app/server/routes/config.ts",
+            "ground-truth-app/resources/app.app.yml"
+          ],
+          "depends_on": ["44"],
+          "timeout_minutes": 120
+        }
+      ]
+    },
+    {
+      "wave_id": "5-2",
+      "build": "5",
+      "name": "Screens: Review, Settings, Leaderboard + Assistant, Steward console + Executive + Admin",
+      "gate": [
+        "All wave 5-2 sessions have status pass",
+        "vitest: pnpm install --frozen-lockfile && pnpm exec vitest run passes in /tmp/gt-gate-5-2 (Node toolchain runbook)",
+        "tsc: pnpm exec tsc -b passes for server and client",
+        "every file written in this wave under client/src/pages or client/src/components starts with // @a11y-strict",
+        "no file under ground-truth-app/client/src posts voteType 'skip'"
+      ],
+      "required_checks": ["vitest", "tsc"],
+      "validate_bundles": [{"root": "ground-truth-app", "target": "dev"}],
+      "sessions": [
+        {
+          "session_id": "51",
+          "title": "Review screen (S1)",
+          "plan_file": "51_review_screen.md",
+          "mode": "edit",
+          "scope": "Export layout, all S1 states incl. F3 error-vs-empty, skip via /api/review/skip with reasons, resurfaced badge, session-complete, reduced motion, K1.",
+          "owned_paths": [
+            "ground-truth-app/client/src/pages/review/**",
+            "ground-truth-app/client/src/components/review/**"
+          ],
+          "depends_on": ["49"],
+          "timeout_minutes": 150
+        },
+        {
+          "session_id": "52",
+          "title": "Settings screen (S7)",
+          "plan_file": "52_settings_screen.md",
+          "mode": "edit",
+          "scope": "Appearance, review settings per contract, notification preferences moved from Admin; dirty/save/validation/offline; K5.",
+          "owned_paths": [
+            "ground-truth-app/client/src/pages/settings/**",
+            "ground-truth-app/client/src/components/settings/**"
+          ],
+          "depends_on": ["49"],
+          "timeout_minutes": 120
+        },
+        {
+          "session_id": "53",
+          "title": "Leaderboard (S2) + Assistant (S3)",
+          "plan_file": "53_leaderboard_and_assistant.md",
+          "mode": "edit",
+          "scope": "All S2 and S3 states; reviewer-facing Assistant copy (F10).",
+          "owned_paths": [
+            "ground-truth-app/client/src/pages/leaderboard/**",
+            "ground-truth-app/client/src/components/leaderboard/**",
+            "ground-truth-app/client/src/pages/agents/**",
+            "ground-truth-app/client/src/components/assistant/**"
+          ],
+          "depends_on": ["49"],
+          "timeout_minutes": 120
+        },
+        {
+          "session_id": "54",
+          "title": "Steward console (S4) + Executive (S5) + Admin (S6)",
+          "plan_file": "54_steward_executive_admin.md",
+          "mode": "edit",
+          "scope": "RoleGate (F4 error vs forbidden); all S4-S6 states; notification preferences removed from Admin; actions slot on AssetDetailSheet.",
+          "owned_paths": [
+            "ground-truth-app/client/src/pages/steward/StewardPage.tsx",
+            "ground-truth-app/client/src/components/steward/**",
+            "ground-truth-app/client/src/pages/executive/**",
+            "ground-truth-app/client/src/components/executive/**",
+            "ground-truth-app/client/src/pages/admin/**",
+            "ground-truth-app/client/src/components/admin/**",
+            "ground-truth-app/client/src/components/access/**"
+          ],
+          "depends_on": ["49"],
+          "timeout_minutes": 150
+        }
+      ]
+    },
+    {
+      "wave_id": "5-3",
+      "build": "5",
+      "name": "Steward triage screens + Share to Slack UI",
+      "gate": [
+        "All wave 5-3 sessions have status pass",
+        "vitest: pnpm install --frozen-lockfile && pnpm exec vitest run passes in /tmp/gt-gate-5-3 (Node toolchain runbook)",
+        "tsc: pnpm exec tsc -b passes for server and client",
+        "the 3 triage pages are no longer placeholders and render their -root test ids"
+      ],
+      "required_checks": ["vitest", "tsc"],
+      "validate_bundles": [{"root": "ground-truth-app", "target": "dev"}],
+      "sessions": [
+        {
+          "session_id": "55",
+          "title": "Steward triage: Feedback queue (S8), Conflicts (S9), Feedback branches (S10)",
+          "plan_file": "55_steward_triage_screens.md",
+          "mode": "edit",
+          "scope": "All S8-S10 states incl. K2-K4; GitHub link from htmlUrl; status changes with confirm.",
+          "owned_paths": [
+            "ground-truth-app/client/src/pages/steward/FeedbackQueuePage.tsx",
+            "ground-truth-app/client/src/pages/steward/ConflictsPage.tsx",
+            "ground-truth-app/client/src/pages/steward/FeedbackBranchesPage.tsx",
+            "ground-truth-app/client/src/components/steward-triage/**"
+          ],
+          "depends_on": ["44", "49", "54"],
+          "timeout_minutes": 150
+        },
+        {
+          "session_id": "56",
+          "title": "Share to Slack UI (notifications + asset detail)",
+          "plan_file": "56_share_to_slack_ui.md",
+          "mode": "edit",
+          "scope": "Dialog with channel picker, draft (default) / send, login-needed and error states; mounted in the bell and the asset detail sheet for steward/admin when enabled.",
+          "owned_paths": [
+            "ground-truth-app/client/src/components/share/**",
+            "ground-truth-app/client/src/components/layout/NotificationBell.tsx",
+            "ground-truth-app/client/src/components/steward/AssetDetailSheet.tsx"
+          ],
+          "depends_on": ["49", "50", "54"],
+          "timeout_minutes": 120
+        }
+      ]
+    },
+    {
+      "wave_id": "5-4",
+      "build": "5",
+      "name": "Converge infra: post-deploy setup idempotent, metric views, test-data cleanup",
+      "gate": ["Session 57 status is pass with a final attempt classified stable"],
+      "runtime_gate": ["post_deploy_setup", "infra_metric_view_deploy", "mv_review_activity"],
+      "validate_bundles": [{"root": "ground-truth-infra", "target": "dev"}],
+      "sessions": [
+        {
+          "session_id": "57",
+          "title": "Converge infra: deploy.sh --infra, two post_deploy_setup runs same automation, metric view ids, cleanup",
+          "plan_file": "57_infra_converge_setup_and_metric_views.md",
+          "mode": "converge",
+          "scope": "Deploy infra; prove follow-ups 1, 2, 4 (metric views), 6 (dry-run), 7 (reject + delete test branch, approved).",
+          "runtime_targets": ["post_deploy_setup"],
+          "owned_paths": [
+            "ground-truth-infra/**",
+            "deploy.sh",
+            "docs/runbooks/deploy_order_and_permissions.md",
+            "docs/runbooks/cdf_bronze_operations.md"
+          ],
+          "exclude_paths": ["ground-truth-infra/.databricks/**"],
+          "max_attempts": 3,
+          "timeout_minutes": 150,
+          "depends_on": ["46", "47", "48"]
+        }
+      ]
+    },
+    {
+      "wave_id": "5-5",
+      "build": "5",
+      "name": "Converge infra: bronze monitor prod-only (G11, D-B5-4) + visual-checks volume",
+      "gate": ["Session 58 status is pass with a final attempt classified stable", "Session 58 status file records the ui_visual_checks volume and the M2M SPN READ_VOLUME + WRITE_VOLUME grants", "Session 58 status file records that the dev bundle has no quality monitor and that bundle validate --strict --target prod lists quality_monitors.bronze_lakebase_cdf (D-B5-4)"],
+      "runtime_gate": ["bronze_lakebase_cdf"],
+      "sessions": [
+        {
+          "session_id": "58",
+          "title": "Converge infra: dev has no monitor, prod validates with it, visual-checks volume",
+          "plan_file": "58_infra_converge_monitoring.md",
+          "mode": "converge",
+          "scope": "D-B5-4: the bronze monitor is prod-only (metastore 1000-monitor limit). Prove dev deploys with no monitor and prod validates with it; volume grants in place.",
+          "runtime_targets": ["bronze_lakebase_cdf"],
+          "owned_paths": [
+            "ground-truth-infra/**",
+            "docs/runbooks/cdf_bronze_operations.md"
+          ],
+          "exclude_paths": ["ground-truth-infra/.databricks/**"],
+          "max_attempts": 3,
+          "timeout_minutes": 120,
+          "depends_on": ["57"]
+        }
+      ]
+    },
+    {
+      "wave_id": "5-6",
+      "build": "5",
+      "name": "Converge agent: ops dashboard ids + regression",
+      "gate": ["Session 59 status is pass with a final attempt classified stable"],
+      "runtime_gate": ["agent_ops_dashboard", "agent_verification", "agent_space"],
+      "validate_bundles": [{"root": "ground-truth-agent", "target": "dev"}],
+      "sessions": [
+        {
+          "session_id": "59",
+          "title": "Converge agent: ops dashboard datasets with UUID strings, agent_verification, Genie space",
+          "plan_file": "59_agent_converge_regression.md",
+          "mode": "converge",
+          "scope": "Deploy the agent bundle after the metric view change; every ops dataset executes with string ids; agent_verification and Genie checks pass.",
+          "runtime_targets": ["agent_ops_dashboard"],
+          "owned_paths": ["ground-truth-agent/**"],
+          "exclude_paths": ["ground-truth-agent/docs/plans/**", "ground-truth-agent/.databricks/**"],
+          "max_attempts": 3,
+          "timeout_minutes": 90,
+          "depends_on": ["47", "57"]
+        }
+      ]
+    },
+    {
+      "wave_id": "5-7",
+      "build": "5",
+      "name": "Converge app: deploy build 5",
+      "gate": ["Session 60 status is pass with a final attempt classified stable", "Session 60 status file reports the entry chunk gzip size <= 350 kB"],
+      "runtime_gate": ["app", "app_deploy_verification"],
+      "validate_bundles": [{"root": "ground-truth-app", "target": "dev"}],
+      "sessions": [
+        {
+          "session_id": "60",
+          "title": "Converge app: tests, bundle budget, strict-marker coverage, deploy, probes, soak",
+          "plan_file": "60_app_converge_deploy.md",
+          "mode": "converge",
+          "scope": "Full test run, bundle budget, a11y-strict coverage, deploy (investigate follow-up 10 once), 12 probes, soak, deploy_verification.",
+          "runtime_targets": ["app"],
+          "owned_paths": ["ground-truth-app/**"],
+          "exclude_paths": ["ground-truth-app/.build-status/**", "ground-truth-app/.databricks/**", "ground-truth-app/docs/plans/**"],
+          "max_attempts": 3,
+          "timeout_minutes": 180,
+          "depends_on": ["45", "49", "50", "51", "52", "53", "54", "55", "56"]
+        }
+      ]
+    },
+    {
+      "wave_id": "5-8",
+      "build": "5",
+      "name": "Converge app: live contract tests",
+      "gate": ["Session 61 status is pass with a final attempt classified stable"],
+      "runtime_gate": ["api_contract_tests", "api_contract_results", "app"],
+      "sessions": [
+        {
+          "session_id": "61",
+          "title": "Converge app: api_contract_tests 0 fail, 100% coverage with build-5 contracts",
+          "plan_file": "61_app_converge_contract_tests.md",
+          "mode": "converge",
+          "scope": "Run the live contract job; fix the server for any fail; coverage 100% incl. new routes.",
+          "runtime_targets": ["api_contract_tests"],
+          "owned_paths": ["ground-truth-app/**"],
+          "exclude_paths": ["ground-truth-app/.build-status/**", "ground-truth-app/.databricks/**", "ground-truth-app/docs/plans/**"],
+          "max_attempts": 3,
+          "timeout_minutes": 120,
+          "depends_on": ["44", "60"]
+        }
+      ]
+    },
+    {
+      "wave_id": "5-9",
+      "build": "5",
+      "name": "Converge UI: Chromium visual + accessibility gate",
+      "gate": ["Session 62 status is pass with a final attempt classified stable"],
+      "runtime_gate": ["ui_visual_checks", "ui_visual_results", "app"],
+      "sessions": [
+        {
+          "session_id": "62",
+          "title": "Converge UI: ui_visual_checks 44/44 cells pass on the deployed app",
+          "plan_file": "62_ui_visual_checks_converge.md",
+          "mode": "converge",
+          "scope": "Run the Chromium job; fix app causes of axe/console/request/h1/background/focus failures; report Figma similarity.",
+          "runtime_targets": ["ui_visual_checks"],
+          "owned_paths": ["ground-truth-app/**", "docs/runbooks/ui_visual_checks.md"],
+          "exclude_paths": ["ground-truth-app/.build-status/**", "ground-truth-app/.databricks/**", "ground-truth-app/docs/plans/**"],
+          "max_attempts": 4,
+          "timeout_minutes": 180,
+          "depends_on": ["48", "58", "60", "61"]
+        }
+      ]
+    },
+    {
+      "wave_id": "5-10",
+      "build": "5",
+      "name": "Docs: build summary, manual-check worksheet, memory, runbooks, requests",
+      "gate": [
+        "All wave 5-10 sessions have status pass",
+        "docs/sessions/build-5_manual_checks.md exists with every check of ui_test_strategy.md \u00a79 plus the MCP App card and Slack send rows, results blank",
+        "a build-5 summary exists in docs/sessions and docs/sessions/INDEX.md lists it first"
+      ],
+      "sessions": [
+        {
+          "session_id": "63",
+          "title": "Docs: build-5 summary, manual-check worksheet, PROJECT_MEMORY, runbooks, requests, gap analysis",
+          "plan_file": "63_docs_and_summary.md",
+          "mode": "edit",
+          "scope": "Write the summary and the owner worksheet; close build-4 follow-ups that build 5 fixed; open build-5 follow-ups.",
+          "owned_paths": [
+            "docs/sessions/**",
+            "docs/requests/**",
+            "docs/runbooks/**",
+            "PROJECT_MEMORY.md",
+            "ground-truth-app/PROJECT_MEMORY.md",
+            "ground-truth-infra/PROJECT_MEMORY.md",
+            "ground-truth-agent/PROJECT_MEMORY.md",
+            "docs/plans/build-5/INDEX.md",
+            "docs/plans/gap_analysis_2026-10.md"
+          ],
+          "depends_on": ["57", "58", "59", "60", "61", "62"],
+          "timeout_minutes": 90
+        }
+      ]
+    },
+    {
+      "wave_id": "5-11",
+      "build": "5",
+      "name": "Manual acceptance (owner checks recorded)",
+      "manual_prereqs": [
+        {
+          "session_id": "M5",
+          "title": "Owner runs the manual checks on the deployed app (Lighthouse, screen reader, keyboard, forced colors, Figma side-by-side, 390 px touch, MCP App card in Genie One, Slack send after reconnecting system.ai.slack) and records them",
+          "plan_file": "64_manual_acceptance.md",
+          "done_when": "docs/sessions/build-5_manual_checks.md on branch mg-genie-build-5 has no blank result cell"
+        }
+      ],
+      "gate": ["Manual prerequisite M5 is done", "Session 64 status is pass", "vitest and tsc pass if session 64 changed ground-truth-app/client/**"],
+      "sessions": [
+        {
+          "session_id": "64",
+          "title": "Manual acceptance: read the owner's results, small client fixes, final summary section",
+          "plan_file": "64_manual_acceptance.md",
+          "mode": "edit",
+          "scope": "Blocked until M5; then fix small client issues or file follow-ups and close the build summary.",
+          "owned_paths": ["ground-truth-app/client/**", "docs/sessions/**", "docs/requests/**"],
+          "depends_on": ["63"],
+          "timeout_minutes": 90
+        }
+      ]
+    }
+  ]
+}

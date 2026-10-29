@@ -1,105 +1,157 @@
-// client/src/components/review/EditSheet.tsx
+// @a11y-strict
+// client/src/components/review/EditSheet.tsx — Edit sheet: propose display name / description / logic
 // Session 12 · Wave 4
+// Session 51 · Build 5 · wave 5-2 · ui Sheet primitive, fields prefilled with the current values
+// (brief S1). Only changed, non-empty fields are sent as `edits`; with none, an inline error
+// shows and no request is sent (hasProposedEdit, the same rule as VoteBodySchema, session 44).
 
-import { useState } from 'react';
-import {
-  Button,
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  Textarea,
-} from '@databricks/appkit-ui/react';
-import type { ReviewCard, VoteBody } from '../../../../shared/contracts';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Button, Input, Textarea } from '@databricks/appkit-ui/react';
+import { hasProposedEdit } from '../../../../shared/contracts';
+import type { Asset, VoteBody } from '../../../../shared/contracts';
+import { Sheet } from '../ui';
+import { sheetSide } from './media';
+import { Spinner } from './VoteBar';
 
-interface EditSheetProps {
-  card: ReviewCard;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (body: VoteBody) => void;
-  disabled?: boolean;
+export type ProposedEdits = NonNullable<VoteBody['edits']>;
+
+type FieldKey = 'displayName' | 'description' | 'plainEnglishLogic';
+type Fields = Record<FieldKey, string>;
+
+export const EDIT_NEEDS_CHANGE_MESSAGE = 'Change at least one field before you submit an edit.';
+
+function currentValues(asset: Asset): Fields {
+  return {
+    displayName: asset.displayName ?? '',
+    description: asset.description ?? '',
+    plainEnglishLogic: asset.plainEnglishLogic ?? '',
+  };
 }
 
-export function EditSheet({ card, open, onOpenChange, onSubmit, disabled }: EditSheetProps) {
-  const [description, setDescription] = useState(card.asset.description ?? '');
-  const [plainEnglish, setPlainEnglish] = useState(card.asset.plainEnglishLogic ?? '');
-  const [displayName, setDisplayName] = useState(card.asset.displayName);
-  const [feedback, setFeedback] = useState('');
+/** Fields whose trimmed value is non-empty and differs from the asset's current value. */
+export function changedEdits(values: Fields, asset: Asset): ProposedEdits {
+  const current = currentValues(asset);
+  const edits: ProposedEdits = {};
+  for (const key of Object.keys(values) as FieldKey[]) {
+    const value = values[key].trim();
+    if (value && value !== current[key].trim()) edits[key] = value;
+  }
+  return edits;
+}
 
-  const handleSubmit = () => {
-    onSubmit({
-      assetId: card.asset.id,
-      voteType: 'edit',
-      feedback: feedback || undefined,
-      edits: {
-        description: description || undefined,
-        plainEnglishLogic: plainEnglish || undefined,
-        displayName: displayName || undefined,
-      },
-    });
+interface EditSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  asset: Asset;
+  onSubmit: (edits: ProposedEdits) => void;
+  submitting: boolean;
+}
+
+export function EditSheet({ open, onOpenChange, asset, onSubmit, submitting }: EditSheetProps) {
+  const ids = { displayName: useId(), description: useId(), plainEnglishLogic: useId() };
+  const errorId = useId();
+  const firstFieldRef = useRef<HTMLInputElement>(null);
+  const [values, setValues] = useState<Fields>(() => currentValues(asset));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setValues(currentValues(asset));
+      setError(null);
+    }
+    // Reset on every opening (and if the card changes underneath an open sheet).
+  }, [open, asset]);
+
+  const setField = (key: FieldKey, value: string) => {
+    setValues((v) => ({ ...v, [key]: value }));
+    if (error) setError(null);
   };
 
+  const submit = () => {
+    if (submitting) return;
+    const edits = changedEdits(values, asset);
+    if (!hasProposedEdit(edits)) {
+      setError(EDIT_NEEDS_CHANGE_MESSAGE);
+      firstFieldRef.current?.focus();
+      return;
+    }
+    onSubmit(edits);
+  };
+
+  const invalid = error !== null;
+  const fieldA11y = { 'aria-invalid': invalid || undefined, 'aria-describedby': invalid ? errorId : undefined };
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Edit: {card.asset.displayName || card.asset.name}</SheetTitle>
-        </SheetHeader>
-        <div className="mt-4 space-y-4">
-          <div>
-            <label htmlFor="edit-display-name" className="text-sm font-medium">
-              Display name
-            </label>
-            <Textarea
-              id="edit-display-name"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              rows={1}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label htmlFor="edit-description" className="text-sm font-medium">
-              Description
-            </label>
-            <Textarea
-              id="edit-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label htmlFor="edit-logic" className="text-sm font-medium">
-              Plain-English logic
-            </label>
-            <Textarea
-              id="edit-logic"
-              value={plainEnglish}
-              onChange={(e) => setPlainEnglish(e.target.value)}
-              rows={3}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label htmlFor="edit-feedback" className="text-sm font-medium">
-              Feedback (optional)
-            </label>
-            <Textarea
-              id="edit-feedback"
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              rows={2}
-              className="mt-1"
-              placeholder="Why are you suggesting these changes?"
-            />
-          </div>
-          <Button onClick={handleSubmit} disabled={disabled} className="w-full">
-            Submit edits
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      side={sheetSide()}
+      title="Edit definition"
+      description={`Propose a change to ${asset.displayName || asset.name}. A steward reviews every edit.`}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" className="min-h-[44px]" disabled={submitting} onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            data-testid="review-edit-sheet-submit"
+            className="min-h-[44px] gap-1.5"
+            disabled={submitting}
+            onClick={submit}
+          >
+            {submitting ? <Spinner /> : null}
+            Submit edit
           </Button>
         </div>
-      </SheetContent>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {error ? (
+          <p id={errorId} role="alert" className="text-sm font-bold text-destructive">
+            {error}
+          </p>
+        ) : null}
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={ids.displayName} className="text-sm font-bold">
+            Display name
+          </label>
+          <Input
+            ref={firstFieldRef}
+            id={ids.displayName}
+            autoFocus
+            value={values.displayName}
+            disabled={submitting}
+            onChange={(e) => setField('displayName', e.target.value)}
+            {...fieldA11y}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={ids.description} className="text-sm font-bold">
+            Description
+          </label>
+          <Textarea
+            id={ids.description}
+            rows={4}
+            value={values.description}
+            disabled={submitting}
+            onChange={(e) => setField('description', e.target.value)}
+            {...fieldA11y}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={ids.plainEnglishLogic} className="text-sm font-bold">
+            Plain-English logic
+          </label>
+          <Textarea
+            id={ids.plainEnglishLogic}
+            rows={4}
+            value={values.plainEnglishLogic}
+            disabled={submitting}
+            onChange={(e) => setField('plainEnglishLogic', e.target.value)}
+            {...fieldA11y}
+          />
+        </div>
+      </div>
     </Sheet>
   );
 }

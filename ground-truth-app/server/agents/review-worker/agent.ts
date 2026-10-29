@@ -1,10 +1,18 @@
 // server/agents/review-worker/agent.ts — read-only tool agent for Ground Truth
 // Session 14 · Wave 4 · Default export required by AppKit agents plugin
+// Session 45 · Build 5 · MLflow trace enrichment on every tool (lib/tracing)
 
 import { createAgent, tool } from '@databricks/appkit/beta';
 import { z } from 'zod';
 import { getServices } from '../../services';
 import { computeConfidence } from '../../services/review';
+import { initMlflowTraces, withToolTracing } from '../../lib/tracing/mlflowTraces';
+
+const AGENT_NAME = 'review-worker';
+
+// Load @mlflow/core once when the agents plugin loads this agent (startup).
+// Never rejects; tracing problems only log a warning.
+void initMlflowTraces();
 
 export default createAgent({
   instructions: [
@@ -14,7 +22,7 @@ export default createAgent({
     'When asked to vote, explain that votes must be cast in the Review tab.',
     'Use your tools to look up information and answer questions precisely.',
   ].join(' '),
-  tools: {
+  tools: withToolTracing(AGENT_NAME, {
     get_asset: tool({
       description:
         'Get a single asset by ID, including its synonyms, example questions, and latest confidence score.',
@@ -196,5 +204,5 @@ export default createAgent({
         return review.getExecutiveSummary();
       },
     }),
-  },
+  }),
 });

@@ -3,6 +3,7 @@
 # Ensures M2M SPN has:
 #   1. CAN_USE on the App (auth sidecar)
 #   2. USE CATALOG / USE SCHEMA / EXECUTE on MCP service (UC grants)
+#   3. READ VOLUME + WRITE VOLUME on the ui_visual_checks volume (optional param; empty = skip)
 # Run by deploy.sh Phase 2 or auto-triggered by run_app_post_deploy job_run.
 
 resources:
@@ -21,6 +22,8 @@ resources:
         - name: schema_name
           default: ""
         - name: mcp_service_name
+          default: ""
+        - name: visual_checks_volume
           default: ""
       tasks:
         - task_key: setup_app_access

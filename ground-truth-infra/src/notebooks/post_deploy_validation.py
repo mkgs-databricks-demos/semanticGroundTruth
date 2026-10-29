@@ -7,11 +7,15 @@
 # All checks produce a summary table; raises an exception if any check fails.
 
 # COMMAND ----------
-# %pip install --upgrade databricks-sdk
-# dbutils.library.restartPython()
+
+# DBTITLE 1,Install latest Databricks SDK
+# The serverless pre-installed SDK has no w.postgres (Lakebase) API; upgrade first.
+%pip install --upgrade databricks-sdk
+dbutils.library.restartPython()
 
 # COMMAND ----------
 
+# DBTITLE 1,Validate infra resources
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service import sql, jobs
 import json
@@ -38,9 +42,20 @@ try:
 except Exception:
     warehouse_id = ""
 
+# Job ids from the bundle (resource references in the job YAML). Job names carry the
+# target's name prefix (e.g. "[dev matthew_giglia] "), so a lookup by resource key never matches.
+JOB_KEYS = ["feedback_pipeline", "freshness_resurfacing", "metric_view_deploy", "post_deploy_validation"]
+job_ids = {}
+for key in JOB_KEYS:
+    try:
+        job_ids[key] = dbutils.widgets.get(f"{key}_job_id").strip()
+    except Exception:
+        job_ids[key] = ""
+
 print(f"catalog={catalog}, schema={schema}")
 print(f"lakebase_project_id={lakebase_project_id}")
 print(f"warehouse_id={warehouse_id}")
+print(f"job_ids={job_ids}")
 
 # ---------------------------------------------------------------------------
 # Validation checks
@@ -65,7 +80,7 @@ def check(name, fn):
 # 1. UC schema exists
 check(
     "UC schema exists",
-    lambda: bool(spark.sql(f"SHOW SCHEMAS IN {catalog}").filter(f"namespace = '{schema}'").count())
+    lambda: f"schema {w.schemas.get(f'{catalog}.{schema}').full_name} exists"
 )
 
 # 2. SQL Warehouse accessible
@@ -80,8 +95,11 @@ check("SQL Warehouse accessible", check_warehouse)
 def check_lakebase():
     if not lakebase_project_id:
         return "skipped (lakebase_project_id not provided)"
-    project = w.postgres.get_project(name=f"projects/{lakebase_project_id}")
-    return f"project {project.spec.display_name} exists"
+    # The bundle passes the resource id, which is already "projects/<id>".
+    name = lakebase_project_id if lakebase_project_id.startswith("projects/") else f"projects/{lakebase_project_id}"
+    project = w.postgres.get_project(name=name)
+    display = getattr(getattr(project, "status", None), "display_name", None) or getattr(getattr(project, "spec", None), "display_name", None)
+    return f"project {project.name} ({display}) exists"
 check("Lakebase project accessible", check_lakebase)
 
 # 4. Metric views queryable (check each metric view exists)
@@ -96,17 +114,17 @@ for mv_name in ["mv_review_activity", "mv_coverage_metrics", "mv_user_leaderboar
         return fn
     check(f"Metric view {mv_name} exists", make_mv_check(mv_name))
 
-# 5. All 4 jobs created (check by job name)
-for job_name in ["feedback_pipeline", "freshness_resurfacing", "metric_view_deploy", "post_deploy_validation"]:
-    def make_job_check(name):
+# 5. All 4 jobs created (check by the job id the bundle passes)
+for job_key in JOB_KEYS:
+    def make_job_check(key):
         def fn():
-            found = [
-                j for j in w.jobs.list(name=name)
-                if j.settings and j.settings.name == name
-            ]
-            return f"job '{name}' found (id={found[0].job_id})" if found else False
+            job_id = job_ids.get(key)
+            if not job_id:
+                raise ValueError(f"{key}_job_id parameter is empty")
+            job = w.jobs.get(int(job_id))
+            return f"job '{job.settings.name}' found (id={job.job_id})"
         return fn
-    check(f"Job '{job_name}' exists", make_job_check(job_name))
+    check(f"Job '{job_key}' exists", make_job_check(job_key))
 
 # ---------------------------------------------------------------------------
 # Summary

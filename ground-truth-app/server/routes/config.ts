@@ -7,6 +7,7 @@ import { asyncRoute } from '../lib/http';
 import { validate } from '../lib/validate';
 import { requireRoleMiddleware } from '../middleware';
 import type { AppRuntimeConfig } from '../../shared/contracts/config';
+import { slackShareEnabled } from '../services/notification/slackShare';
 
 /**
  * Resolve the executive dashboard URL from environment.
@@ -23,6 +24,8 @@ export function registerConfigRoutes(app: Application, _services: Services): voi
   app.get('/api/config', requireRoleMiddleware('reviewer'), validate({}), asyncRoute(async (_req, res) => {
     const config: AppRuntimeConfig = {
       executive_dashboard_url: resolveExecDashboardUrl(),
+      // Build 5 session 50: GT_SLACK_SHARE_ENABLED (default true).
+      slackShareEnabled: slackShareEnabled(),
     };
     res.json(config);
   }));

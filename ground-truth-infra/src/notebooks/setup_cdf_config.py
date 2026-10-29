@@ -39,6 +39,16 @@ schema = dbutils.widgets.get("schema")
 expected_tables = [t.strip() for t in dbutils.widgets.get("expected_tables").split(",") if t.strip()]
 wait_timeout_seconds = int(dbutils.widgets.get("wait_timeout_seconds"))
 
+# Callers (setup_lakebase_cdf, post_deploy_setup.setup_cdf_config) must pass these exact widget names.
+# A base_parameters key that matches no widget is silently ignored, which left `database` empty before build 5.
+if not database.startswith("projects/") or "/databases/" not in database:
+    raise ValueError(
+        f"database must be the Lakebase database resource path projects/<p>/branches/<b>/databases/<d>, got {database!r}; "
+        "pass it as the `database` parameter (${resources.postgres_databases.app_db.id} in the bundle)"
+    )
+if not catalog or not schema:
+    raise ValueError(f"catalog and schema are required (got catalog={catalog!r}, schema={schema!r})")
+
 print(f"database={database}")
 print(f"source_schema={source_schema}")
 print(f"catalog={catalog}, schema={schema}")

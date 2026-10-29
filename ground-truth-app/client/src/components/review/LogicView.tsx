@@ -1,126 +1,98 @@
-// client/src/components/review/LogicView.tsx — plain English + SQL/YAML definition tabs
+// @a11y-strict
+// client/src/components/review/LogicView.tsx — "Logic" disclosure: plain-English logic, then YAML
 // Session 17 · Wave 1 · DM Mono for definitions, aria-expanded disclosure
+// Session 51 · Build 5 · wave 5-2 · controlled by the page (L shortcut), nested YAML disclosure with
+// copy button (brief S1), Databricks icons, test id review-card-logic-toggle.
 
-import { useCallback, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@databricks/appkit-ui/react';
-import { ChevronDown, ChevronUp, Copy, CheckCheck } from 'lucide-react';
 import type { Asset } from '../../../../shared/contracts';
+import { Icon } from '../ui';
 
 interface LogicViewProps {
   asset: Asset;
+  open: boolean;
+  onToggle: () => void;
 }
 
-type Tab = 'plain' | 'definition';
-
-export function LogicView({ asset }: LogicViewProps) {
-  const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>('plain');
+export function LogicView({ asset, open, onToggle }: LogicViewProps) {
+  const panelId = useId();
+  const yamlId = useId();
+  const [yamlOpen, setYamlOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const hasDefinition = Boolean(asset.yamlContent);
-  const hasPlainEnglish = Boolean(asset.plainEnglishLogic || asset.description || asset.synonyms?.length);
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
+  useEffect(() => {
+    if (!open) setYamlOpen(false);
+  }, [open]);
 
-  // Nothing to show
-  if (!hasPlainEnglish && !hasDefinition) return null;
+  const yaml = asset.yamlContent ?? '';
 
-  const definitionText = asset.yamlContent ?? '';
-
-  const handleCopy = useCallback(async () => {
+  const copyYaml = async () => {
     try {
-      await navigator.clipboard.writeText(definitionText);
+      await navigator.clipboard.writeText(yaml);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => setCopied(false), 2000);
     } catch {
-      // clipboard not available
+      // Clipboard unavailable (insecure context): the YAML stays selectable.
     }
-  }, [definitionText]);
+  };
 
   return (
-    <div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="gap-1 text-xs"
-        onClick={() => setOpen(!open)}
+    <section className="flex flex-col gap-2 border-t border-border pt-2">
+      <button
+        type="button"
+        data-testid="review-card-logic-toggle"
         aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
         aria-label={open ? 'Hide logic' : 'Show logic'}
+        onClick={onToggle}
+        className="flex min-h-[44px] w-full items-center justify-between rounded-md text-sm font-bold focus-visible:outline-2 focus-visible:outline-ring"
       >
-        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        {open ? 'Hide logic' : 'Show logic'}
-      </Button>
-
-      {open && (
-        <div className="mt-2 space-y-2">
-          {/* Tab bar — only when both tabs have content */}
-          {hasPlainEnglish && hasDefinition && (
-            <div className="flex gap-1" role="tablist" aria-label="Logic view">
+        <span>Logic</span>
+        <Icon name={open ? 'arrowUp' : 'arrowDown'} size={16} />
+      </button>
+      {open ? (
+        <div id={panelId} className="flex flex-col gap-2 text-sm">
+          {asset.plainEnglishLogic ? (
+            <p>{asset.plainEnglishLogic}</p>
+          ) : (
+            <p className="text-muted-foreground">No plain-English logic yet.</p>
+          )}
+          {yaml ? (
+            <div className="flex flex-col gap-2">
               <button
-                role="tab"
-                aria-selected={tab === 'plain'}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  tab === 'plain'
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                onClick={() => setTab('plain')}
+                type="button"
+                aria-expanded={yamlOpen}
+                aria-controls={yamlOpen ? yamlId : undefined}
+                onClick={() => setYamlOpen((v) => !v)}
+                className="flex min-h-[44px] items-center justify-between rounded-md text-xs font-bold text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
               >
-                Plain English
+                <span>YAML definition</span>
+                <Icon name={yamlOpen ? 'arrowUp' : 'arrowDown'} size={14} />
               </button>
-              <button
-                role="tab"
-                aria-selected={tab === 'definition'}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  tab === 'definition'
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                onClick={() => setTab('definition')}
-              >
-                Definition
-              </button>
+              {yamlOpen ? (
+                <div id={yamlId} className="relative">
+                  <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 pr-12 font-mono text-xs" role="region" tabIndex={0} aria-label="YAML definition">
+                    <code>{yaml}</code>
+                  </pre>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1 min-h-[44px] min-w-[44px]"
+                    onClick={() => void copyYaml()}
+                    aria-label={copied ? 'Copied' : 'Copy YAML'}
+                  >
+                    <Icon name={copied ? 'check' : 'copy'} size={16} />
+                  </Button>
+                </div>
+              ) : null}
             </div>
-          )}
-
-          {/* Plain English tab */}
-          {(tab === 'plain' || !hasDefinition) && hasPlainEnglish && (
-            <div role="tabpanel" className="space-y-2 text-sm">
-              {asset.plainEnglishLogic && (
-                <p>{asset.plainEnglishLogic}</p>
-              )}
-              {asset.description && asset.description !== asset.plainEnglishLogic && (
-                <p className="text-muted-foreground">{asset.description}</p>
-              )}
-              {asset.synonyms && asset.synonyms.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  <span className="font-medium">Synonyms:</span>{' '}
-                  {asset.synonyms.join(', ')}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Definition tab */}
-          {tab === 'definition' && hasDefinition && (
-            <div role="tabpanel" className="relative">
-              <pre className="rounded-md bg-muted p-3 text-xs font-mono overflow-x-auto max-h-48">
-                {definitionText}
-              </pre>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-1 right-1 h-6 w-6"
-                onClick={handleCopy}
-                aria-label={copied ? 'Copied' : 'Copy definition'}
-              >
-                {copied
-                  ? <CheckCheck className="h-3 w-3 text-[var(--success)]" />
-                  : <Copy className="h-3 w-3" />
-                }
-              </Button>
-            </div>
-          )}
+          ) : null}
         </div>
-      )}
-    </div>
+      ) : null}
+    </section>
   );
 }

@@ -12,6 +12,13 @@
 #   - Resolves M2M SPN secret key names and display-name prefix
 #
 # Post-deploy steps (after infra bundle deploy):
+#   - run_post_deploy_setup: ALWAYS runs the post_deploy_setup job with
+#     run_setup=true and waits (build 5, session 46). Every infra `bundle deploy`
+#     resets feedback_pipeline.author_feedback_branch to its notebook placeholder
+#     (bundle YAML cannot express a genie_task); setup_job_params patches it back.
+#     The infra deploy itself passes run_setup=false, so the run_post_deploy
+#     job_run (config changes only) is a gated no-op and setup runs once.
+#     A failed setup run is fatal (exit 1, run URL printed).
 #   - check_m2m_credentials: non-fatal check of the M2M SPN credential contract.
 #     client_id is auto-provisioned by the ensure_m2m_service_principal task;
 #     client_secret is admin-provisioned. Prints an ADMIN ACTION block when the
@@ -23,7 +30,7 @@
 #   HTTP connections require valid M2M SPN credentials at creation time.
 #   The connection is created automatically in Phase 2 (app deploy) via SQL DDL
 #   with secret() references to the M2M SPN keys (hi-genie-orchestrator pattern):
-#     1. --infra --run-setup: creates M2M SPN + stores credentials (one-time)
+#     1. --infra: creates M2M SPN + stores credentials (post_deploy_setup)
 #     2. --app: deploys app → resolves URL → creates connection → auto-redeploys
 #              to register MCP service (all automatic in a single command)
 #   The M2M SPN credentials (not the app's auto-provisioned SPN) are used.
@@ -36,7 +43,7 @@
 # Usage:
 #   ./deploy.sh --target dev                             # deploy all bundles
 #   ./deploy.sh --target dev --infra                     # deploy only infra bundle
-#   ./deploy.sh --target dev --infra --run-setup         # deploy infra + force post-deploy setup
+#   ./deploy.sh --target dev --infra --run-setup         # same as --infra (--run-setup is a no-op alias)
 #   ./deploy.sh --target dev --app                       # deploy only app bundle
 #   ./deploy.sh --target dev --agent                     # deploy only agent bundle
 #   ./deploy.sh --target dev --agent --verify            # deploy agent + run agent_verification
@@ -99,6 +106,10 @@ M2M_CLIENT_SECRET_KEY=""
 M2M_SPN_PREFIX=""
 M2M_OAUTH_SCOPES=""
 POST_DEPLOY_JOB_ID=""
+# feedback_pipeline job ID and its author_feedback_branch automation id read just
+# before the infra deploy resets the task (passed to post_deploy_setup)
+FEEDBACK_JOB_ID=""
+PREVIOUS_CONFIGURATION_ID=""
 # App bundle support (§2a of app_bundle_support_plan.md)
 MLFLOW_EXPERIMENT_ID=""
 MLFLOW_EXPERIMENT_NAME=""
@@ -125,7 +136,7 @@ DEPLOY_APP=true
 DEPLOY_AGENT=true
 VALIDATE_ONLY=false
 DESTROY=false
-RUN_SETUP=false
+RUN_SETUP=false   # --run-setup: kept as a no-op alias; infra deploys always run post_deploy_setup
 RUN_VERIFY=false
 
 # --------------------------------------------------------------------------- #
@@ -140,7 +151,8 @@ Options:
   --infra            Deploy only the infrastructure bundle.
   --app              Deploy only the application bundle.
   --agent            Deploy only the agent bundle.
-  --run-setup        Force post-deploy setup tasks (overrides run_setup=false in dev).
+  --run-setup        No-op alias (kept for old commands): every infra deploy runs
+                     post_deploy_setup with run_setup=true and waits for it.
   --verify           After deploy, run the verification job of each deployed bundle
                      (app: deploy_verification, agent: agent_verification).
   --validate         Validate bundles without deploying.
@@ -152,13 +164,16 @@ Deployment order:
   2. ${APP_BUNDLE}       — application (AppKit)
   3. ${AGENT_BUNDLE}     — operational Genie agent
 
+Every infra deploy (--infra or the default all-bundles deploy) then runs the
+post_deploy_setup job with run_setup=true and waits; a failed run is fatal.
+
 First deployment:
-  ./deploy.sh --target dev --infra --run-setup
+  ./deploy.sh --target dev --infra
   # Creates the M2M SPN and stores its client_id in the secret scope.
   # Then: workspace admin generates the M2M OAuth secret and stores it
   #   (ground-truth-infra/docs/runbooks/m2m-service-principal.md),
   #   and provisions webhook secrets (see docs/runbooks/)
-  ./deploy.sh --target dev --infra --run-setup
+  ./deploy.sh --target dev --infra
   # Verifies the M2M token exchange.
   ./deploy.sh --target dev --app
   # Deploys app → creates MCP connection → auto-redeploys to register
@@ -416,6 +431,7 @@ m2m_scopes     = get_var('m2m_oauth_scopes', 'all-apis')
 
 # --- post_deploy_setup job ID (empty before the first deploy) ---
 post_deploy_job_id = resources.get('jobs', {}).get('post_deploy_setup', {}).get('id', '')
+feedback_job_id = resources.get('jobs', {}).get('feedback_pipeline', {}).get('id', '')
 
 # --- app bundle support (§2a of app_bundle_support_plan.md) ---
 # Experiment: .id present in CLI >= 1.21; older CLIs omit it.
@@ -461,6 +477,7 @@ print(f'M2M_CLIENT_ID_KEY=\"{safe(m2m_id_key)}\"')
 print(f'M2M_CLIENT_SECRET_KEY=\"{safe(m2m_secret_key)}\"')
 print(f'M2M_SPN_PREFIX=\"{safe(m2m_prefix)}\"')
 print(f'POST_DEPLOY_JOB_ID=\"{safe(post_deploy_job_id)}\"')
+print(f'FEEDBACK_JOB_ID=\"{safe(feedback_job_id)}\"')
 # App bundle support (§2a of app_bundle_support_plan.md)
 print(f'MLFLOW_EXPERIMENT_NAME=\"{safe_name(mlflow_experiment_name)}\"')
 print(f'MLFLOW_EXPERIMENT_ID=\"{safe(mlflow_experiment_id)}\"')
@@ -664,7 +681,7 @@ print(f"{id_present} {secret_present}")
 
   if [[ "${secret_present}" == "yes" ]]; then
     ok "M2M client_secret present: ${M2M_CLIENT_SECRET_KEY}"
-    ok "Token exchange is verified by ensure_m2m_service_principal on --run-setup deploys."
+    ok "Token exchange is verified by ensure_m2m_service_principal on every infra deploy (post_deploy_setup)."
     return 0
   fi
 
@@ -749,55 +766,62 @@ print(d.get("resources", {}).get("jobs", {}).get("post_deploy_setup", {}).get("i
 }
 
 # --------------------------------------------------------------------------- #
-# post_deploy_run_is_fresh — "yes" if the latest post_deploy_setup run started
-# during this deploy (start_time >= DEPLOY_START_MS - 60 s), else "no"
+# run_post_deploy_setup — after EVERY infra deploy, run post_deploy_setup with
+# run_setup=true and wait for it (build 5, session 46; follow-up 2).
+#
+# `bundle deploy` resets feedback_pipeline.author_feedback_branch to its notebook
+# placeholder (bundle YAML cannot express a genie_task); this run's
+# setup_genie_automation + setup_job_params make it a genie_task again, reusing
+# the same automation. The run_post_deploy job_run resource only fires on config
+# changes, and the deploy passes run_setup=false, so this is the one setup run.
+# Group B (setup_cdf_config) stays skipped: app_url is empty.
+# FATAL: a failed or unresolvable run exits 1 with the run URL.
 # --------------------------------------------------------------------------- #
-post_deploy_run_is_fresh() {
-  PD_JOB_ID="${POST_DEPLOY_JOB_ID}" PD_START_MS="${DEPLOY_START_MS:-0}" python3 -c '
-import json, os, subprocess
-r = subprocess.run(["databricks", "jobs", "list-runs", "--job-id", os.environ["PD_JOB_ID"],
-                    "--limit", "1", "--output", "json"], capture_output=True, text=True)
+# capture_author_configuration_id — before the infra deploy, read the automation
+# id on feedback_pipeline.author_feedback_branch (empty when it is the notebook
+# placeholder or the job does not exist yet). setup_genie_automation reuses it.
+capture_author_configuration_id() {
+  PREVIOUS_CONFIGURATION_ID=""
+  [[ -n "${FEEDBACK_JOB_ID}" ]] || return 0
+  PREVIOUS_CONFIGURATION_ID=$(databricks jobs get "${FEEDBACK_JOB_ID}" --output json 2>/dev/null | python3 -c '
+import json, re, sys
 try:
-    data = json.loads(r.stdout) if r.returncode == 0 else []
+    tasks = json.load(sys.stdin).get("settings", {}).get("tasks", [])
 except Exception:
-    data = []
-items = data if isinstance(data, list) else data.get("runs", [])
-start_ms = int(os.environ.get("PD_START_MS") or 0) - 60000
-fresh = bool(items) and int(items[0].get("start_time") or 0) >= start_ms
-print("yes" if fresh else "no")
-' 2>/dev/null || echo "no"
+    tasks = []
+cid = next((((t.get("genie_task") or {}).get("configuration_id") or "")
+            for t in tasks if t.get("task_key") == "author_feedback_branch"), "")
+print(cid if re.fullmatch(r"genie_code/users/[0-9]+/scheduled_insights/[0-9a-f]{32}", cid) else "")
+' 2>/dev/null) || PREVIOUS_CONFIGURATION_ID=""
+  if [[ -n "${PREVIOUS_CONFIGURATION_ID}" ]]; then
+    ok "author_feedback_branch automation before deploy: ${PREVIOUS_CONFIGURATION_ID}"
+  fi
 }
 
-# --------------------------------------------------------------------------- #
-# ensure_post_deploy_run — with --run-setup, guarantee post_deploy_setup ran
-#
-# The run_post_deploy job_run resource only fires when its configuration
-# changes (lifecycle trigger for "always" is still a TODO). When --run-setup is
-# passed and the deploy didn't start a run, run the job explicitly. Group B
-# tasks stay skipped (app_url is empty). Non-fatal.
-# --------------------------------------------------------------------------- #
-ensure_post_deploy_run() {
-  [[ "${RUN_SETUP}" == true ]] || return 0
-
+run_post_deploy_setup() {
   resolve_post_deploy_job_id
   if [[ -z "${POST_DEPLOY_JOB_ID}" ]]; then
-    warn "post_deploy_setup job ID not resolved — cannot force a setup run."
-    return 0
+    fail "post_deploy_setup job ID not resolved after the infra deploy (bundle summary). Check the deploy output above."
   fi
 
-  if [[ "$(post_deploy_run_is_fresh)" == "yes" ]]; then
-    ok "post_deploy_setup ran as part of this deploy."
-    return 0
-  fi
+  log "Running post_deploy_setup (run_setup=true) — restores the author_feedback_branch genie_task"
+  local run_log run_rc=0 run_url
+  local -a pipe_rc=()
+  run_log=$(mktemp)
+  {
+    (cd_bundle "${SCRIPT_DIR}/${INFRA_BUNDLE}" && \
+      databricks bundle run post_deploy_setup --target "${TARGET}" \
+        --params "run_setup=true,previous_configuration_id=${PREVIOUS_CONFIGURATION_ID}") 2>&1 | tee "${run_log}"
+    pipe_rc=("${PIPESTATUS[@]}")
+  } || true
+  run_rc=${pipe_rc[0]:-1}
+  run_url=$(grep -oE 'https://[^ ]*/jobs/[0-9]+/runs/[0-9]+' "${run_log}" | head -1 || true)
+  rm -f "${run_log}"
 
-  log "Running post_deploy_setup (job_run did not fire — no config change)"
-  if (cd_bundle "${SCRIPT_DIR}/${INFRA_BUNDLE}" && \
-      databricks bundle run post_deploy_setup --target "${TARGET}" --params run_setup=true); then
-    ok "post_deploy_setup run completed."
-  else
-    warn "post_deploy_setup run finished with failures — see the run page above."
+  if [[ ${run_rc} -ne 0 ]]; then
+    fail "post_deploy_setup failed (exit ${run_rc}): ${run_url:-see the run output above (job ${POST_DEPLOY_JOB_ID})}. author_feedback_branch may still be the notebook placeholder; fix the failing task and re-run ./deploy.sh --target ${TARGET} --infra."
   fi
-  return 0
+  ok "post_deploy_setup succeeded${run_url:+: ${run_url}}"
 }
 
 report_secret_scope_keys() {
@@ -835,8 +859,7 @@ if not items:
     sys.exit(0)
 run = items[0]
 if int(run.get("start_time") or 0) < start_ms:
-    print("WARN|No post_deploy_setup run from this deploy (the job_run only fires on config changes).")
-    print("WARN|  Re-run with --run-setup to force the setup run and key report.")
+    print("WARN|No post_deploy_setup run from this deploy (unexpected: run_post_deploy_setup runs it every time).")
     sys.exit(0)
 
 detail = cli("jobs", "get-run", str(run["run_id"])) or {}
@@ -900,9 +923,12 @@ log "Semantic Ground Truth — Deploy (target: ${TARGET})"
 # --------------------------------------------------------------------------- #
 if [[ "${DEPLOY_INFRA}" == true ]]; then
 
-  INFRA_EXTRA_ARGS=()
+  # run_setup=false at deploy time: the run_post_deploy job_run (config changes
+  # only) is then a gated no-op, and run_post_deploy_setup below is the single
+  # setup run (with run_setup=true). --run-setup no longer changes anything.
+  INFRA_EXTRA_ARGS=("--var" "run_setup=false")
   if [[ "${RUN_SETUP}" == true ]]; then
-    INFRA_EXTRA_ARGS+=("--var" "run_setup=true")
+    ok "--run-setup is a no-op alias: post_deploy_setup always runs after the infra deploy."
   fi
 
   # Step 1a: Resolve variables from bundle summary (works pre-deploy too)
@@ -973,13 +999,16 @@ print(data.get("service_principal_client_id", ""))
     check_mcp_connection || true
   fi
 
-  # Step 1c: Deploy the infra bundle
+  # Step 1c: Deploy the infra bundle (first remember the automation id the deploy will reset)
+  if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
+    capture_author_configuration_id
+  fi
   DEPLOY_START_MS=$(python3 -c 'import time; print(int(time.time() * 1000))')
   deploy_bundle "${INFRA_BUNDLE}" "${INFRA_EXTRA_ARGS[@]+${INFRA_EXTRA_ARGS[@]}}"
 
-  # Step 1c': With --run-setup, make sure post_deploy_setup actually ran
+  # Step 1c': Always run post_deploy_setup (run_setup=true) and wait; fatal on failure
   if [[ "${VALIDATE_ONLY}" != true ]] && [[ "${DESTROY}" != true ]]; then
-    ensure_post_deploy_run
+    run_post_deploy_setup
   fi
 
   # Step 1d: Check the M2M SPN credential contract (non-fatal).
@@ -1160,10 +1189,13 @@ print(data.get("service_principal_client_id", ""))
       live_spn=$(safe "${live_spn}")
       if [[ -n "${live_spn}" ]]; then
         log "Updating infra secret scope ACL with live app SPN: ${live_spn}"
+        capture_author_configuration_id
         deploy_bundle "${INFRA_BUNDLE}" \
           ${INFRA_EXTRA_ARGS[@]+"${INFRA_EXTRA_ARGS[@]}"} \
           "--var" "app_service_principal_id=$(safe "${live_spn}")"
         APP_SPN_CLIENT_ID="${live_spn}"
+        # This infra deploy reset author_feedback_branch again: restore it.
+        run_post_deploy_setup
       fi
     fi
   fi

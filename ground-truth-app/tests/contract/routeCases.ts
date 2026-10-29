@@ -13,12 +13,14 @@ import type { UserContext } from '../../server/lib/context';
 import { DEFAULT_SETTINGS } from '../../server/lib/config';
 import { DEFAULT_USER_SETTINGS } from '../../server/services/settings/userSettingsService';
 import type { FakeStore } from './fakeStore';
+import { FAKE_SLACK_CHANNELS, fakeSlack } from './fakeSlack';
 import {
   ADMIN,
   ASSETS,
   CAMPAIGNS,
   CATALOGS,
   EXAMPLES,
+  FEEDBACK_REPO_URL,
   GROUPS,
   IDS,
   METRIC_VIEW,
@@ -60,6 +62,13 @@ export type ErrorCase = CallInput | NotApplicable;
 export interface RouteCase {
   happy: HappyCase;
   errors?: Partial<Record<number, ErrorCase>>;
+  /**
+   * The route is registered with RBAC + validation but its handler is a stub
+   * that answers 501 NOT_IMPLEMENTED (reason names the session that implements
+   * it). routes.contract.test.ts then expects 501 for the happy input instead of
+   * the contract status; remove `stub` and fill in `expected` when it lands.
+   */
+  stub?: string;
 }
 
 export const isNa = (c: ErrorCase | undefined): c is NotApplicable => !!c && 'na' in c;
@@ -111,7 +120,17 @@ const noConfidenceCard = (store: FakeStore, assetId: string, reviewed: number) =
   confidence: null,
   reason: 'low_confidence',
   progress: { reviewed, total: 5 },
+  resurfacedFromSkip: false,
 });
+
+/** Share to Slack (build 5 session 50): fake system.ai.slack modes (fakeSlack.ts). */
+const slackMode = (mode: typeof fakeSlack.mode) => () => { fakeSlack.mode = mode; };
+/** A notification addressed to the steward role (stewards may share it). */
+const STEWARD_NOTIFICATION_ID = GEN(900);
+const addStewardNotification = (s: FakeStore) => {
+  s.notifications.push({ ...NOTIFICATIONS[1], id: STEWARD_NOTIFICATION_ID, userId: 'steward', status: 'sent', readAt: null });
+};
+const SHARE_BODY = { channelId: 'C0123ABCD', mode: 'draft', message: 'Please review.' };
 
 export const ROUTE_CASES: Record<string, RouteCase> = {
   // ── health.ts, config.ts, me.ts ──
@@ -124,7 +143,10 @@ export const ROUTE_CASES: Record<string, RouteCase> = {
       setup: () => {
         process.env.GT_EXEC_DASHBOARD_URL = 'https://fevm-hls-fde.cloud.databricks.com/dashboardsv3/abc/published';
       },
-      expected: () => ({ executive_dashboard_url: 'https://fevm-hls-fde.cloud.databricks.com/dashboardsv3/abc/published' }),
+      expected: () => ({
+        executive_dashboard_url: 'https://fevm-hls-fde.cloud.databricks.com/dashboardsv3/abc/published',
+        slackShareEnabled: true,
+      }),
     },
     errors: { 500: NO_DATA_LAYER },
   },
@@ -543,6 +565,7 @@ export const ROUTE_CASES: Record<string, RouteCase> = {
         batchId: IDS.B1, branchName: 'mg-genie-feedback-20261020', status: 'proposed', assetCount: 2,
         files: ['ground-truth-infra/fixtures/metric_views/finance.yml'], summary: '2 edits from 2 reviewers on Net Margin.',
         createdAt: '2026-10-20T08:00:00.000Z', completedAt: '2026-10-20T08:01:00.000Z', reviewedBy: null,
+        htmlUrl: `${FEEDBACK_REPO_URL}/tree/mg-genie-feedback-20261020`,
       }],
     },
     errors: { 400: { query: { status: 'open' } } },
@@ -553,7 +576,13 @@ export const ROUTE_CASES: Record<string, RouteCase> = {
       expected: () => ({
         batchId: GEN(1), branchName: 'mg-genie-feedback-20261025', status: 'proposed', assetCount: 0,
         files: ['fixtures/metric_views/finance.yml'], summary: '1 accepted edit.', createdAt: NOW, completedAt: NOW, reviewedBy: null,
+        htmlUrl: `${FEEDBACK_REPO_URL}/tree/mg-genie-feedback-20261025`,
       }),
+      // A new row notifies stewards once (same-status re-upsert: invariants.contract.test.ts).
+      after: (s) => {
+        const sent = JSON.stringify(s.stewardNotifications);
+        if (sent !== JSON.stringify([{ eventType: 'feedback.branch_ready', batchId: GEN(1) }])) throw new Error(`notifications ${sent}`);
+      },
     },
     errors: {
       400: { body: { branchName: 'feedback/2026-10-25', files: [], status: 'proposed' } },
@@ -568,12 +597,59 @@ export const ROUTE_CASES: Record<string, RouteCase> = {
         batchId: IDS.B1, branchName: 'mg-genie-feedback-20261020', status: 'merged', assetCount: 2,
         files: ['ground-truth-infra/fixtures/metric_views/finance.yml'], summary: '2 edits from 2 reviewers on Net Margin.',
         createdAt: '2026-10-20T08:00:00.000Z', completedAt: '2026-10-20T08:01:00.000Z', reviewedBy: STEWARD.userId,
+        htmlUrl: `${FEEDBACK_REPO_URL}/tree/mg-genie-feedback-20261020`,
       }),
     },
     errors: {
       400: { params: { batchId: IDS.B1 }, body: { status: 'proposed' } },
       404: { params: { batchId: IDS.UNKNOWN }, body: { status: 'merged' } },
       409: { params: { batchId: IDS.B1 }, body: { status: 'in_review' }, setup: (s) => { s.batches[0].status = 'merged'; } },
+    },
+  },
+
+  // ── slack.ts (build 5: contract session 44, handlers session 50) ──
+  'POST /api/notifications/:id/share-slack': {
+    happy: {
+      params: { id: STEWARD_NOTIFICATION_ID },
+      body: SHARE_BODY,
+      setup: addStewardNotification,
+      expected: () => ({ status: 'drafted' }),
+      after: (s) => {
+        if (s.slackShares.length !== 1 || s.slackShares[0].status !== 'sent') throw new Error('expected one audit row');
+      },
+    },
+    errors: {
+      400: { params: { id: NOTIFICATIONS[0].id }, body: { channelId: 'C0123ABCD', mode: 'post' } },
+      // NOTIFICATIONS[0] is addressed to the reviewer: not visible to a steward.
+      404: { params: { id: NOTIFICATIONS[0].id }, body: SHARE_BODY },
+      429: { params: { id: STEWARD_NOTIFICATION_ID }, body: SHARE_BODY, setup: (s) => { addStewardNotification(s); slackMode('rate_limited')(); } },
+      502: { params: { id: STEWARD_NOTIFICATION_ID }, body: SHARE_BODY, setup: (s) => { addStewardNotification(s); slackMode('down')(); } },
+    },
+  },
+  'POST /api/assets/:assetId/share-slack': {
+    happy: {
+      params: { assetId: IDS.A1 },
+      body: SHARE_BODY,
+      expected: () => ({ status: 'drafted' }),
+      after: (s) => {
+        if (s.slackShares.length !== 1) throw new Error('expected one audit row');
+      },
+    },
+    errors: {
+      400: { params: { assetId: 'not-a-uuid' }, body: SHARE_BODY },
+      404: { params: { assetId: IDS.UNKNOWN }, body: SHARE_BODY },
+      429: { params: { assetId: IDS.A1 }, body: SHARE_BODY, setup: slackMode('rate_limited') },
+      502: { params: { assetId: IDS.A1 }, body: SHARE_BODY, setup: slackMode('down') },
+    },
+  },
+  'GET /api/slack/channels': {
+    happy: { query: { query: 'data-stewards' }, expected: () => FAKE_SLACK_CHANNELS },
+    errors: {
+      400: { query: { query: 'x'.repeat(201) } },
+      404: { na: 'only when GT_SLACK_SHARE_ENABLED=false (server/services/notification/slackShare.test.ts)' },
+      429: { query: {}, setup: slackMode('rate_limited') },
+      500: { na: 'handler makes no data-layer call (system.ai.slack only)' },
+      502: { query: {}, setup: slackMode('down') },
     },
   },
 };

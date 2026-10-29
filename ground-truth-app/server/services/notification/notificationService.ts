@@ -24,6 +24,24 @@ function sleep(ms: number): Promise<void> {
 
 const RETRY_DELAYS = [1_000, 2_000, 4_000]; // 1s / 2s / 4s
 
+/**
+ * event_type of the audit row a Share to Slack writes (build 5 session 50).
+ * Server-internal: audit rows use channel 'slack', so the in-app inbox (which
+ * reads channel 'in_app' only) never returns them.
+ */
+export const SLACK_SHARE_EVENT_TYPE = 'share.slack';
+
+/** One Share to Slack, as recorded in app.notifications (channel 'slack'). */
+export interface SlackShareAudit {
+  /** The steward/admin who shared (recipient_id of the audit row). */
+  userId: string;
+  title: string;
+  body: string;
+  /** 'sent' for a sent or drafted share, 'failed' when system.ai.slack failed. */
+  status: Extract<NotificationStatus, 'sent' | 'failed'>;
+  metadata: Record<string, unknown>;
+}
+
 interface NotifyInput {
   eventType: NotificationEventType;
   recipientType: 'user' | 'role';
@@ -241,6 +259,35 @@ export class NotificationService {
     );
 
     return rows.length;
+  }
+
+  /**
+   * One in-app notification the user can see (addressed to them or to one of
+   * their roles), or null.
+   */
+  async getVisible(id: string, userId: string, roles: Role[] = []): Promise<Notification | null> {
+    const row = await this.deps.db.one<Record<string, unknown>>(
+      `SELECT * FROM app.notifications
+       WHERE id = $1
+         AND channel = 'in_app'
+         AND (recipient_id = $2 OR recipient_id = ANY($3))`,
+      [id, userId, roles],
+    );
+    return row ? mapRow(row) : null;
+  }
+
+  // ── Share to Slack audit (build 5 session 50) ──
+
+  /** Insert the audit row of one Share to Slack (channel 'slack'); returns its id. */
+  async recordSlackShare(audit: SlackShareAudit): Promise<string | null> {
+    const row = await this.deps.db.one<Record<string, unknown>>(
+      `INSERT INTO app.notifications
+         (recipient_id, event_type, channel, status, title, body, metadata)
+       VALUES ($1, $2, 'slack', $3, $4, $5, $6::jsonb)
+       RETURNING id`,
+      [audit.userId, SLACK_SHARE_EVENT_TYPE, audit.status, audit.title, audit.body, JSON.stringify(audit.metadata)],
+    );
+    return (row?.id as string | undefined) ?? null;
   }
 
   // ── Preferences ─────────────────────────────────────────────────────

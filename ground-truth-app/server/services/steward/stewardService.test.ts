@@ -2,7 +2,7 @@
 // Session 33 · Wave 4-1 · Vitest with a mocked Db
 
 import { describe, it, expect, vi } from 'vitest';
-import { StewardService, detectConflicts, resolutionFor, rowToFeedbackBranch } from './stewardService';
+import { StewardService, detectConflicts, resolutionFor, rowToFeedbackBranch, shouldNotifyOnUpsert } from './stewardService';
 import type { TriageVoteRow } from './stewardService';
 import type { ServiceDeps } from '../../lib/deps';
 import type { NotificationService } from '../notification';
@@ -49,7 +49,9 @@ function toDbRow(v: TriageVoteRow): Record<string, unknown> {
 
 type Route = [RegExp, (params: unknown[]) => Record<string, unknown>[]];
 
-function makeService(routes: Route[]) {
+const REPO = 'https://github.com/example-org/semantic-ground-truth';
+
+function makeService(routes: Route[], repoUrl: string | null = REPO) {
   const calls: { sql: string; params: unknown[] }[] = [];
   const run = (sql: string, params: unknown[] = []) => {
     calls.push({ sql, params });
@@ -65,6 +67,7 @@ function makeService(routes: Route[]) {
   const svc = new StewardService(
     { db } as unknown as ServiceDeps,
     notifications as unknown as NotificationService,
+    { feedbackRepoUrl: async () => repoUrl },
   );
   return { svc, calls, notifications };
 }
@@ -225,6 +228,24 @@ describe('rowToFeedbackBranch', () => {
     expect(rowToFeedbackBranch(batchRow({ files: '["a.yml","b.yml"]' })).files).toEqual(['a.yml', 'b.yml']);
     expect(rowToFeedbackBranch(batchRow({ files: null })).files).toEqual([]);
   });
+
+  it('htmlUrl is <repo>/tree/<branch>, null without a repo URL or branch', () => {
+    expect(rowToFeedbackBranch(batchRow(), REPO).htmlUrl).toBe(`${REPO}/tree/mg-genie-feedback-20261024`);
+    expect(rowToFeedbackBranch(batchRow()).htmlUrl).toBeNull();
+    expect(rowToFeedbackBranch(batchRow({ branch_name: null }), REPO).htmlUrl).toBeNull();
+  });
+});
+
+describe('shouldNotifyOnUpsert (build 5 follow-up 5)', () => {
+  it('notifies on create or status change to proposed / failed only', () => {
+    expect(shouldNotifyOnUpsert(null, 'proposed')).toBe(true);
+    expect(shouldNotifyOnUpsert('pending', 'proposed')).toBe(true);
+    expect(shouldNotifyOnUpsert('proposed', 'failed')).toBe(true);
+    expect(shouldNotifyOnUpsert('proposed', 'proposed')).toBe(false);
+    expect(shouldNotifyOnUpsert('failed', 'failed')).toBe(false);
+    expect(shouldNotifyOnUpsert(null, 'pending')).toBe(false);
+    expect(shouldNotifyOnUpsert('pending', 'pending')).toBe(false);
+  });
 });
 
 describe('StewardService.upsertFeedbackBranch', () => {
@@ -241,7 +262,10 @@ describe('StewardService.upsertFeedbackBranch', () => {
     ]);
     const { branch, created } = await svc.upsertFeedbackBranch(STEWARD, req);
     expect(created).toBe(true);
-    expect(branch).toMatchObject({ batchId: BATCH, branchName: req.branchName, status: 'proposed' });
+    expect(branch).toMatchObject({
+      batchId: BATCH, branchName: req.branchName, status: 'proposed',
+      htmlUrl: `${REPO}/tree/mg-genie-feedback-20261024`,
+    });
     const insert = calls.find((c) => /INSERT INTO app\.feedback_batches/.test(c.sql))!;
     expect(insert.params[2]).toBe(JSON.stringify(req.files));
     expect(notifications.notify).toHaveBeenCalledWith(expect.objectContaining({
@@ -253,12 +277,35 @@ describe('StewardService.upsertFeedbackBranch', () => {
 
   it('updates an existing branch by name (created false)', async () => {
     const { svc, calls } = makeService([
-      [/SELECT id FROM app\.feedback_batches WHERE branch_name/, () => [{ id: BATCH }]],
+      [/SELECT id, status FROM app\.feedback_batches WHERE branch_name/, () => [{ id: BATCH, status: 'pending' }]],
       [/UPDATE app\.feedback_batches/, () => [batchRow()]],
     ]);
     const { created } = await svc.upsertFeedbackBranch(STEWARD, req);
     expect(created).toBe(false);
     expect(calls.some((c) => /INSERT INTO app\.feedback_batches/.test(c.sql))).toBe(false);
+  });
+
+  it('notifies once: an existing branch upserted with the same status sends nothing', async () => {
+    const same = makeService([
+      [/SELECT id, status FROM app\.feedback_batches WHERE branch_name/, () => [{ id: BATCH, status: 'proposed' }]],
+      [/UPDATE app\.feedback_batches/, () => [batchRow()]],
+    ]);
+    await same.svc.upsertFeedbackBranch(STEWARD, req);
+    expect(same.notifications.notify).not.toHaveBeenCalled();
+
+    const changed = makeService([
+      [/SELECT id, status FROM app\.feedback_batches WHERE id/, () => [{ id: BATCH, status: 'pending' }]],
+      [/UPDATE app\.feedback_batches/, () => [batchRow()]],
+    ]);
+    await changed.svc.upsertFeedbackBranch(STEWARD, { ...req, batchId: BATCH });
+    expect(changed.notifications.notify).toHaveBeenCalledTimes(1);
+    expect(changed.notifications.notify).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'feedback.branch_ready' }));
+  });
+
+  it('htmlUrl is null when the repo URL is unknown', async () => {
+    const { svc } = makeService([[/INSERT INTO app\.feedback_batches/, () => [batchRow()]]], null);
+    const { branch } = await svc.upsertFeedbackBranch(STEWARD, req);
+    expect(branch.htmlUrl).toBeNull();
   });
 
   it('sends feedback.failed for a failed run and nothing for pending', async () => {

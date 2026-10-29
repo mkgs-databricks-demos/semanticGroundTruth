@@ -91,6 +91,7 @@ Deployed by: the infra `metric_view_deploy` job (not this bundle). All read `bro
 - **2026-10-24:** Brand + gaps build: `agent_verification` regression run `149451153256513` SUCCESS (session 22c).
 - **2026-10-26:** Build 4 complete for this bundle. Session 29 added the operations dashboard (G11 partial) and dashboard checks in `agent_verification`; session 39 deployed and verified it (29/29). Lakehouse Monitoring on bronze is still deferred.
 - **2026-10-27:** Build 4 `BUILD_PASSED` (run `655172288447819`; wave 4-7 commit `6d26b3f`). Dashboard id formatting deferred (follow-up 4); no agent bundle changes in the close-out session.
+- **2026-10-28:** Build 5 (run `229891579528310`, session 59, wave 5-6): no agent code change. Deploy was a no-op; ops dashboard republished; 17/17 datasets execute and the ids are UUID strings because the infra metric views now return them (session 47), so follow-up 4 is closed without a dashboard edit. Do NOT add a `hex()` wrapper (it would double-encode). `agent_verification` `562019912984705` 29/29; Genie space 9 tables, 9 examples, 2 probes. Open: `ds_top_skipped_assets` tie-break `ORDER BY skip_count DESC, asset_id` (build-5 follow-up 7). Lakehouse Monitoring on bronze is prod-only (D-B5-4).
 
 ## Build Results (root manifest waves 0–4)
 

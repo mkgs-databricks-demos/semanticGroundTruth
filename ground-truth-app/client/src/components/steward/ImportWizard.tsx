@@ -1,5 +1,10 @@
+// @a11y-strict
 // client/src/components/steward/ImportWizard.tsx — multi-step import-from-assets wizard
 // Session 10 · Wave 1 · No enum, no namespace, no default export
+// Session 54 · Build 5 · wave 5-2 (S4): ui/Sheet ("Import assets"), ordered
+// stepper with aria-current="step", Databricks icons instead of lucide,
+// role="status" for scan / import progress, InlineAlert for errors, a
+// labelled skipped-items list for partial failures, writes disabled offline.
 
 import { useState } from 'react';
 import {
@@ -10,23 +15,11 @@ import {
   CardTitle,
   Input,
   Skeleton,
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
   Badge,
 } from '@databricks/appkit-ui/react';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Check,
-  Loader2,
-  AlertCircle,
-  FolderGit2,
-  Database,
-  FileText,
-  Import,
-} from 'lucide-react';
+import { Icon, InlineAlert } from '../ui';
+import { Sheet } from '../ui/Sheet';
+import { useOnlineStatus } from '../../lib/useOnlineStatus';
 import type {
   CatalogMetricViewsQuery,
   CatalogSchemasQuery,
@@ -71,6 +64,7 @@ interface ImportWizardProps {
 }
 
 export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
+  const online = useOnlineStatus();
   const [step, setStep] = useState(STEP_METRIC_VIEWS);
 
   // Step 1: metric view selection
@@ -130,7 +124,10 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
   async function handleRegisterSource() {
     if (!newSourcePath.trim()) return;
     const body: RegisterSourceBody = { workspacePath: newSourcePath.trim() };
-    const source = await registerSourceM.mutateAsync(body);
+    // Mutation errors surface through `wizardError`; swallow the rejection so
+    // the `void` call sites do not raise an unhandled promise rejection.
+    const source = await registerSourceM.mutateAsync(body).catch(() => null);
+    if (!source) return;
     setSourceId(source.id);
     setShowNewSource(false);
     setNewSourcePath('');
@@ -138,7 +135,8 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
   }
 
   async function handleScan(sid: string) {
-    const result = await scanSourceM.mutateAsync(sid);
+    const result = await scanSourceM.mutateAsync(sid).catch(() => null);
+    if (!result) return;
     setScannedMvFiles(result.metricViewFiles);
     setScannedTerms(result.glossaryTerms);
   }
@@ -163,7 +161,8 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
         term: t.term,
       }));
     }
-    const result = await importM.mutateAsync(body);
+    const result = await importM.mutateAsync(body).catch(() => null);
+    if (!result) return;
     setImportResult(result);
     setStep(STEP_CAMPAIGN);
   }
@@ -171,11 +170,14 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
   async function handleCreateCampaign() {
     if (!campaignName.trim() || !importResult) return;
     const assetIds = [...importResult.created, ...importResult.updated];
-    await createCampaignM.mutateAsync({
-      name: campaignName.trim(),
-      campaignType: 'manual',
-      scopeAssetIds: assetIds,
-    });
+    const created = await createCampaignM
+      .mutateAsync({
+        name: campaignName.trim(),
+        campaignType: 'manual',
+        scopeAssetIds: assetIds,
+      })
+      .catch(() => null);
+    if (!created) return;
     handleClose();
   }
 
@@ -215,35 +217,62 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
 
   // ── Render ──────────────────────────────────────────────────────────
 
-  return (
-    <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>New Campaign from Assets</SheetTitle>
-        </SheetHeader>
+  const wizardError = importM.error ?? registerSourceM.error ?? scanSourceM.error ?? createCampaignM.error;
 
-        {/* Step indicator */}
-        <div className="flex items-center gap-1 my-4">
-          {STEP_LABELS.map((label, i) => (
-            <div key={label} className="flex items-center gap-1">
-              <div
-                className={`h-2 w-2 rounded-full ${
-                  i <= step ? 'bg-primary' : 'bg-muted'
-                }`}
-              />
-              <span
-                className={`text-xs ${
-                  i === step ? 'text-foreground font-medium' : 'text-muted-foreground'
-                }`}
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={handleClose}
+      title="Import assets"
+      description={`Step ${step + 1} of ${STEP_LABELS.length}: ${STEP_LABELS[step]}`}
+      className="w-full sm:max-w-xl"
+      footer={
+        step < STEP_CAMPAIGN && step !== STEP_IMPORT ? (
+          <div className="flex justify-between gap-2">
+            <Button variant="ghost" className="min-h-[44px] gap-1.5" onClick={handleBack} disabled={step === STEP_METRIC_VIEWS}>
+              <Icon name="arrowUp" className="-rotate-90" />
+              Back
+            </Button>
+            {step === STEP_GLOSSARY ? (
+              <Button
+                className="min-h-[44px]"
+                onClick={handleNext}
+                disabled={!online || !canGoNext() || importM.isPending}
+                data-testid="steward-import-submit"
               >
-                {label}
-              </span>
-              {i < STEP_LABELS.length - 1 && (
-                <ChevronRight className="h-3 w-3 text-muted-foreground" />
-              )}
-            </div>
+                Import
+              </Button>
+            ) : (
+              <Button
+                className="min-h-[44px] gap-1.5"
+                onClick={handleNext}
+                disabled={!canGoNext() || importM.isPending}
+                data-testid="steward-import-next"
+              >
+                Next
+                <Icon name="arrowUp" className="rotate-90" />
+              </Button>
+            )}
+          </div>
+        ) : undefined
+      }
+    >
+        {/* Step indicator */}
+        <ol aria-label="Import steps" className="my-2 flex flex-wrap items-center gap-2">
+          {STEP_LABELS.map((label, i) => (
+            <li
+              key={label}
+              aria-current={i === step ? 'step' : undefined}
+              className={`flex items-center gap-1 text-xs ${
+                i === step ? 'font-bold text-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              <span aria-hidden="true" className={`h-2 w-2 rounded-full ${i <= step ? 'bg-primary' : 'bg-muted'}`} />
+              {label}
+              {i < step ? <span className="sr-only"> (done)</span> : null}
+            </li>
           ))}
-        </div>
+        </ol>
 
         {/* Step content */}
         <div className="space-y-4 mt-4">
@@ -286,9 +315,8 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
           )}
 
           {step === STEP_IMPORT && (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-3 text-sm text-muted-foreground">Importing assets…</span>
+            <div role="status" className="flex items-center justify-center py-12">
+              <span className="text-sm text-muted-foreground">Importing assets…</span>
             </div>
           )}
 
@@ -305,42 +333,13 @@ export function ImportWizard({ open, onOpenChange }: ImportWizardProps) {
         </div>
 
         {/* Error display */}
-        {(importM.error || registerSourceM.error || scanSourceM.error) && (
-          <div className="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive flex items-start gap-2">
-            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>
-              {((importM.error ?? registerSourceM.error ?? scanSourceM.error) as ApiError | Error)?.message ?? 'An error occurred'}
-            </span>
+        {wizardError ? (
+          <div className="mt-4">
+            <InlineAlert title="Something went wrong">
+              {(wizardError as ApiError | Error).message || 'An error occurred'}
+            </InlineAlert>
           </div>
-        )}
-
-        {/* Navigation */}
-        {step < STEP_CAMPAIGN && step !== STEP_IMPORT && (
-          <div className="flex justify-between mt-6">
-            <Button
-              variant="ghost"
-              onClick={handleBack}
-              disabled={step === STEP_METRIC_VIEWS}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" /> Back
-            </Button>
-            <Button
-              onClick={handleNext}
-              disabled={!canGoNext() || importM.isPending}
-            >
-              {step === STEP_GLOSSARY ? (
-                <>
-                  <Import className="h-4 w-4 mr-1" /> Import
-                </>
-              ) : (
-                <>
-                  Next <ChevronRight className="h-4 w-4 ml-1" />
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-      </SheetContent>
+        ) : null}
     </Sheet>
   );
 }
@@ -378,11 +377,12 @@ function StepMetricViews({
 
       {/* Catalog picker */}
       <div>
-        <label className="text-sm font-medium">Catalog</label>
+        <label htmlFor="import-wizard-catalog" className="text-sm font-medium">Catalog</label>
         {catalogsQ.isLoading ? (
           <Skeleton className="h-9 w-full mt-1" />
         ) : (
           <select
+            id="import-wizard-catalog"
             className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={catalog}
             onChange={(e) => onCatalogChange(e.target.value)}
@@ -400,11 +400,12 @@ function StepMetricViews({
       {/* Schema picker */}
       {catalog && (
         <div>
-          <label className="text-sm font-medium">Schema</label>
+          <label htmlFor="import-wizard-schema" className="text-sm font-medium">Schema</label>
           {schemasQ.isLoading ? (
             <Skeleton className="h-9 w-full mt-1" />
           ) : (
             <select
+              id="import-wizard-schema"
               className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={schema}
               onChange={(e) => onSchemaChange(e.target.value)}
@@ -522,13 +523,18 @@ function StepSource({
               {sourcesQ.data!.map((src) => (
                 <Card
                   key={src.id}
-                  className={`cursor-pointer transition-colors ${
+                  className={`transition-colors ${
                     sourceId === src.id ? 'ring-2 ring-primary' : 'hover:bg-muted'
                   }`}
-                  onClick={() => onSelectExisting(src.id)}
                 >
+                  <button
+                    type="button"
+                    aria-pressed={sourceId === src.id}
+                    onClick={() => onSelectExisting(src.id)}
+                    className="block min-h-[44px] w-full rounded-[inherit] text-left"
+                  >
                   <CardContent className="p-3 flex items-center gap-2">
-                    <FolderGit2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Icon name="folderBranch" className="shrink-0 text-muted-foreground" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">
                         {src.displayName ?? src.workspacePath}
@@ -538,9 +544,10 @@ function StepSource({
                       </p>
                     </div>
                     {sourceId === src.id && (
-                      <Check className="h-4 w-4 text-primary shrink-0" />
+                      <Icon name="check" className="shrink-0 text-primary" />
                     )}
                   </CardContent>
+                  </button>
                 </Card>
               ))}
             </div>
@@ -548,14 +555,15 @@ function StepSource({
 
           {!showNewSource ? (
             <Button variant="outline" size="sm" onClick={onShowNew}>
-              <FolderGit2 className="h-4 w-4 mr-1" /> Register new source
+              <Icon name="folderBranch" className="mr-1" /> Register new source
             </Button>
           ) : (
             <Card>
               <CardContent className="p-3 space-y-2">
-                <label className="text-sm font-medium">Workspace path</label>
+                <label htmlFor="import-wizard-source-path" className="text-sm font-medium">Workspace path</label>
                 <div className="flex gap-2">
                   <Input
+                    id="import-wizard-source-path"
                     value={newSourcePath}
                     onChange={(e) => onNewSourcePathChange(e.target.value)}
                     placeholder="/Workspace/Users/.../my-repo"
@@ -566,11 +574,7 @@ function StepSource({
                     onClick={onRegister}
                     disabled={!newSourcePath.trim() || isRegistering}
                   >
-                    {isRegistering ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      'Register'
-                    )}
+                    {isRegistering ? 'Registering…' : 'Register'}
                   </Button>
                 </div>
               </CardContent>
@@ -581,8 +585,8 @@ function StepSource({
 
       {/* Scan results */}
       {isScanning && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Scanning source…
+        <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+          Scanning source…
         </div>
       )}
 
@@ -592,7 +596,7 @@ function StepSource({
           <div className="mt-1 max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
             {scannedMvFiles.map((f) => (
               <div key={f.filePath} className="flex items-center gap-2 text-sm">
-                <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <Icon name="fileCode" className="shrink-0 text-muted-foreground" />
                 <span className="truncate">{f.filePath}</span>
                 <Badge variant="secondary" className="shrink-0">{f.viewName}</Badge>
               </div>
@@ -614,7 +618,7 @@ function StepGlossary({ terms, selectedTerms, onToggle }: StepGlossaryProps) {
   if (terms.length === 0) {
     return (
       <div className="text-center py-8">
-        <FileText className="mx-auto h-8 w-8 text-muted-foreground" />
+        <Icon name="fileCode" size={32} className="mx-auto text-muted-foreground" />
         <p className="text-sm text-muted-foreground mt-2">
           No glossary terms found from the source scan. You can skip this step.
         </p>
@@ -709,13 +713,13 @@ function StepCampaign({
             </div>
           )}
           {result.skipped.length > 0 && (
-            <div className="mt-2 border rounded-md p-2 max-h-24 overflow-y-auto">
+            <ul aria-label="Skipped items" className="mt-2 border rounded-md p-2 max-h-24 overflow-y-auto">
               {result.skipped.map((s) => (
-                <p key={s.ref} className="text-xs text-muted-foreground">
+                <li key={s.ref} className="text-xs text-muted-foreground">
                   <span className="font-medium">{s.ref}</span>: {s.reason}
-                </p>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </CardContent>
       </Card>
@@ -727,8 +731,9 @@ function StepCampaign({
             Create a campaign for the imported assets, or skip to finish.
           </p>
           <div>
-            <label className="text-sm font-medium">Campaign name</label>
+            <label htmlFor="import-wizard-campaign-name" className="text-sm font-medium">Campaign name</label>
             <Input
+              id="import-wizard-campaign-name"
               value={campaignName}
               onChange={(e) => onNameChange(e.target.value)}
               placeholder="e.g. Q4 Metric View Review"
@@ -741,12 +746,8 @@ function StepCampaign({
               disabled={!campaignName.trim() || isCreating}
               className="flex-1"
             >
-              {isCreating ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1" />
-              ) : (
-                <Database className="h-4 w-4 mr-1" />
-              )}
-              Create Campaign
+              <Icon name="plus" className="mr-1" />
+              {isCreating ? 'Creating…' : 'Create campaign'}
             </Button>
             <Button variant="ghost" onClick={onSkip}>
               Skip

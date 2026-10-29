@@ -6,6 +6,12 @@ import { SKIP_COOLDOWN_HOURS_MAX, SKIP_COOLDOWN_HOURS_MIN } from './values';
 
 export const AppRuntimeConfigSchema = z.object({
   executive_dashboard_url: z.string().url().nullable(),
+  /**
+   * Share to Slack is available (G5 Option A). Session 50 maps it to the
+   * GT_SLACK_SHARE_ENABLED flag; the UI shows the action only for
+   * steward/admin when true (build 5 session 44).
+   */
+  slackShareEnabled: z.boolean(),
 });
 
 export type AppRuntimeConfig = z.infer<typeof AppRuntimeConfigSchema>;

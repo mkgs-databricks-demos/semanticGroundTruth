@@ -50,4 +50,10 @@ export const queryKeys = {
     ['steward', 'conflicts', params] as const,
   feedbackBranches: (params?: Record<string, unknown>) =>
     ['steward', 'feedback-branches', params] as const,
+
+  // Review session counters (build 5, session 49): client-only, never fetched
+  reviewSession: ['review', 'session'] as const,
+
+  // Share to Slack (build 5, session 49 hooks over session 44's contract)
+  slackChannels: (query?: string) => ['slack', 'channels', query ?? ''] as const,
 } as const;

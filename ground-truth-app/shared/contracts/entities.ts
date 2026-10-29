@@ -199,6 +199,12 @@ export interface FeedbackBranch {
   createdAt: string;
   completedAt: string | null;
   reviewedBy: string | null;
+  /**
+   * Web link to the branch on the Git host (`<repo>/tree/<branch>`), built by the
+   * server from GT_FEEDBACK_REPO_URL or the feedback Git folder's remote; never
+   * stored. Null when the repo URL is unknown or the row has no branch (build 5).
+   */
+  htmlUrl: string | null;
 }
 
 // ── Campaigns (L200-C5 + conventions §5) ───────────────────────────────
