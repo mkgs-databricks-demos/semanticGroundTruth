@@ -46,7 +46,8 @@ Rules:
 * `pnpm run build` runs `prebuild` (`appkit generate-types --wait`), which needs a warehouse connection. Use `tsc -b` + `vitest run` locally; the Apps build is the full build.
 * **Overrides live in `pnpm-workspace.yaml`.** pnpm 11 ignores the top-level `overrides` block in `package.json` (verified: changing it leaves the lockfile untouched; changing `pnpm-workspace.yaml` rewrites it). The `package.json` copy is inert. Any override change must regenerate `pnpm-lock.yaml` in the same commit, or `--frozen-lockfile` fails.
 * **Build scripts are blocked by default.** A new dependency with an install script fails `pnpm add` with `ERR_PNPM_IGNORED_BUILDS` until it is added to `allowBuilds` in `pnpm-workspace.yaml` (example: `msw` 2.x).
-* **Do not bump `zod` alone.** AppKit 0.84.0 pins `zod` `4.3.6` exactly; a different app `zod` gives two copies and `tsc` fails (`_zod.version.minor` 3 vs 6) where app schemas meet AppKit or the MCP SDK. Bump it with an override (so AppKit gets the same copy) or with an AppKit upgrade.
+* **Do not bump `zod` alone.** AppKit (0.84.0 through 0.89.0) pins `zod` `4.3.6` exactly; a different app `zod` gives two copies and `tsc` fails (`_zod.version.minor` 3 vs 6) where app schemas meet AppKit or the MCP SDK. Bump it with an override (so AppKit gets the same copy) or with an AppKit upgrade. A global `zod` 4.6.7 override (tried 2026-10-29) passes `tsc` but grows the MCP App review card past its 100 KB gzip budget and changes `contracts.schema.json`; see `ground-truth-app/PROJECT_MEMORY.md` Finding 17.
+* **Override experiments: regenerate from `main`'s lockfile.** pnpm keeps an existing resolution while it still satisfies a caret range. A copy resolved from an experiment lockfile (for example `zod` 4.6.7), then reverted, still had 4.6.7 for some consumers (two copies). Start each candidate from the committed lockfile, and run the checks on an exact rsync of the repo before committing.
 
 ## Component tests (jsdom)
 

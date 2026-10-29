@@ -1,6 +1,6 @@
 # Dependabot triage: 57 alerts on `main` @ `9198d2d` (2026-10-29)
 
-**Status:** triage written; on `mg-genie-dependabot-triage`. **Done (owner-approved 2026-10-29):** removed the Figma export's `_code/package.json` and `_code/pnpm-lock.yaml`, which closes all 19 Figma rows. **Waiting for approval:** the app change set below. No app dependency changed yet.
+**Status:** on `mg-genie-dependabot-triage`. **Done (owner-approved 2026-10-29):** removed the Figma export's `_code/package.json` and `_code/pnpm-lock.yaml` (19 Figma rows), and applied the app change set (30 rows; `pnpm audit` 42 -> 12). **zod 4.6.7 tried and not applied:** it breaks the MCP App card size budget (see Results). **Waiting for the owner:** the zod budget decision, and dismissing the 10 not-reachable app alerts on GitHub.
 
 ## Source and method
 
@@ -65,7 +65,7 @@ Keys: (D) direct, (T) transitive. Notes P1-P13 / F1-F2 refer to the sections abo
 | 13 | GHSA-v39h-62p7-jpjc | `fast-uri` 3.1.0 (T) | high | `ground-truth-app` | runtime server (MCP SDK) [P5] | unlikely | override 3.1.0 -> 3.1.9 | fix now: override | low |
 | 14 | GHSA-2883-xcg3-v3hh | `js-yaml` 4.3.1 (T) | high | `ground-truth-app` | runtime server [P3] | trusted input only | override 4.3.2 | fix now: override | low |
 | 15 | GHSA-3f7j-7jwc-fxfj | `systeminformation` 5.31.7 (T) | high | `ground-truth-app` | runtime server (OTel) [P6] | No (Linux; no user input) | override 5.31.7 -> 5.33.18 | fix now: override | low |
-| 16 | GHSA-mrhx-c7xc-m3w5 | `zod` 4.3.6 (T) | high | `ground-truth-app` | runtime server + client [P8] | Yes (bodies <= 1 mb) | override 4.6.7 (all consumers) | defer: needs OK | medium |
+| 16 | GHSA-mrhx-c7xc-m3w5 | `zod` 4.3.6 (T) | high | `ground-truth-app` | runtime server + client [P8] | Yes (bodies <= 1 mb) | override 4.6.7 (all consumers) | defer: 4.6.7 tried, card over budget (Results) | medium |
 | 17 | GHSA-49rj-9fvp-4h2h | `react-router` 7.13.1 (D) | high | `figma/_code` | Figma reference export [F1] | No | remove export manifest | fixed: manifest removed | none |
 | 18 | GHSA-8646-j5j9-6r62 | `react-router` 7.13.1 (D) | high | `figma/_code` | Figma reference export [F1] | No | remove export manifest | fixed: manifest removed | none |
 | 19 | GHSA-8x6r-g9mw-2r78 | `react-router` 7.13.1 (D) | high | `figma/_code` | Figma reference export [F1] | No | remove export manifest | fixed: manifest removed | none |
@@ -141,6 +141,47 @@ In `package.json`, change devDependency `vitest` 4.1.9 -> 4.1.12. Keep `zod` 4.3
 2. zod: keep 4.3.6 and defer GHSA-mrhx (current proposal), or try a global `zod` 4.6.7 override on the branch.
 3. Approve dismissing the 10 not-reachable app alerts. I can't dismiss them on GitHub from here. The 19 Figma alerts need no dismissal; they close when the branch merges.
 
+Owner answers (2026-10-29): 1 approved, 2 "try zod 4.6.7", 3 approved.
+
+## Results (2026-10-29)
+
+All checks ran on `/tmp` rsync copies (Node 22.16.0, pnpm 11.0.8). The baseline copy (`main` content) gave vitest 1883 pass / 2 skipped, both `tsc -b` 0 errors, `pnpm run build` OK, entry chunk 302.56 kB gzip, MCP card 82,280 bytes gzip, and app audit 1 C / 15 H / 20 M / 6 L (42).
+
+**zod 4.6.7 trial** (all 7 overrides + `vitest` 4.1.12 + global `zod` 4.6.7, one zod copy everywhere):
+
+| Check | Result |
+| --- | --- |
+| Frozen install, lockfile-only byte-identical | pass |
+| Both `tsc -b` | 0 errors (no two-copy `_zod.version` clash) |
+| Audit | 0 C / 3 H / 8 M / 0 L (zod row gone) |
+| vitest | 2 fail / 1881 pass: two generated-artifact snapshot tests |
+| `shared/contracts/generated/contracts.schema.json` | 74 differences: 36 nullable fields `anyOf: [{type: T}, {type: null}]` -> `type: [T, "null"]`, and 2 email `pattern` rewrites (same no-leading-dot / no-double-dot rule). Equivalent JSON Schema |
+| MCP App review card (`server/mcp/views/app/build.ts`) | **466,769 bytes, 113,476 gzip: over the L300-17 budget (100 KB gzip / 400 KB raw)**, so `pnpm run build` fails |
+
+The change set without zod gives a byte-identical card and schema, so the size growth comes from zod alone (ext-apps bundles zod into the card). Raising the budget is a design decision, so zod stays 4.3.6 and GHSA-mrhx stays deferred.
+
+**Applied set** (7 overrides + `vitest` 4.1.12, `zod` 4.3.6), checked on an exact rsync of the repo:
+
+| Check | Result |
+| --- | --- |
+| `pnpm install --frozen-lockfile` | pass |
+| `pnpm install --lockfile-only` | byte-identical lockfile |
+| Lockfile package diff vs `main` | only `dompurify` 3.4.17, `echarts` / `zrender` 6.1.0, `fast-uri` 3.1.9, `js-yaml` 4.3.1 removed (4.3.2 already present), `qs` 6.15.3 + 6.16.0 -> 6.16.1, `systeminformation` 5.33.18, `yaml` 2.8.3, `vitest` + `@vitest/*` 4.1.12. One version of each |
+| vitest | 61 files, 1883 pass / 2 skipped (baseline) |
+| `tsc -b tsconfig.server.json` / `tsconfig.client.json` | 0 / 0 errors |
+| `pnpm run build` (prebuild typegen + vitest, server + client) | pass |
+| `pnpm run check:bundle` | entry chunk 302.56 kB gzip (budget 350 kB), unchanged |
+| Client bundle scan | DOMPurify (`ALLOWED_TAGS`) and echarts (`zrender`) still absent |
+| MCP card, contract schema | byte-identical to `main` |
+| Audit | 0 C / 4 H / 8 M / 0 L (12): zod, Prometheus exporter, sdk-node, Jaeger propagator, 8 OTel DB instrumentations |
+| `databricks bundle validate --strict --target dev` (`ground-truth-app`) | Validation OK |
+
+Not deployed. Before dismissing the Prometheus / Jaeger rows, confirm that the deployed app's environment has no platform-injected `OTEL_METRICS_EXPORTER` or `OTEL_PROPAGATORS`.
+
+Gotcha: an override experiment's lockfile keeps caret-range consumers on the experiment's version. A copy resolved from the zod 4.6.7 lockfile, with zod reverted, still had 4.6.7 for the MCP SDK (two copies). Always regenerate from `main`'s lockfile.
+
+**zod options for the owner:** (a) keep 4.3.6 until AppKit moves off its exact pin (current); (b) raise the card budget to about 120 KB gzip / 480 KB raw in `build.ts` and L300-17, add the global override, and regenerate the card and `contracts.schema.json` (a contract-snapshot change, so rerun `api_contract_tests`).
+
 ## Appendix: vulnerable range -> first patched
 
 1 `>=3.4.4 <=3.4.16` -> 3.4.17; 2 `<0.217.0` -> 0.217.0; 3 `<2.9.0` -> 2.9.0; 4 `>=0.57.0 <0.217.0` -> 0.217.0; 5 `<=3.4.16` -> 3.4.17; 6 `<3.1.3` -> 3.1.3; 7 `<3.1.5` -> 3.1.5; 8 `<3.1.6` -> 3.1.6; 9 `<3.1.6` -> 3.1.6; 10 `<=3.1.0` -> 3.1.1; 11 `<3.1.7` -> 3.1.7; 12 `<=3.1.3` -> 3.1.4; 13 `<=3.1.1` -> 3.1.2; 14 `>=4.0.0 <4.3.2` -> 4.3.2; 15 `<5.33.16` -> 5.33.16; 16 `<4.6.6` -> 4.6.6; 17 `>=7.0.0 <=7.14.1` -> 7.14.2; 18 `>=7.7.0 <7.13.2` -> 7.13.2; 19 `<7.15.0` -> 7.15.0; 20 `<7.18.0` -> 7.18.0; 21 `>=7.12.0 <7.18.2` -> 7.18.2; 22 `<7.14.0` -> 7.14.0; 23 `>=8.0.0 <=8.1.5` -> 8.1.6; 24 `<0.66.0` -> 0.66.0; 25 `<0.65.0` -> 0.65.0; 26-28 `<0.67.0` -> 0.67.0; 29 `<0.46.0` -> 0.46.0; 30 `<0.73.0` -> 0.73.0; 31 `<0.40.0` -> 0.40.0; 32 `>=2.1.0 <4.1.11` -> 4.1.11; 33 `<4.1.12` -> 4.1.12; 34 `<=3.4.12` -> 3.4.13; 35 `<6.1.0` -> 6.1.0; 36 `<3.1.8` -> 3.1.8; 37 `<3.1.9` -> 3.1.9; 38 `>=2.2.5 <6.16.0` -> 6.16.0; 39 `>=6.7.0 <=6.16.0` -> 6.16.1; 40 `>=6.14.2 <=6.15.3` -> 6.15.4; 41 `<5.33.13` -> 5.33.13; 42 `<4.1.11` -> 4.1.11; 43 `>=2.0.0 <2.8.3` -> 2.8.3; 44 `<7.14.1` -> 7.14.1; 45 `>=6.4.0 <7.18.0` -> 7.18.0; 46 `>=7.5.1 <7.13.2` -> 7.13.2; 47 `>=7.11.0 <7.18.0` -> 7.18.0; 48 `>=6.0.0 <7.18.0` -> 7.18.0; 49, 51, 52 `<=8.1.5` -> 8.1.6; 50, 53 `<=8.0.15` -> 8.0.16; 54 `<=3.4.15` -> 3.4.16; 55 `<=3.4.11` -> 3.4.12; 56 `<=3.4.16` -> 3.4.17; 57, 58 `<3.1.9` -> 3.1.9; 59 `<5.33.14` -> 5.33.14; 60 `>=7.12.0 <7.15.1` -> 7.15.1; 61 `<=8.1.5` -> 8.1.6.
@@ -149,4 +190,6 @@ In `package.json`, change devDependency `vitest` 4.1.9 -> 4.1.12. Keep `zod` 4.3
 
 * Added `docs/sessions/2026-10-29_dependabot-triage.md`; updated `docs/sessions/INDEX.md` and `docs/design/ui/figma_make_brief.md` (§3 step 2).
 * Deleted `docs/design/ui/figma/_code/package.json` and `docs/design/ui/figma/_code/pnpm-lock.yaml`.
+* `ground-truth-app/pnpm-workspace.yaml` (7 overrides), `ground-truth-app/package.json` (`vitest` 4.1.12, inert `overrides` copy synced), `ground-truth-app/pnpm-lock.yaml` (regenerated).
+* `PROJECT_MEMORY.md` and `ground-truth-app/PROJECT_MEMORY.md` (status rows, App Stack, Finding 17).
 * All committed on `mg-genie-dependabot-triage` (from `main` @ `9198d2d`).
