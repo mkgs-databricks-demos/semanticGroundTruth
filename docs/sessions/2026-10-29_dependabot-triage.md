@@ -31,7 +31,7 @@
 * **High, `systeminformation` 5.31.7 (GHSA-3f7j, plus 1 moderate and 1 low).** OTel host-metrics uses it. The Windows-only command injection does not apply on Linux Apps, and `networkStats()` input is not user-controlled. **Fix now:** change the template override -> 5.33.18.
 * **High, `@opentelemetry/exporter-prometheus` / `sdk-node` 0.205.0 (GHSA-q7rr).** It arrives via `@mlflow/core` 0.4.0 (`^0.205.0`). The exporter is only created when `OTEL_METRICS_EXPORTER=prometheus`, which is not set. The fix needs sdk-node >= 0.217, outside `@mlflow/core`'s range, and MLflow tracing broke before (Finding 15). **Dismiss as not reachable** and revisit when `@mlflow/core` updates.
 * **High, `@opentelemetry/propagator-jaeger` 2.1.0 / 2.8.0 (GHSA-45rx).** It is only created when `OTEL_PROPAGATORS` includes `jaeger`, which is not set. 2.9.0 needs `@opentelemetry/core` 2.9.0, which conflicts with the core 2.8.0 override. **Dismiss as not reachable.**
-* **Before dismissing GHSA-q7rr and GHSA-45rx:** `resources/app.app.yml` sets only `OTEL_TRACES_SAMPLER`. In step 4 I will check the running app's env for platform-injected `OTEL_METRICS_EXPORTER` / `OTEL_PROPAGATORS`.
+* **Before dismissing GHSA-q7rr and GHSA-45rx:** `resources/app.app.yml` sets only `OTEL_TRACES_SAMPLER`. **Checked 2026-10-29** on deployment `01f1d3976c2d`: neither `OTEL_METRICS_EXPORTER` nor `OTEL_PROPAGATORS` is set (see Results).
 * **Figma export (6 high `react-router` 7.13.1, 1 high `vite` 8.0.5):** **fixed by removing the export's `package.json` and lockfile** (owner decision 2026-10-29). These were never deployed or imported, and the production app is already on `react-router` 7.18.4. GitHub closes these alerts automatically once the branch is merged to `main`.
 
 ## Moderate and low notes (app)
@@ -176,7 +176,7 @@ The change set without zod gives a byte-identical card and schema, so the size g
 | Audit | 0 C / 4 H / 8 M / 0 L (12): zod, Prometheus exporter, sdk-node, Jaeger propagator, 8 OTel DB instrumentations |
 | `databricks bundle validate --strict --target dev` (`ground-truth-app`) | Validation OK |
 
-Not deployed. Before dismissing the Prometheus / Jaeger rows, confirm that the deployed app's environment has no platform-injected `OTEL_METRICS_EXPORTER` or `OTEL_PROPAGATORS`.
+**Deployed to dev (2026-10-29):** `bundle run app --target dev` at `31b1b85` -> deployment `01f1d3976c2d12cf810f52e0f5d24bb5` SUCCEEDED, app RUNNING; 0 error lines at startup. **OTel env (follow-up 3, closed):** the startup `otel_env` line shows `OTEL_METRICS_EXPORTER` and `OTEL_PROPAGATORS` both unset (`prometheusExporter: false`, `jaegerPropagator: false`). Of the 12 platform-injected `OTEL_*` variables, none is either of those two. The Prometheus / Jaeger / `sdk-node` dismissals are now evidence-backed.
 
 Gotcha: an override experiment's lockfile keeps caret-range consumers on the experiment's version. A copy resolved from the zod 4.6.7 lockfile, with zod reverted, still had 4.6.7 for the MCP SDK (two copies). Always regenerate from `main`'s lockfile.
 

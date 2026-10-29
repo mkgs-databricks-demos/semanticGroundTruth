@@ -2,16 +2,16 @@
 
 **Source:** the Dependabot triage on branch `mg-genie-dependabot-triage` (commits `e33b1d8`, `f66faae`), report [`../sessions/2026-10-29_dependabot-triage.md`](../sessions/2026-10-29_dependabot-triage.md), `ground-truth-app/PROJECT_MEMORY.md` Finding 17.
 
-**Closed:** none yet.
+**Closed:** 3 (OTel env check: deployed line shows neither component enabled; commit `31b1b85`, deployment `01f1d3976c2d12cf810f52e0f5d24bb5`).
 
 Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when convenient.
 
 | # | P | Bundle | Item |
 |---|---|--------|------|
 | 1 | P1 | root / owner | Open and merge the PR for `mg-genie-dependabot-triage` |
-| 2 | P2 | app | Deploy the override set to dev and verify it |
-| 3 | P2 | app | Confirm the deployed app has no platform-injected `OTEL_METRICS_EXPORTER` or `OTEL_PROPAGATORS` |
-| 4 | P2 | root / owner | Dismiss the 10 not-reachable OTel alerts on GitHub (after 3) |
+| 2 | P2 | app | Deploy the override set to dev and verify it (deployed; probes, `deploy_verification`, contract tests left) |
+| 3 | P2 | app | ~~Confirm the deployed app has no platform-injected `OTEL_METRICS_EXPORTER` or `OTEL_PROPAGATORS`~~ closed |
+| 4 | P2 | root / owner | Dismiss the 10 not-reachable OTel alerts on GitHub (unblocked by 3) |
 | 5 | P2 | app / owner | zod GHSA-mrhx (high): decide on the MCP App card budget, or wait for AppKit |
 | 6 | P3 | app (upstream) | `@opentelemetry/instrumentation-pg` GHSA-qqmp: needs an AppKit with auto-instrumentations that has `instrumentation-pg` >= 0.73.0 |
 | 7 | P3 | root | Reconcile the GitHub alert count with `pnpm audit` after the merge |
@@ -30,14 +30,15 @@ Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when
 * **Why:** the checks ran on a `/tmp` copy only. The runtime overrides (`qs`, `yaml`, `js-yaml`, `fast-uri`, `systeminformation`) are on the server path; `dompurify` and `echarts` are not in the client bundle.
 * **Change:** after item 1, deploy the app with `bundle run app` (not raw `apps deploy`; see the 2026-10-29 AppKit session), then run the post-deploy probes and `deploy_verification`.
 * **Done when:** deployment id recorded, probes 12/12, `deploy_verification` SUCCESS, 10 min soak with 0 error lines; `api_contract_tests` still 153 / 0.
+* **Status (2026-10-29):** `bundle run app --target dev` from the Git folder at `31b1b85` -> deployment `01f1d3976c2d12cf810f52e0f5d24bb5` SUCCEEDED, app RUNNING (about 3 min UNAVAILABLE during the build). First startup minute in the OTel logs table: 847 lines, 0 error lines, one `listening on port 8000`, no `Cannot find module` / `package`. Still to do: probes, `deploy_verification`, `api_contract_tests`, a 10 min soak.
 
 ## 3. Check for platform-injected OTel env (P2, app)
 
 * **Why:** the dismissals in item 4 rely on the Prometheus exporter and Jaeger propagator never loading. They load only if `OTEL_METRICS_EXPORTER` includes `prometheus` or `OTEL_PROPAGATORS` includes `jaeger`. `resources/app.app.yml` sets neither, but the Apps platform injects its own OTel env.
 * **Confirmed in code (2026-10-29):** `@mlflow/core` 0.4.0 is the only `NodeSDK` caller and passes only `spanProcessors`, so `sdk-node` 0.205.0 reads both settings from env: `PrometheusExporter` only when `OTEL_METRICS_EXPORTER` lists `prometheus` (unset means otlp), `JaegerPropagator` only when `OTEL_PROPAGATORS` lists `jaeger`.
 * **Change (done, branch `mg-genie-dependabot-triage`):** `server/lib/otelEnvCheck.ts` logs one line right after `listening on port`: `info` "OTel env check: Prometheus exporter and Jaeger propagator not enabled", or `warn` if either is enabled. The JSON fields are `check: "otel_env"`, `metricsExporters`, `propagators`, `prometheusExporter`, `jaegerPropagator`, and `otelVarNames` (names only; OTLP headers can carry credentials). 8 tests in `server/lib/otelEnvCheck.test.ts`.
-* **Remaining:** after item 2's deploy, find the line in the app logs (Apps UI Logs tab, or the app's OTel logs table, filtering on `otel_env`) and record the values in the triage report.
 * **Done when:** the deployed line shows `prometheusExporter: false` and `jaegerPropagator: false`, and it is recorded in the triage report. If either is `true`, item 4 becomes a fix instead of a dismissal.
+* **Closed (2026-10-29):** deployment `01f1d3976c2d12cf810f52e0f5d24bb5` logged it at 12:56:24Z (`hls_fde_dev.dev_matthew_giglia_semantic_ground_truth.semantic_ground_truth_otel_logs`, `body` contains `otel_env`): `metricsExporters: []`, `propagators: []`, `prometheusExporter: false`, `jaegerPropagator: false`. The platform injects 12 `OTEL_*` variables (`OTEL_BLRP_*` x3, `OTEL_BSP_*` x3, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_PROFILE_ID`, `OTEL_RESOURCE_ATTRIBUTES`, `OTEL_SERVICE_NAME`, `OTEL_TRACES_SAMPLER`), and neither of the two is among them. So `sdk-node` uses its default otlp metrics exporter and tracecontext/baggage propagators. Recheck after any change to OTel env or AppKit / `@mlflow/core`: `SELECT time, body FROM <otel_logs> WHERE CAST(body AS STRING) ILIKE '%otel_env%' ORDER BY time DESC LIMIT 1`.
 
 ## 4. Dismiss the not-reachable alerts (P2, root / owner, after 3)
 
