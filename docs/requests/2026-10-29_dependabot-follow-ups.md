@@ -85,6 +85,7 @@ Keep #23 (`instrumentation-pg`) open: `pg` is installed (follow-up 6).
 * **Evidence:** `@opentelemetry/instrumentation-pg` 0.71.0 (patched >= 0.73.0), through AppKit -> `@opentelemetry/auto-instrumentations-node`. Active (Lakebase uses `pg`); the DB user lands in span attributes, which go to the project's own UC OTel tables.
 * **Change:** upgrade AppKit when a release carries the fix (stay >= 0.89.0, Findings 15 and 16), or override `@opentelemetry/auto-instrumentations-node` if a compatible version exists.
 * **Done when:** audit shows no `instrumentation-pg` row.
+* **Plan:** [`2026-10-30_appkit-upgrade-plan.md`](2026-10-30_appkit-upgrade-plan.md). As of 2026-10-30, AppKit 0.89.0 is still the latest. The fix needs `auto-instrumentations-node` >= 0.79.0, which needs OTel core ^2.9 (we pin 2.8.0). The plan has options A to D, including an optional override trial and accepting the risk.
 
 ## 7. Reconcile alert counts (P3, root)
 
@@ -96,6 +97,7 @@ Keep #23 (`instrumentation-pg`) open: `pg` is installed (follow-up 6).
 
 * **Change:** on each AppKit upgrade, check whether it ships `dompurify` >= 3.4.17, `echarts` >= 6.1.0, `js-yaml` >= 4.3.2, and whether `yaml`, `qs`, `fast-uri` and `systeminformation` resolve to patched versions without the override; remove the ones that do, and regenerate the lockfile from `main`'s (runbook `node_toolchain_genie_code.md`).
 * **Done when:** `pnpm-workspace.yaml` overrides list only what is still needed.
+* **Plan:** [`2026-10-30_appkit-upgrade-plan.md`](2026-10-30_appkit-upgrade-plan.md) §1 (each override: who pins it and when to remove it) and §2 (step-by-step upgrade procedure).
 
 ## 9. Figma Make export manifest (P3, design / owner)
 
