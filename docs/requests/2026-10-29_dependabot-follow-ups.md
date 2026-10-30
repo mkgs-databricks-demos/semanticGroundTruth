@@ -2,7 +2,7 @@
 
 **Source:** the Dependabot triage on branch `mg-genie-dependabot-triage` (commits `e33b1d8`, `f66faae`), report [`../sessions/2026-10-29_dependabot-triage.md`](../sessions/2026-10-29_dependabot-triage.md), `ground-truth-app/PROJECT_MEMORY.md` Finding 17.
 
-**Closed:** 7 (GitHub shows 11 on `main` after the merge: 3 high, 8 moderate, matching `pnpm audit`); 1 (PR #11 merged 2026-10-30 04:59Z, merge commit `b8672f5`); 5 (zod 4.6.7 + card locale trim, deployment `01f1d3f6e512`, card rendered and used in Genie One 2026-10-30); 2 (dev deployment `01f1d3976c2d` verified: probes 12/12, `deploy_verification` 9/0, soak clean, `api_contract_tests` run `1079527457244820` 153 / 0); 3 (OTel env check: deployed line shows neither component enabled; commit `31b1b85`, deployment `01f1d3976c2d12cf810f52e0f5d24bb5`).
+**Closed:** 4 (10 not-reachable OTel alerts dismissed by the owner 2026-10-30; only #23 open); 7 (GitHub shows 11 on `main` after the merge: 3 high, 8 moderate, matching `pnpm audit`); 1 (PR #11 merged 2026-10-30 04:59Z, merge commit `b8672f5`); 5 (zod 4.6.7 + card locale trim, deployment `01f1d3f6e512`, card rendered and used in Genie One 2026-10-30); 2 (dev deployment `01f1d3976c2d` verified: probes 12/12, `deploy_verification` 9/0, soak clean, `api_contract_tests` run `1079527457244820` 153 / 0); 3 (OTel env check: deployed line shows neither component enabled; commit `31b1b85`, deployment `01f1d3976c2d12cf810f52e0f5d24bb5`).
 
 Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when convenient.
 
@@ -11,7 +11,7 @@ Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when
 | 1 | P1 | root / owner | ~~Open and merge the PR for `mg-genie-dependabot-triage`~~ closed |
 | 2 | P2 | app | ~~Deploy the override set to dev and verify it~~ closed |
 | 3 | P2 | app | ~~Confirm the deployed app has no platform-injected `OTEL_METRICS_EXPORTER` or `OTEL_PROPAGATORS`~~ closed |
-| 4 | P2 | root / owner | Dismiss the 10 not-reachable OTel alerts on GitHub (unblocked by 3) |
+| 4 | P2 | root / owner | ~~Dismiss the 10 not-reachable OTel alerts on GitHub~~ closed |
 | 5 | P2 | app | ~~zod GHSA-mrhx (high)~~ closed |
 | 6 | P3 | app (upstream) | `@opentelemetry/instrumentation-pg` GHSA-qqmp: needs an AppKit with auto-instrumentations that has `instrumentation-pg` >= 0.73.0 |
 | 7 | P3 | root | ~~Reconcile the GitHub alert count with `pnpm audit` after the merge~~ closed |
@@ -66,6 +66,8 @@ The fixes need `@mlflow/core` / AppKit to move to `sdk-node` >= 0.217 and `@open
 Keep #23 (`instrumentation-pg`) open: `pg` is installed (follow-up 6).
 
 **Done when:** #5, #16-#22, #65 and #66 are dismissed with the reason above, and only #23 stays open.
+
+**Closed (2026-10-30, owner):** the owner dismissed the 10 alerts in two batches with the comments above. The Dependabot page (`is:open ecosystem:npm`) shows Open 1 (#23 `instrumentation-pg`, moderate) and Closed 69 (59 + 10).
 
 ## 5. zod GHSA-mrhx (P2, app / owner)
 
