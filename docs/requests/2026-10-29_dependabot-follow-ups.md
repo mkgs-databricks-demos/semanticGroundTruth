@@ -56,7 +56,16 @@ Owner-approved 2026-10-29; Genie Code cannot dismiss on GitHub (item 10). Reason
 
 The fixes need `@mlflow/core` / AppKit to move to `sdk-node` >= 0.217 and `@opentelemetry/core` 2.9 (which conflicts with our 2.8.0 override), so dismissal is the right action until then.
 
-**Done when:** the 10 alerts (GitHub may show the Jaeger row as 2) are dismissed with the reason above.
+**Alert numbers (GitHub, `main` @ `b8672f5`, 2026-10-30: 11 open, 59 closed).** GitHub shows Jaeger as one alert, so 10 to dismiss:
+
+| Batch | Alerts | Comment |
+| --- | --- | --- |
+| A (high) | #5 `propagator-jaeger`, #65 `exporter-prometheus`, #66 `sdk-node` | Not reachable: Prometheus exporter and Jaeger propagator load only via OTEL_METRICS_EXPORTER=prometheus / OTEL_PROPAGATORS=jaeger. Neither is set; the deployed otel_env check confirms. See docs/sessions/2026-10-29_dependabot-triage.md |
+| B (moderate) | #16 `cassandra-driver`, #17 `tedious`, #18 `oracledb`, #19 `mongoose`, #20 `mysql`, #21 `knex`, #22 `mysql2` | Not reachable: these instrumentations activate only when their DB driver is loaded. None of these drivers is installed (pnpm-lock.yaml). See docs/sessions/2026-10-29_dependabot-triage.md |
+
+Keep #23 (`instrumentation-pg`) open: `pg` is installed (follow-up 6).
+
+**Done when:** #5, #16-#22, #65 and #66 are dismissed with the reason above, and only #23 stays open.
 
 ## 5. zod GHSA-mrhx (P2, app / owner)
 
