@@ -2,19 +2,19 @@
 
 **Source:** the Dependabot triage on branch `mg-genie-dependabot-triage` (commits `e33b1d8`, `f66faae`), report [`../sessions/2026-10-29_dependabot-triage.md`](../sessions/2026-10-29_dependabot-triage.md), `ground-truth-app/PROJECT_MEMORY.md` Finding 17.
 
-**Closed:** 5 (zod 4.6.7 + card locale trim, deployment `01f1d3f6e512`, card rendered and used in Genie One 2026-10-30); 2 (dev deployment `01f1d3976c2d` verified: probes 12/12, `deploy_verification` 9/0, soak clean, `api_contract_tests` run `1079527457244820` 153 / 0); 3 (OTel env check: deployed line shows neither component enabled; commit `31b1b85`, deployment `01f1d3976c2d12cf810f52e0f5d24bb5`).
+**Closed:** 4 (10 not-reachable OTel alerts dismissed by the owner 2026-10-30; only #23 open); 7 (GitHub shows 11 on `main` after the merge: 3 high, 8 moderate, matching `pnpm audit`); 1 (PR #11 merged 2026-10-30 04:59Z, merge commit `b8672f5`); 5 (zod 4.6.7 + card locale trim, deployment `01f1d3f6e512`, card rendered and used in Genie One 2026-10-30); 2 (dev deployment `01f1d3976c2d` verified: probes 12/12, `deploy_verification` 9/0, soak clean, `api_contract_tests` run `1079527457244820` 153 / 0); 3 (OTel env check: deployed line shows neither component enabled; commit `31b1b85`, deployment `01f1d3976c2d12cf810f52e0f5d24bb5`).
 
 Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when convenient.
 
 | # | P | Bundle | Item |
 |---|---|--------|------|
-| 1 | P1 | root / owner | Open and merge the PR for `mg-genie-dependabot-triage` |
+| 1 | P1 | root / owner | ~~Open and merge the PR for `mg-genie-dependabot-triage`~~ closed |
 | 2 | P2 | app | ~~Deploy the override set to dev and verify it~~ closed |
 | 3 | P2 | app | ~~Confirm the deployed app has no platform-injected `OTEL_METRICS_EXPORTER` or `OTEL_PROPAGATORS`~~ closed |
-| 4 | P2 | root / owner | Dismiss the 10 not-reachable OTel alerts on GitHub (unblocked by 3) |
+| 4 | P2 | root / owner | ~~Dismiss the 10 not-reachable OTel alerts on GitHub~~ closed |
 | 5 | P2 | app | ~~zod GHSA-mrhx (high)~~ closed |
 | 6 | P3 | app (upstream) | `@opentelemetry/instrumentation-pg` GHSA-qqmp: needs an AppKit with auto-instrumentations that has `instrumentation-pg` >= 0.73.0 |
-| 7 | P3 | root | Reconcile the GitHub alert count with `pnpm audit` after the merge |
+| 7 | P3 | root | ~~Reconcile the GitHub alert count with `pnpm audit` after the merge~~ closed |
 | 8 | P3 | app | Drop each security override once AppKit ships the patched version |
 | 9 | P3 | design / owner | Keep the Figma Make export's `package.json` / lockfile out of the repo |
 | 10 | P3 | root / owner | Dependabot API access from Genie Code |
@@ -24,6 +24,8 @@ Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when
 * **State:** branch pushed; nothing is on `main`. The 19 Figma alerts and the 30 fixed app rows only close when the branch merges.
 * **Scope:** the Figma export manifest removal, the 7 overrides + `vitest` 4.1.12, and the docs; checks are listed in the triage report's Results section.
 * **Done when:** merged; the Dependabot page for `main` drops the Figma and fixed app alerts.
+* **Closed (2026-10-30):** [PR #11](https://github.com/mkgs-databricks-demos/semanticGroundTruth/pull/11) merged by the owner at 04:59:10Z, merge commit `b8672f5` (12 commits, head `5fe8efe`). CodeQL, Analyze (javascript-typescript) and Analyze (python) all passed; no new code-scanning alerts. The merged tree equals `5fe8efe`, the tree deployed to dev as `01f1d3f6e512`. The branch was deleted on merge. The Dependabot page count is follow-up 7.
+* **Follow-up 7 closed (2026-10-30):** the push of `mg-genie-dependabot-post-merge` reported "GitHub found 11 vulnerabilities on ... default branch (3 high, 8 moderate)", down from 63 (1 critical, 23 high, 31 moderate, 8 low). That equals the `pnpm audit` result on the merged lockfile (0 C / 3 H / 8 M / 0 L): the 10 alerts in item 4 plus `instrumentation-pg` (item 6).
 
 ## 2. Deploy the override set to dev (P2, app)
 
@@ -54,7 +56,18 @@ Owner-approved 2026-10-29; Genie Code cannot dismiss on GitHub (item 10). Reason
 
 The fixes need `@mlflow/core` / AppKit to move to `sdk-node` >= 0.217 and `@opentelemetry/core` 2.9 (which conflicts with our 2.8.0 override), so dismissal is the right action until then.
 
-**Done when:** the 10 alerts (GitHub may show the Jaeger row as 2) are dismissed with the reason above.
+**Alert numbers (GitHub, `main` @ `b8672f5`, 2026-10-30: 11 open, 59 closed).** GitHub shows Jaeger as one alert, so 10 to dismiss:
+
+| Batch | Alerts | Comment |
+| --- | --- | --- |
+| A (high) | #5 `propagator-jaeger`, #65 `exporter-prometheus`, #66 `sdk-node` | Not reachable: Prometheus exporter and Jaeger propagator load only via OTEL_METRICS_EXPORTER=prometheus / OTEL_PROPAGATORS=jaeger. Neither is set; the deployed otel_env check confirms. See docs/sessions/2026-10-29_dependabot-triage.md |
+| B (moderate) | #16 `cassandra-driver`, #17 `tedious`, #18 `oracledb`, #19 `mongoose`, #20 `mysql`, #21 `knex`, #22 `mysql2` | Not reachable: these instrumentations activate only when their DB driver is loaded. None of these drivers is installed (pnpm-lock.yaml). See docs/sessions/2026-10-29_dependabot-triage.md |
+
+Keep #23 (`instrumentation-pg`) open: `pg` is installed (follow-up 6).
+
+**Done when:** #5, #16-#22, #65 and #66 are dismissed with the reason above, and only #23 stays open.
+
+**Closed (2026-10-30, owner):** the owner dismissed the 10 alerts in two batches with the comments above. The Dependabot page (`is:open ecosystem:npm`) shows Open 1 (#23 `instrumentation-pg`, moderate) and Closed 69 (59 + 10).
 
 ## 5. zod GHSA-mrhx (P2, app / owner)
 
@@ -88,6 +101,12 @@ The fixes need `@mlflow/core` / AppKit to move to `sdk-node` >= 0.217 and `@open
 
 * **Change:** `figma_make_brief.md` §3 step 2 now says not to commit the export's `package.json` / lockfile. On each new Figma Make push or PR (including bot PRs), check that `docs/design/ui/figma/_code/package.json` and `pnpm-lock.yaml` are not re-added.
 * **Done when:** the next export lands without them.
+* **Enforced (2026-10-30, branch `mg-genie-dependabot-post-merge`):**
+  * `.github/workflows/figma-export-guard.yml` (`Figma export guard`, job `no-export-manifests`) runs on every PR and push to `main`. It fails with a file annotation if `git ls-files docs/design/ui/figma/_code` lists any `package.json`, `package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `yarn.lock` or `bun.lock[b]`, at any depth. There is no path filter, so it always reports and can be required. This covers Figma Make and bot pushes, which go through the GitHub API and ignore `.gitignore`.
+  * The root `.gitignore` ignores the same files (and `node_modules/`) under `_code/` for local and Genie Code commits.
+  * The brief's export checklist has the matching item.
+  * Checked: the pattern matched 5 of 5 manifest samples (including nested and `bun.lockb`) and none of 4 look-alikes (`tsconfig.json`, `public/brand/README.md`, `mypackage.json`, `package.jsonx`). Today's tree has 0 matches. `git check-ignore` ignores `_code/package.json`, `_code/pnpm-lock.yaml` and `_code/sub/package-lock.json`.
+* **Owner, to finish:** after merge, add `no-export-manifests` as a required status check on `main` (Settings > Branches or Rulesets). Until then the check reports but does not block a merge.
 
 ## 10. Dependabot API access (P3, root / owner, optional)
 
