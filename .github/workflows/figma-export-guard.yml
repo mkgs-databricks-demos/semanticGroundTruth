@@ -1,0 +1,39 @@
+# Fails if the Figma Make export under docs/design/ui/figma/_code/ contains a
+# package manifest or lockfile. The export is reference-only (never built or
+# deployed); its manifest produced 19 Dependabot alerts that were removed on
+# 2026-10-29. Figma Make and bot pushes go through the GitHub API, which does
+# not apply .gitignore, so this check is the enforcement.
+# See docs/design/ui/figma_make_brief.md section 3 step 2 and
+# docs/requests/2026-10-29_dependabot-follow-ups.md item 9.
+#
+# No path filter, so the check always reports and can be a required status
+# check on main.
+name: Figma export guard
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  no-export-manifests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: No package manifest or lockfile in the Figma export
+        run: |
+          set -euo pipefail
+          dir=docs/design/ui/figma/_code
+          re='(^|/)(package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|yarn\.lock|bun\.lockb?)$'
+          bad=$(git ls-files -- "$dir" | grep -E "$re" || true)
+          if [ -n "$bad" ]; then
+            while IFS= read -r f; do
+              echo "::error file=$f::Figma Make export manifest/lockfile must not be committed (reference-only export; see docs/design/ui/figma_make_brief.md section 3 step 2). Delete it from the PR."
+            done <<< "$bad"
+            exit 1
+          fi
+          echo "OK: no package manifest or lockfile under $dir"

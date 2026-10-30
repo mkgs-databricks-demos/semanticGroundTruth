@@ -101,6 +101,12 @@ Keep #23 (`instrumentation-pg`) open: `pg` is installed (follow-up 6).
 
 * **Change:** `figma_make_brief.md` §3 step 2 now says not to commit the export's `package.json` / lockfile. On each new Figma Make push or PR (including bot PRs), check that `docs/design/ui/figma/_code/package.json` and `pnpm-lock.yaml` are not re-added.
 * **Done when:** the next export lands without them.
+* **Enforced (2026-10-30, branch `mg-genie-dependabot-post-merge`):**
+  * `.github/workflows/figma-export-guard.yml` (`Figma export guard`, job `no-export-manifests`) runs on every PR and push to `main`. It fails with a file annotation if `git ls-files docs/design/ui/figma/_code` lists any `package.json`, `package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `yarn.lock` or `bun.lock[b]`, at any depth. There is no path filter, so it always reports and can be required. This covers Figma Make and bot pushes, which go through the GitHub API and ignore `.gitignore`.
+  * The root `.gitignore` ignores the same files (and `node_modules/`) under `_code/` for local and Genie Code commits.
+  * The brief's export checklist has the matching item.
+  * Checked: the pattern matched 5 of 5 manifest samples (including nested and `bun.lockb`) and none of 4 look-alikes (`tsconfig.json`, `public/brand/README.md`, `mypackage.json`, `package.jsonx`). Today's tree has 0 matches. `git check-ignore` ignores `_code/package.json`, `_code/pnpm-lock.yaml` and `_code/sub/package-lock.json`.
+* **Owner, to finish:** after merge, add `no-export-manifests` as a required status check on `main` (Settings > Branches or Rulesets). Until then the check reports but does not block a merge.
 
 ## 10. Dependabot API access (P3, root / owner, optional)
 

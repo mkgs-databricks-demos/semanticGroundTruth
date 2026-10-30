@@ -288,6 +288,7 @@ Keep: data-testid not-found-root, not-found-home-link, app-error-root, app-error
 * [ ] The Databricks symbol is unmodified and never forms a lockup with the product name.
 * [ ] Every `data-testid` and aria name in the screen prompts is present in the exported code (`grep -c data-testid` per screen file).
 * [ ] No lorem ipsum (`grep -ri lorem docs/design/ui/figma/_code` returns nothing).
+* [ ] No `package.json` or lockfile under `docs/design/ui/figma/_code/` (step 2). `.gitignore` blocks them for local commits; the `Figma export guard` check (`.github/workflows/figma-export-guard.yml`) fails a PR or push to `main` that adds one, including Figma Make and bot pushes.
 
 ## 4. Asset references (brand catalog)
 

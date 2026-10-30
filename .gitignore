@@ -1,2 +1,15 @@
 # Genie Build Waves per-run status and gate files (never committed)
 .build-status/
+
+# Figma Make export is reference-only: never commit its package manifest or
+# lockfile (19 Dependabot alerts, removed 2026-10-29). API/bot pushes bypass
+# this; .github/workflows/figma-export-guard.yml enforces it on PRs.
+docs/design/ui/figma/_code/**/package.json
+docs/design/ui/figma/_code/**/package-lock.json
+docs/design/ui/figma/_code/**/npm-shrinkwrap.json
+docs/design/ui/figma/_code/**/pnpm-lock.yaml
+docs/design/ui/figma/_code/**/pnpm-workspace.yaml
+docs/design/ui/figma/_code/**/yarn.lock
+docs/design/ui/figma/_code/**/bun.lock
+docs/design/ui/figma/_code/**/bun.lockb
+docs/design/ui/figma/_code/node_modules/
