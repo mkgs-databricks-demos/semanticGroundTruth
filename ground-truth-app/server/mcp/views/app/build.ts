@@ -19,10 +19,12 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const GENERATED_FILE = path.join(HERE, 'reviewCardApp.generated.ts');
 
 // Size budget. Design L300-17 §2 targets < 100 KB, assuming the ext-apps App
-// client is ~30 KB. Measured at 1.7.5 it is ~337 KB minified with its zod +
-// MCP SDK dependencies (dist/src/app-with-deps.js), so the 100 KB target is
-// applied to the gzipped document (what crosses the wire, ~82 KB today) and the
-// raw document gets a ceiling that catches accidental growth.
+// client is ~30 KB. main.ts imports the lean entry (dist/src/app.js, 33 KB), and
+// this build bundles its peers: the MCP SDK protocol + types (~28 KB) and zod,
+// which the SDK v1 needs at runtime to validate every message. zod is most of
+// the card, so the 100 KB target is applied to the gzipped document (what
+// crosses the wire, ~75 KB on zod 4.6.7 with the locale trim below) and the raw
+// document gets a ceiling that catches accidental growth.
 export const HTML_GZIP_BUDGET_BYTES = 100 * 1024;
 export const HTML_RAW_CEILING_BYTES = 400 * 1024;
 
@@ -47,6 +49,21 @@ export function assertHtmlBudget(html: string): HtmlSize {
   return size;
 }
 
+// zod's classic and mini entry points re-export every locale (`export * as
+// locales`). The ext-apps / MCP SDK namespace imports keep all 51 of them in the
+// bundle (colinhacks/zod#6050): ~185 KB minified of translated error messages
+// the card never shows. Keep only English, which zod registers as the default.
+// 2026-10-29 trial: card 113,476 -> 75,467 bytes gzip on zod 4.6.7; English
+// messages still produced at runtime by classic zod and zod mini.
+const ZOD_LOCALES_INDEX = /[\\/]zod[\\/]v4[\\/]locales[\\/]index\.js$/;
+export const zodEnglishOnlyLocales = {
+  name: 'zod-english-only-locales',
+  enforce: 'pre' as const,
+  load(id: string): string | null {
+    return ZOD_LOCALES_INDEX.test(id) ? 'export { default as en } from "./en.js";\n' : null;
+  },
+};
+
 /** Bundle entry.ts (and everything it imports) into one minified IIFE. */
 export async function bundleReviewCardScript(): Promise<string> {
   const out = await build({
@@ -55,6 +72,7 @@ export async function bundleReviewCardScript(): Promise<string> {
     mode: 'production',
     root: HERE,
     publicDir: false,
+    plugins: [zodEnglishOnlyLocales],
     define: { 'process.env.NODE_ENV': JSON.stringify('production') },
     build: {
       write: false,

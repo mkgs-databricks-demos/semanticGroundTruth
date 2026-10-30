@@ -7,11 +7,17 @@ settings:
 overrides:
   vite: npm:rolldown-vite@7.1.14
   '@opentelemetry/core': 2.8.0
-  systeminformation: 5.31.7
-  fast-uri: 3.1.0
+  systeminformation: 5.33.18
+  fast-uri: 3.1.9
   socks: 2.8.7
   bare-path: 3.1.1
   bare-url: 2.5.2
+  dompurify: 3.4.17
+  echarts: 6.1.0
+  js-yaml@4.3.1: 4.3.2
+  yaml: 2.8.3
+  qs: 6.16.1
+  zod: 4.6.7
 
 importers:
 
@@ -19,7 +25,7 @@ importers:
     dependencies:
       '@databricks/appkit':
         specifier: 0.89.0
-        version: 0.89.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@mlflow/core@0.4.0)(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.0))(@types/node@24.6.0)(@types/pg@8.15.6)(esbuild@0.25.12)(tsx@4.20.6)(vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2)))
+        version: 0.89.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@mlflow/core@0.4.0)(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.0))(@types/node@24.6.0)(@types/pg@8.15.6)(esbuild@0.25.12)(tsx@4.20.6)(vitest@4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3)))
       '@databricks/appkit-ui':
         specifier: 0.89.0
         version: 0.89.0(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -31,10 +37,10 @@ importers:
         version: 0.4.0
       '@modelcontextprotocol/ext-apps':
         specifier: 1.7.5
-        version: 1.7.5(@modelcontextprotocol/sdk@1.32.1(zod@4.3.6))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6)
+        version: 1.7.5(@modelcontextprotocol/sdk@1.32.1(zod@4.6.7))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)
       '@modelcontextprotocol/sdk':
         specifier: ^1.23.0
-        version: 1.32.1(zod@4.3.6)
+        version: 1.32.1(zod@4.6.7)
       '@tanstack/react-query':
         specifier: ^5.90.0
         version: 5.104.5(@types/react@19.2.2)(react@19.2.4)
@@ -72,8 +78,8 @@ importers:
         specifier: 1.4.0
         version: 1.4.0
       zod:
-        specifier: 4.3.6
-        version: 4.3.6
+        specifier: 4.6.7
+        version: 4.6.7
     devDependencies:
       '@ast-grep/napi':
         specifier: 0.37.0
@@ -89,10 +95,10 @@ importers:
         version: 4.1.17
       '@tailwindcss/vite':
         specifier: 4.1.17
-        version: 4.1.17(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2))
+        version: 4.1.17(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3))
       '@testing-library/jest-dom':
         specifier: 7.0.1
-        version: 7.0.1(@testing-library/dom@10.4.2)(vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2)))
+        version: 7.0.1(@testing-library/dom@10.4.2)(vitest@4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3)))
       '@testing-library/react':
         specifier: 16.3.3
         version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -119,7 +125,7 @@ importers:
         version: 8.48.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
       '@vitejs/plugin-react':
         specifier: 5.0.4
-        version: 5.0.4(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2))
+        version: 5.0.4(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3))
       autoprefixer:
         specifier: 10.4.21
         version: 10.4.21(postcss@8.5.28)
@@ -161,13 +167,13 @@ importers:
         version: 8.48.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
       vite:
         specifier: npm:rolldown-vite@7.1.14
-        version: rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2)
+        version: rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3)
       vitest:
-        specifier: 4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2))
+        specifier: 4.1.12
+        version: 4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3))
       vitest-axe:
         specifier: 0.1.0
-        version: 0.1.0(vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2)))
+        version: 0.1.0(vitest@4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3)))
     optionalDependencies:
       '@ast-grep/napi-linux-x64-gnu':
         specifier: 0.37.0
@@ -856,7 +862,7 @@ packages:
       '@modelcontextprotocol/sdk': ^1.29.0
       react: ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
-      zod: ^3.25.0 || ^4.0.0
+      zod: 4.6.7
     peerDependenciesMeta:
       react:
         optional: true
@@ -868,7 +874,7 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
-      zod: ^3.25 || ^4.0
+      zod: 4.6.7
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
@@ -2863,11 +2869,11 @@ packages:
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
 
-  '@vitest/expect@4.1.9':
-    resolution: {integrity: sha512-vl/rYsUKcBr3SnQn166+XR5ZQcgMx3DQhFWdfli/cWpLnLUmbxZvyrJZotLFUryib+LtArYMSTJ5RbQ57ZqrlA==}
+  '@vitest/expect@4.1.12':
+    resolution: {integrity: sha512-vFlTt+YEu9WBpNjdGayNmlMVzrWPi1+sv853/7t2FU7hpO5gAFBKHzQmkCq5Xjpr+evegF2994LQT3hF3mRlqQ==}
 
-  '@vitest/mocker@4.1.9':
-    resolution: {integrity: sha512-EVkXzBjrPGM+cK8/ANWgBrkUCfJfb38/EfTSO8h7pWvKkyPkpWxvR7BkD2MyItMF62C97zAEoqdpUixwR/e+Rw==}
+  '@vitest/mocker@4.1.12':
+    resolution: {integrity: sha512-fKShNpKZzupWZuY0z7egydvL0sqW4INEZBEExMBMAa6izlENEVHwoXgdaTCaBZ5fwlr4xf2o1wXC83n9RpO+NA==}
     peerDependencies:
       msw: ^2.4.9
       vite: ^6.0.0 || ^7.0.0 || ^8.0.0
@@ -2877,20 +2883,20 @@ packages:
       vite:
         optional: true
 
-  '@vitest/pretty-format@4.1.9':
-    resolution: {integrity: sha512-s0iufns3iIFitdgm+YR7g1whCAaGtXz459VS9/PqyKDEEFgYIhsHOQmXgIgDuYCt7DeQmiZT0Qe2OA2p4ZPu5A==}
+  '@vitest/pretty-format@4.1.12':
+    resolution: {integrity: sha512-XW9O8+Mxx4VpCtkYdMJLZQQwsVryP9wk7cPKDxtXFfwSak6yRh5+2fep/Y0XF/ElBvJHq8bcYdi6aeuai0opZA==}
 
-  '@vitest/runner@4.1.9':
-    resolution: {integrity: sha512-KXLMDtc7oe70+3mJfGrPUWPesswH+3sTxAMAMl8DG7I8IUQT4XW718dY5ID3vPUcmlu27CcKfY4P3h3I29SLJg==}
+  '@vitest/runner@4.1.12':
+    resolution: {integrity: sha512-NKlVKCr5QnCe8jijdMnmkpHHU+WTqiLFR6G0pHji9uRjXK9xJl1k1nTw6F3pOOj2PDcsDt2GKQMI7wIsaT491w==}
 
-  '@vitest/snapshot@4.1.9':
-    resolution: {integrity: sha512-Jc7RKGNBo8Z28WYIm0Niej4xdSPByRf6mU58VpHQkd6Zh05rlnA+twjbK5HyeIGHxrzsc3mJgS43uM0CZKzaIA==}
+  '@vitest/snapshot@4.1.12':
+    resolution: {integrity: sha512-ko1y1Qgb/slzQ9mr+b89Cuqud8WG1TKtsPD8r7ZUBdvVOGt85Af2HwCqHujrhwJq95hs/9RM7fcAPg57o1vlzw==}
 
-  '@vitest/spy@4.1.9':
-    resolution: {integrity: sha512-fHpsS6mIi+PiEW+vcRVOMkX1oSaPKne3VOclSFICPcGOmfKgXPU5iAah+wcNcj2xPrCCmfq99IDGf+EojhhvhA==}
+  '@vitest/spy@4.1.12':
+    resolution: {integrity: sha512-RGq9x4JNGNTZHEJxvN0oSiJjeSCExm0n2gZKKJZHY9cX5AVA6M7VJILBT3ZJ/tJ/0J9uWT7fETV9/btoi//vSg==}
 
-  '@vitest/utils@4.1.9':
-    resolution: {integrity: sha512-A51o8ymO5PpqlWNnBP9ZHPXDIpuMtTLlGSjN7la4US+LJzoUMyhwjA5QXlm39JexgwHKW4Xjs8Z2d3dLCXOeuA==}
+  '@vitest/utils@4.1.12':
+    resolution: {integrity: sha512-Q3awXrwOfEV+qc3WmO5ONyE0yO7Q1gQ9/oyHxGLZ/pl7N3NO/ZztqQwKLuwMkV+CA1JYSIeO3gkHnRDIo4AVaA==}
 
   accepts@1.3.8:
     resolution: {integrity: sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==}
@@ -3373,8 +3379,8 @@ packages:
   dom-accessibility-api@0.6.3:
     resolution: {integrity: sha512-7ZgogeTnjuHbo+ct10G9Ffp0mif17idi0IyWNVA/wcwcm7NPOD/WEHVP3n7n3MhXqxoIYm8d6MuZohYWIZ4T3w==}
 
-  dompurify@3.4.11:
-    resolution: {integrity: sha512-zhlUV12GsaRzMsf9q5M254YhA4+VuF0fG+QFqu6aYpoGlKtz+w8//jBcGVYBgQkR5GHjUomejY84AV+/uPbWdw==}
+  dompurify@3.4.17:
+    resolution: {integrity: sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w==}
 
   dotenv@16.6.1:
     resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
@@ -3494,11 +3500,11 @@ packages:
   echarts-for-react@3.0.5:
     resolution: {integrity: sha512-YpEI5Ty7O/2nvCfQ7ybNa+S90DwE8KYZWacGvJW4luUqywP7qStQ+pxDlYOmr4jGDu10mhEkiAuMKcUlT4W5vg==}
     peerDependencies:
-      echarts: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0
+      echarts: 6.1.0
       react: ^15.0.0 || >=16.0.0
 
-  echarts@6.0.0:
-    resolution: {integrity: sha512-Tte/grDQRiETQP4xz3iZWSvoHrkCQtwqd6hs+mifXcjrCuo2iKWbajFObuLJVBlDIJlOzgQPd1hsaKt/3+OMkQ==}
+  echarts@6.1.0:
+    resolution: {integrity: sha512-q0yaFPggC9FUdsWH4blavRWFmxdrIodbkoKNAjJudAI6CA9gNPxHtV2RcZNEepZVlk4yvBYkOkbk6HIVpIyHZA==}
 
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
@@ -3722,8 +3728,8 @@ packages:
   fast-safe-stringify@2.1.1:
     resolution: {integrity: sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==}
 
-  fast-uri@3.1.0:
-    resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==}
+  fast-uri@3.1.9:
+    resolution: {integrity: sha512-hS/0Wt3Ya043oKXs0sIxrMpKQITXhMLIrVAKKXi4gozGC9v7YRWVnXIZzjNPTO02M9BdxLCWqK1yRXgNziVyJQ==}
 
   fdir@6.5.0:
     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}
@@ -4191,10 +4197,6 @@ packages:
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
-
-  js-yaml@4.3.1:
-    resolution: {integrity: sha512-CY6crGq313MX8GkwvB7tzgp99vjQxY1++5y10/BKN/GUfHqWaOGQMNZkBvqSzsZKWk/ijwHlWzzkLulsGHhjWQ==}
-    hasBin: true
 
   js-yaml@4.3.2:
     resolution: {integrity: sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==}
@@ -4799,14 +4801,6 @@ packages:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
 
-  qs@6.15.3:
-    resolution: {integrity: sha512-O9gl3zCl5h5blw1KGUzQKhA5oUXSl8rwUIM5o0S3nCXMliSvy5Dzx7/DJcI+SwgICv+IneSZwhBh1oSyEHA71A==}
-    engines: {node: '>=0.6'}
-
-  qs@6.16.0:
-    resolution: {integrity: sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==}
-    engines: {node: '>=0.6'}
-
   qs@6.16.1:
     resolution: {integrity: sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==}
     engines: {node: '>=0.6'}
@@ -4993,7 +4987,7 @@ packages:
       sugarss: ^5.0.0
       terser: ^5.16.0
       tsx: ^4.8.1
-      yaml: ^2.4.2
+      yaml: 2.8.3
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -5245,9 +5239,9 @@ packages:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
 
-  systeminformation@5.31.7:
-    resolution: {integrity: sha512-/8NC53e5nP9nmhn42/ncdOkyJnOoue/Vy+tJOyUGd1Yv66G069wK4rrziwhrqDETgk78CudTQupw5z19S5uoZw==}
-    engines: {node: '>=8.0.0'}
+  systeminformation@5.33.18:
+    resolution: {integrity: sha512-SF8DBQx3ypa8zDqZlezpHQ6M2g7TrqSEWpAtC4OsHCdLmi7J2WdxaSbA8/DJyEn2l/CHPrW0VFenoqoDccrw6g==}
+    engines: {node: '>=10.0.0'}
     os: [darwin, linux, win32, freebsd, openbsd, netbsd, sunos, android]
     hasBin: true
 
@@ -5499,20 +5493,20 @@ packages:
     peerDependencies:
       vitest: '>=0.16.0'
 
-  vitest@4.1.9:
-    resolution: {integrity: sha512-nE3/LEyc0z87uHYLZebqCUOaJr2hdtuPp7BQ4BosVFnfltxgAvMG08NyrSGlPpOUWvR27c5flSmYFTNr78L9GQ==}
+  vitest@4.1.12:
+    resolution: {integrity: sha512-5eWdz2yb3ajxWF3C8C4TjkXl7FGm3n2E/VlazALrQHzK7nYMSGFnCZto0bbPNl77AwkOZVLk0YnBAejUu0NiWA==}
     engines: {node: ^20.0.0 || ^22.0.0 || >=24.0.0}
     hasBin: true
     peerDependencies:
       '@edge-runtime/vm': '*'
       '@opentelemetry/api': ^1.9.0
       '@types/node': ^20.0.0 || ^22.0.0 || >=24.0.0
-      '@vitest/browser-playwright': 4.1.9
-      '@vitest/browser-preview': 4.1.9
-      '@vitest/browser-webdriverio': 4.1.9
-      '@vitest/coverage-istanbul': 4.1.9
-      '@vitest/coverage-v8': 4.1.9
-      '@vitest/ui': 4.1.9
+      '@vitest/browser-playwright': 4.1.12
+      '@vitest/browser-preview': 4.1.12
+      '@vitest/browser-webdriverio': ^4.1.11
+      '@vitest/coverage-istanbul': 4.1.12
+      '@vitest/coverage-v8': 4.1.12
+      '@vitest/ui': 4.1.12
       happy-dom: '*'
       jsdom: '*'
       vite: ^6.0.0 || ^7.0.0 || ^8.0.0
@@ -5641,8 +5635,8 @@ packages:
   yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
 
-  yaml@2.8.2:
-    resolution: {integrity: sha512-mplynKqc1C2hTVYxd0PU2xQAc22TI1vShAYGksCCfxbn/dFwnHTNi1bvYsBTkhdUNtGIf5xNOg938rrSSYvS9A==}
+  yaml@2.8.3:
+    resolution: {integrity: sha512-AvbaCLOO2Otw/lW5bmh9d/WEdcDFdQp2Z2ZUH3pX9U2ihyUY0nvLv7J6TrWowklRGPYbB/IuIMfYgxaCPg5Bpg==}
     engines: {node: '>= 14.6'}
     hasBin: true
 
@@ -5661,19 +5655,19 @@ packages:
   zod-to-json-schema@3.25.2:
     resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
     peerDependencies:
-      zod: ^3.25.28 || ^4
+      zod: 4.6.7
 
   zod-validation-error@4.0.2:
     resolution: {integrity: sha512-Q6/nZLe6jxuU80qb/4uJ4t5v2VEZ44lzQjPDhYJNztRQ4wyWc6VF3D3Kb/fAuPetZQnhS3hnajCf9CsWesghLQ==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
-      zod: ^3.25.0 || ^4.0.0
+      zod: 4.6.7
 
-  zod@4.3.6:
-    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
-  zrender@6.0.0:
-    resolution: {integrity: sha512-41dFXEEXuJpNecuUQq6JlbybmnHaqqpGlbH1yxnA5V9MMP4SbohSVZsJIwz+zdjQXSSlR1Vc34EgH1zxyTDvhg==}
+  zrender@6.1.0:
+    resolution: {integrity: sha512-oEGMDB6pOP2S6OwRR4PdVv610zrjnA3Bh+JnSG12fYJlBKjtNAoEb5fSUoCOOINlH96I2fU38/A2UpRKs67xYQ==}
 
 snapshots:
 
@@ -5975,13 +5969,13 @@ snapshots:
       clsx: 2.1.1
       cmdk: 1.1.1(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       commander: 12.1.0
-      dompurify: 3.4.11
+      dompurify: 3.4.17
       dotenv: 16.6.1
-      echarts: 6.0.0
-      echarts-for-react: 3.0.5(echarts@6.0.0)(react@19.2.4)
+      echarts: 6.1.0
+      echarts-for-react: 3.0.5(echarts@6.1.0)(react@19.2.4)
       embla-carousel-react: 8.6.0(react@19.2.4)
       input-otp: 1.4.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      js-yaml: 4.3.1
+      js-yaml: 4.3.2
       json-bigint: 1.0.0
       lucide-react: 0.554.0(react@19.2.4)
       marked: 17.0.3
@@ -5996,14 +5990,14 @@ snapshots:
       sonner: 2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       tailwind-merge: 3.4.0
       vaul: 1.1.2(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      yaml: 2.8.2
-      zod: 4.3.6
+      yaml: 2.8.3
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@75lb/nature'
       - '@types/react'
       - '@types/react-dom'
 
-  '@databricks/appkit@0.89.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@mlflow/core@0.4.0)(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.0))(@types/node@24.6.0)(@types/pg@8.15.6)(esbuild@0.25.12)(tsx@4.20.6)(vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2)))':
+  '@databricks/appkit@0.89.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@mlflow/core@0.4.0)(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.0))(@types/node@24.6.0)(@types/pg@8.15.6)(esbuild@0.25.12)(tsx@4.20.6)(vitest@4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3)))':
     dependencies:
       '@ast-grep/napi': 0.37.0
       '@clack/prompts': 1.0.1
@@ -6049,20 +6043,20 @@ snapshots:
       express: 4.22.2
       get-port: 7.2.0
       jiti: 2.6.1
-      js-yaml: 4.3.1
+      js-yaml: 4.3.2
       json-bigint: 1.0.0
       magic-string: 0.30.21
       obug: 2.1.1
       pg: 8.18.0
       picocolors: 1.1.1
       semver: 7.7.3
-      vite: rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2)
+      vite: rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3)
       ws: 8.21.0
-      yaml: 2.8.2
-      zod: 4.3.6
+      yaml: 2.8.3
+      zod: 4.6.7
     optionalDependencies:
       '@mlflow/core': 0.4.0
-      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2))
+      vitest: 4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3))
     transitivePeerDependencies:
       - '@75lb/nature'
       - '@aws-sdk/client-rds-data'
@@ -6125,17 +6119,17 @@ snapshots:
       '@databricks/sdk-options': 0.51.0
       '@js-temporal/polyfill': 0.5.1
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-auth@0.51.0':
     dependencies:
       '@databricks/sdk-core': 0.51.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-core@0.51.0':
     dependencies:
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-database@0.51.0':
     dependencies:
@@ -6144,7 +6138,7 @@ snapshots:
       '@databricks/sdk-options': 0.51.0
       '@js-temporal/polyfill': 0.5.1
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-experimental@0.15.0':
     dependencies:
@@ -6171,7 +6165,7 @@ snapshots:
       '@databricks/sdk-options': 0.51.0
       '@js-temporal/polyfill': 0.5.1
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-files@0.52.0':
     dependencies:
@@ -6180,7 +6174,7 @@ snapshots:
       '@databricks/sdk-options': 0.51.0
       '@js-temporal/polyfill': 0.5.1
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-jobs@0.57.0':
     dependencies:
@@ -6189,7 +6183,7 @@ snapshots:
       '@databricks/sdk-options': 0.51.0
       '@js-temporal/polyfill': 0.5.1
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-modelserving@0.53.0':
     dependencies:
@@ -6198,7 +6192,7 @@ snapshots:
       '@databricks/sdk-options': 0.51.0
       '@js-temporal/polyfill': 0.5.1
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-options@0.51.0':
     dependencies:
@@ -6212,7 +6206,7 @@ snapshots:
       '@databricks/sdk-options': 0.51.0
       '@js-temporal/polyfill': 0.5.1
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-scim@0.51.0':
     dependencies:
@@ -6221,7 +6215,7 @@ snapshots:
       '@databricks/sdk-options': 0.51.0
       '@js-temporal/polyfill': 0.5.1
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-uc-connections@0.52.0':
     dependencies:
@@ -6230,7 +6224,7 @@ snapshots:
       '@databricks/sdk-options': 0.51.0
       '@js-temporal/polyfill': 0.5.1
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-uc-functions@0.51.0':
     dependencies:
@@ -6239,7 +6233,7 @@ snapshots:
       '@databricks/sdk-options': 0.51.0
       '@js-temporal/polyfill': 0.5.1
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-uc-tables@0.52.0':
     dependencies:
@@ -6248,7 +6242,7 @@ snapshots:
       '@databricks/sdk-options': 0.51.0
       '@js-temporal/polyfill': 0.5.1
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-uc-volumes@0.51.0':
     dependencies:
@@ -6257,7 +6251,7 @@ snapshots:
       '@databricks/sdk-options': 0.51.0
       '@js-temporal/polyfill': 0.5.1
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@databricks/sdk-warehouses@0.53.0':
     dependencies:
@@ -6266,7 +6260,7 @@ snapshots:
       '@databricks/sdk-options': 0.51.0
       '@js-temporal/polyfill': 0.5.1
       json-bigint: 1.0.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@date-fns/tz@1.5.0': {}
 
@@ -6565,16 +6559,16 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@modelcontextprotocol/ext-apps@1.7.5(@modelcontextprotocol/sdk@1.32.1(zod@4.3.6))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6)':
+  '@modelcontextprotocol/ext-apps@1.7.5(@modelcontextprotocol/sdk@1.32.1(zod@4.6.7))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.32.1(zod@4.3.6)
+      '@modelcontextprotocol/sdk': 1.32.1(zod@4.6.7)
       '@standard-schema/spec': 1.1.0
-      zod: 4.3.6
+      zod: 4.6.7
     optionalDependencies:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
 
-  '@modelcontextprotocol/sdk@1.32.1(zod@4.3.6)':
+  '@modelcontextprotocol/sdk@1.32.1(zod@4.6.7)':
     dependencies:
       '@hono/node-server': 2.1.5(hono@4.13.13)
       ajv: 8.20.0
@@ -6591,8 +6585,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.3.6
-      zod-to-json-schema: 3.25.2(zod@4.3.6)
+      zod: 4.6.7
+      zod-to-json-schema: 3.25.2(zod@4.6.7)
     transitivePeerDependencies:
       - supports-color
 
@@ -6673,7 +6667,7 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.8.0(@opentelemetry/api@1.9.0)
-      yaml: 2.8.2
+      yaml: 2.8.3
 
   '@opentelemetry/context-async-hooks@2.1.0(@opentelemetry/api@1.9.0)':
     dependencies:
@@ -7028,7 +7022,7 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/instrumentation': 0.219.0(@opentelemetry/api@1.9.0)
-      systeminformation: 5.31.7
+      systeminformation: 5.33.18
     transitivePeerDependencies:
       - supports-color
 
@@ -8480,12 +8474,12 @@ snapshots:
       postcss: 8.5.28
       tailwindcss: 4.1.17
 
-  '@tailwindcss/vite@4.1.17(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2))':
+  '@tailwindcss/vite@4.1.17(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3))':
     dependencies:
       '@tailwindcss/node': 4.1.17
       '@tailwindcss/oxide': 4.1.17
       tailwindcss: 4.1.17
-      vite: rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2)
+      vite: rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3)
 
   '@tanstack/query-core@5.104.5': {}
 
@@ -8515,7 +8509,7 @@ snapshots:
       picocolors: 1.1.1
       pretty-format: 27.5.1
 
-  '@testing-library/jest-dom@7.0.1(@testing-library/dom@10.4.2)(vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2)))':
+  '@testing-library/jest-dom@7.0.1(@testing-library/dom@10.4.2)(vitest@4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3)))':
     dependencies:
       '@adobe/css-tools': 4.5.0
       '@testing-library/dom': 10.4.2
@@ -8525,7 +8519,7 @@ snapshots:
       picocolors: 1.1.1
       redent: 3.0.0
     optionalDependencies:
-      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2))
+      vitest: 4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3))
 
   '@testing-library/react@16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
@@ -8786,7 +8780,7 @@ snapshots:
       '@typescript-eslint/types': 8.48.0
       eslint-visitor-keys: 4.2.1
 
-  '@vitejs/plugin-react@5.0.4(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2))':
+  '@vitejs/plugin-react@5.0.4(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3))':
     dependencies:
       '@babel/core': 7.29.7
       '@babel/plugin-transform-react-jsx-self': 7.29.7(@babel/core@7.29.7)
@@ -8794,48 +8788,48 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-beta.38
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2)
+      vite: rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3)
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/expect@4.1.9':
+  '@vitest/expect@4.1.12':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@types/chai': 5.2.3
-      '@vitest/spy': 4.1.9
-      '@vitest/utils': 4.1.9
+      '@vitest/spy': 4.1.12
+      '@vitest/utils': 4.1.12
       chai: 6.2.2
       tinyrainbow: 3.1.1
 
-  '@vitest/mocker@4.1.9(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2))':
+  '@vitest/mocker@4.1.12(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3))':
     dependencies:
-      '@vitest/spy': 4.1.9
+      '@vitest/spy': 4.1.12
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2)
+      vite: rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3)
 
-  '@vitest/pretty-format@4.1.9':
+  '@vitest/pretty-format@4.1.12':
     dependencies:
       tinyrainbow: 3.1.1
 
-  '@vitest/runner@4.1.9':
+  '@vitest/runner@4.1.12':
     dependencies:
-      '@vitest/utils': 4.1.9
+      '@vitest/utils': 4.1.12
       pathe: 2.0.3
 
-  '@vitest/snapshot@4.1.9':
+  '@vitest/snapshot@4.1.12':
     dependencies:
-      '@vitest/pretty-format': 4.1.9
-      '@vitest/utils': 4.1.9
+      '@vitest/pretty-format': 4.1.12
+      '@vitest/utils': 4.1.12
       magic-string: 0.30.21
       pathe: 2.0.3
 
-  '@vitest/spy@4.1.9': {}
+  '@vitest/spy@4.1.12': {}
 
-  '@vitest/utils@4.1.9':
+  '@vitest/utils@4.1.12':
     dependencies:
-      '@vitest/pretty-format': 4.1.9
+      '@vitest/pretty-format': 4.1.12
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.1
 
@@ -8875,7 +8869,7 @@ snapshots:
   ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.0
+      fast-uri: 3.1.9
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -9325,7 +9319,7 @@ snapshots:
 
   dom-accessibility-api@0.6.3: {}
 
-  dompurify@3.4.11:
+  dompurify@3.4.17:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
@@ -9351,17 +9345,17 @@ snapshots:
     dependencies:
       safe-buffer: 5.2.1
 
-  echarts-for-react@3.0.5(echarts@6.0.0)(react@19.2.4):
+  echarts-for-react@3.0.5(echarts@6.1.0)(react@19.2.4):
     dependencies:
-      echarts: 6.0.0
+      echarts: 6.1.0
       fast-deep-equal: 3.1.3
       react: 19.2.4
       size-sensor: 1.0.3
 
-  echarts@6.0.0:
+  echarts@6.1.0:
     dependencies:
       tslib: 2.3.0
-      zrender: 6.0.0
+      zrender: 6.1.0
 
   ee-first@1.1.1: {}
 
@@ -9559,8 +9553,8 @@ snapshots:
       '@babel/parser': 7.29.8
       eslint: 9.39.1(jiti@2.6.1)
       hermes-parser: 0.25.1
-      zod: 4.3.6
-      zod-validation-error: 4.0.2(zod@4.3.6)
+      zod: 4.6.7
+      zod-validation-error: 4.0.2(zod@4.6.7)
     transitivePeerDependencies:
       - supports-color
 
@@ -9710,7 +9704,7 @@ snapshots:
       parseurl: 1.3.3
       path-to-regexp: 0.1.13
       proxy-addr: 2.0.8
-      qs: 6.15.3
+      qs: 6.16.1
       range-parser: 1.2.1
       safe-buffer: 5.2.1
       send: 0.19.2
@@ -9745,7 +9739,7 @@ snapshots:
       once: 1.4.0
       parseurl: 1.3.3
       proxy-addr: 2.0.8
-      qs: 6.16.0
+      qs: 6.16.1
       range-parser: 1.2.1
       router: 2.2.0
       send: 1.2.1
@@ -9769,7 +9763,7 @@ snapshots:
 
   fast-safe-stringify@2.1.1: {}
 
-  fast-uri@3.1.0: {}
+  fast-uri@3.1.9: {}
 
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
@@ -10257,10 +10251,6 @@ snapshots:
   jose@6.2.13: {}
 
   js-tokens@4.0.0: {}
-
-  js-yaml@4.3.1:
-    dependencies:
-      argparse: 2.0.1
 
   js-yaml@4.3.2:
     dependencies:
@@ -10789,16 +10779,6 @@ snapshots:
 
   punycode@2.3.1: {}
 
-  qs@6.15.3:
-    dependencies:
-      es-define-property: 1.0.1
-      side-channel: 1.1.1
-
-  qs@6.16.0:
-    dependencies:
-      es-define-property: 1.0.1
-      side-channel: 1.1.1
-
   qs@6.16.1:
     dependencies:
       es-define-property: 1.0.1
@@ -10976,7 +10956,7 @@ snapshots:
     transitivePeerDependencies:
       - oxc-resolver
 
-  rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2):
+  rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3):
     dependencies:
       '@oxc-project/runtime': 0.92.0
       fdir: 6.5.0(picomatch@4.0.7)
@@ -10991,7 +10971,7 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.6.1
       tsx: 4.20.6
-      yaml: 2.8.2
+      yaml: 2.8.3
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
@@ -11356,7 +11336,7 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  systeminformation@5.31.7: {}
+  systeminformation@5.33.18: {}
 
   table-layout@4.1.1:
     dependencies:
@@ -11622,7 +11602,7 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  vitest-axe@0.1.0(vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2))):
+  vitest-axe@0.1.0(vitest@4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3))):
     dependencies:
       aria-query: 5.3.2
       axe-core: 4.14.0
@@ -11630,17 +11610,17 @@ snapshots:
       dom-accessibility-api: 0.5.16
       lodash-es: 4.18.1
       redent: 3.0.0
-      vitest: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2))
+      vitest: 4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3))
 
-  vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2)):
+  vitest@4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.6.0)(jsdom@30.1.3)(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3)):
     dependencies:
-      '@vitest/expect': 4.1.9
-      '@vitest/mocker': 4.1.9(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2))
-      '@vitest/pretty-format': 4.1.9
-      '@vitest/runner': 4.1.9
-      '@vitest/snapshot': 4.1.9
-      '@vitest/spy': 4.1.9
-      '@vitest/utils': 4.1.9
+      '@vitest/expect': 4.1.12
+      '@vitest/mocker': 4.1.12(rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3))
+      '@vitest/pretty-format': 4.1.12
+      '@vitest/runner': 4.1.12
+      '@vitest/snapshot': 4.1.12
+      '@vitest/spy': 4.1.12
+      '@vitest/utils': 4.1.12
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
       magic-string: 0.30.21
@@ -11652,7 +11632,7 @@ snapshots:
       tinyexec: 1.3.1
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.1
-      vite: rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.2)
+      vite: rolldown-vite@7.1.14(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@24.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
@@ -11768,7 +11748,7 @@ snapshots:
 
   yallist@3.1.1: {}
 
-  yaml@2.8.2: {}
+  yaml@2.8.3: {}
 
   yargs-parser@21.1.1: {}
 
@@ -11784,16 +11764,16 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod-to-json-schema@3.25.2(zod@4.3.6):
+  zod-to-json-schema@3.25.2(zod@4.6.7):
     dependencies:
-      zod: 4.3.6
+      zod: 4.6.7
 
-  zod-validation-error@4.0.2(zod@4.3.6):
+  zod-validation-error@4.0.2(zod@4.6.7):
     dependencies:
-      zod: 4.3.6
+      zod: 4.6.7
 
-  zod@4.3.6: {}
+  zod@4.6.7: {}
 
-  zrender@6.0.0:
+  zrender@6.1.0:
     dependencies:
       tslib: 2.3.0
