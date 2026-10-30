@@ -3,8 +3,7 @@
 // Session 34 · Wave 4-2 · The SDK's InMemoryTransport stands in for PostMessageTransport (design L300-17 §6)
 
 import { describe, expect, it } from 'vitest';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import { InMemoryTransport, type JSONRPCMessage } from '@modelcontextprotocol/client';
 import { APP_INFO, startReviewCardApp } from './main';
 import { ASSET_ID, NEXT_ASSET_ID, makeCard, makeVoteResult } from '../../testFixtures';
 

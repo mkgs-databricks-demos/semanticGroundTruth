@@ -2,7 +2,7 @@
 // Session 11 · Wave 4 · No enum, no namespace, no default export
 // Session 34 · Wave 4-2: registered through registerContractTool (input + output validation)
 
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import type { Services } from '../../services';
 import type { UserContext } from '../../lib/context';
 import { requireRole } from '../../lib/context';

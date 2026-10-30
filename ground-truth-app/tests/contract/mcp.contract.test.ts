@@ -8,8 +8,7 @@
 // app errors come back as isError results.
 
 import { describe, expect, it } from 'vitest';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import { InMemoryTransport, type JSONRPCMessage } from '@modelcontextprotocol/server';
 import { buildMcpServer } from '../../server/mcp/server';
 import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { REVIEW_CARD_URI } from '../../server/mcp/tools/define';

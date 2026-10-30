@@ -25,6 +25,9 @@ export const GENERATED_FILE = path.join(HERE, 'reviewCardApp.generated.ts');
 // the card, so the 100 KB target is applied to the gzipped document (what
 // crosses the wire, ~75 KB on zod 4.6.7 with the locale trim below) and the raw
 // document gets a ceiling that catches accidental growth.
+// SDK v2 (2026-10-30): ext-apps 2.0.4 builds App on @modelcontextprotocol/client
+// 2.4.0 (protocol + 2026-07-28 schemas, incl. OAuth metadata schemas that do not
+// tree-shake). Card: 318,695 bytes raw, 83,783 gzip (was 273,447 / 75,467 on v1).
 export const HTML_GZIP_BUDGET_BYTES = 100 * 1024;
 export const HTML_RAW_CEILING_BYTES = 400 * 1024;
 

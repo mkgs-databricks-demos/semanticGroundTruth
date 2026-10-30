@@ -4,7 +4,7 @@
 // MCP_TOOL_CONTRACTS (tools/define.ts); review_get_next, review_submit_vote,
 // review_skip_card and review_get_stats render the MCP App review card.
 
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { Services } from '../../services';
 import type { UserContext } from '../../lib/context';

@@ -52,7 +52,22 @@ describe('self-contained HTML (no network at render time)', () => {
   });
 
   it('makes no network calls and carries no credentials (design §5)', () => {
-    for (const re of [/\bfetch\(/, /XMLHttpRequest/, /navigator\.sendBeacon/, /\bEventSource\b/, /Authorization/i, /Bearer\s/, /dapi[0-9a-f]{8}/i]) {
+    // SDK v2 (2026-10-30): ext-apps 2.x builds App on @modelcontextprotocol/client,
+    // whose shared OAuth metadata schemas and error classes survive tree-shaking
+    // (field names like `authorization_servers`, messages like "Authorization
+    // server mismatch"). Those are inert strings, so the check targets an
+    // Authorization HTTP header being set, not the word itself.
+    const forbidden = [
+      /\bfetch\(/,
+      /XMLHttpRequest/,
+      /navigator\.sendBeacon/,
+      /\bEventSource\b/,
+      /["'`]authorization["'`]\s*[:,\]]/i,
+      /\.set\(\s*["'`]authorization["'`]/i,
+      /Bearer\s/,
+      /dapi[0-9a-f]{8}/i,
+    ];
+    for (const re of forbidden) {
       expect(re.test(HTML), String(re)).toBe(false);
     }
   });

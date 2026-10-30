@@ -2,16 +2,17 @@
 // Session 34 · Wave 4-2 · No enum, no namespace, no default export
 //
 // Every tool goes through registerContractTool:
-//   * input  — the contract's zod schema is the tool's inputSchema, so the MCP
+//   * input  — the contract's zod schema (a z.object, i.e. a Standard Schema;
+//              SDK v2 no longer takes raw shapes) is the tool's inputSchema, so the MCP
 //              SDK rejects invalid arguments before the handler runs and returns
 //              a tool error (isError: true) whose text carries the zod issues.
 //   * output — the handler's data is checked against the contract's output
 //              schema (plus an optional extension) before it is returned as
 //              structuredContent; the same reply supplies the markdown text.
-// Tools with `ui` are registered with registerAppTool (MCP Apps _meta.ui).
+// Tools with `ui` are registered with registerAppTool (MCP Apps _meta.ui, the
+// non-deprecated Standard Schema overload of ext-apps 2.x).
 
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import type { McpUiToolMeta } from '@modelcontextprotocol/ext-apps';
 import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import type { z } from 'zod';

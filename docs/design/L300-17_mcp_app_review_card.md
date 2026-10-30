@@ -4,7 +4,11 @@
 
 ## Version decision
 
-Pin **`@modelcontextprotocol/ext-apps` 1.7.5**. This pairs with the server's existing `@modelcontextprotocol/sdk` 1.32.1 (SDK v1). The 2.x line requires the SDK v2 split packages (`@modelcontextprotocol/sdk-core`, `@modelcontextprotocol/sdk-server`), which would be a non-trivial migration. No 1.7.5 limitation was found that blocks any supported host — Genie One, Claude, or the reference `basic-host` — so 1.7.5 is confirmed.
+**Current (2026-10-30, branch `mg-genie-mcp-sdk-v2`):** `@modelcontextprotocol/ext-apps` **2.0.4** on the MCP TypeScript SDK **v2** split packages, all pinned exactly: `@modelcontextprotocol/server` 2.4.0, `@modelcontextprotocol/core` 2.4.0, `@modelcontextprotocol/client` 2.4.0 (a required peer of ext-apps 2.x; the view's `App` is built on its `Protocol`), and `@modelcontextprotocol/node` 2.1.2 (`toNodeHandler` for Express). `@modelcontextprotocol/sdk` (v1) is removed. The server speaks MCP spec **2026-07-28** and keeps serving 2025-era clients through `createMcpHandler(factory, { legacy: 'stateless' })`. One `zod` copy (4.6.7) in the tree. Card: 318,695 bytes raw / **83,783 gzip** (budget 100 KB gzip; v1 card was 75,467). Details and live results: [`../sessions/2026-10-30_mcp-sdk-v2-upgrade.md`](../sessions/2026-10-30_mcp-sdk-v2-upgrade.md).
+
+**Correction:** the original decision below named the v2 packages `@modelcontextprotocol/sdk-core` / `@modelcontextprotocol/sdk-server`. Those packages do not exist on npm. The real v2 package names are `@modelcontextprotocol/core`, `@modelcontextprotocol/server` and `@modelcontextprotocol/client` (plus the framework adapters `@modelcontextprotocol/node`, `express`, `fastify`, `hono`).
+
+**Original decision (session 31, 2026-10-24, superseded):** pin `@modelcontextprotocol/ext-apps` 1.7.5, paired with `@modelcontextprotocol/sdk` 1.32.1 (SDK v1), because the 2.x line requires the SDK v2 split packages, which would be a non-trivial migration. No 1.7.5 limitation was found that blocks any supported host — Genie One, Claude, or the reference `basic-host`.
 
 ---
 
@@ -111,6 +115,8 @@ Four tools reference the review card resource, making them "UI-enabled": when th
 | `review_get_stats` | `["model", "app"]` | `{ resourceUri: RESOURCE_URI }` | `UserStatsSchema` | `renderStatsMarkdown(stats)` |
 
 Ref: `registerAppTool` in [src/server/index.ts L217-255](../../mcp-ext-apps/src/server/index.ts#L217-255), tool metadata type `McpUiToolMeta` in [src/spec.types.ts L769-796](../../mcp-ext-apps/src/spec.types.ts#L769-796).
+
+**ext-apps 2.x (2026-10-30):** `registerContractTool` (`server/mcp/tools/define.ts`) calls the non-deprecated Standard Schema overload of `registerAppTool` (the contract `inputSchema` is a `z.object`, not a raw shape) and passes only `_meta.ui.resourceUri`. ext-apps 2.0.4 still adds the deprecated flat `ui/resourceUri` key to the listed tool for older hosts; `server/mcp/server.test.ts` asserts both. The resource is registered with `registerAppResource` and MIME `RESOURCE_MIME_TYPE` (`text/html;profile=mcp-app`).
 
 ### App-only helper tools (hidden from model)
 

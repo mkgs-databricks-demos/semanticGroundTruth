@@ -1,8 +1,10 @@
 // server/mcp/server.ts — builds a per-request MCP server with all 13 tools + the review card MCP App
 // Session 11 · Wave 4 · No enum, no namespace, no default export
 // Session 34 · Wave 4-2: review card is an MCP App (ext-apps 1.7.5, design L300-17)
+// MCP SDK v2 upgrade (2026-10-30): @modelcontextprotocol/server 2.4.0 + ext-apps 2.0.4.
+// createMcpHandler (index.ts) calls this once per HTTP request, for both eras.
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import type { McpUiResourceMeta } from '@modelcontextprotocol/ext-apps';
 import { RESOURCE_MIME_TYPE, registerAppResource } from '@modelcontextprotocol/ext-apps/server';
 import type { Services } from '../services';

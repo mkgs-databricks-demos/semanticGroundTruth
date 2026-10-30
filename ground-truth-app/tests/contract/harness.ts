@@ -6,8 +6,7 @@
 //   vi.mock('../../server/services/sources', async (orig) => ({
 //     ...(await orig<object>()), SourceService: (await import('./fakeStore')).FakeSourceService }));
 
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import type { Role, UserContext } from '../../server/lib/context';
 import { findRoute, invoke, recordRoutes } from '../../server/lib/testing/routeHarness';
 import type { InvokeResult, Registration } from '../../server/lib/testing/routeHarness';

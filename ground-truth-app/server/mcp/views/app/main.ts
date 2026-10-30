@@ -14,7 +14,8 @@ import {
   applyHostStyleVariables,
   type McpUiHostContext,
 } from '@modelcontextprotocol/ext-apps';
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+// Type-only: ext-apps 2.x builds App on @modelcontextprotocol/client's Protocol.
+import type { Transport } from '@modelcontextprotocol/client';
 import { ReviewCardView } from './view';
 
 export const APP_INFO = { name: 'ground-truth-review-card', version: '1.0.0' } as const;

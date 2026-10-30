@@ -3,8 +3,7 @@
 // Session 34 · Wave 4-2 · Vitest with mocked Services
 
 import { describe, it, expect, vi } from 'vitest';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import type { Services } from '../services';
 import type { UserContext } from '../lib/context';
