@@ -1,6 +1,6 @@
 # Dependabot triage: 57 alerts on `main` @ `9198d2d` (2026-10-29)
 
-**Status:** on `mg-genie-dependabot-triage`. **Done (owner-approved 2026-10-29):** removed the Figma export's `_code/package.json` and `_code/pnpm-lock.yaml` (19 Figma rows), and applied the app change set (30 rows; `pnpm audit` 42 -> 12). **zod 4.6.7 tried and not applied:** it breaks the MCP App card size budget (see Results). **Waiting for the owner:** the zod budget decision, and dismissing the 10 not-reachable app alerts on GitHub. Follow-ups: [`../requests/2026-10-29_dependabot-follow-ups.md`](../requests/2026-10-29_dependabot-follow-ups.md).
+**Status:** on `mg-genie-dependabot-triage`. **Done (owner-approved 2026-10-29):** removed the Figma export's `_code/package.json` and `_code/pnpm-lock.yaml` (19 Figma rows), and applied the app change set (30 rows; `pnpm audit` 42 -> 12). **zod 4.6.7 applied (owner, 2026-10-29)** with a card locale trim that keeps the MCP App card under its 100 KB budget (75,467 B gzip; see Results); `pnpm audit` 12 -> 11. **Waiting for the owner:** dismissing the 10 not-reachable app alerts on GitHub. Follow-ups: [`../requests/2026-10-29_dependabot-follow-ups.md`](../requests/2026-10-29_dependabot-follow-ups.md).
 
 ## Source and method
 
@@ -65,7 +65,7 @@ Keys: (D) direct, (T) transitive. Notes P1-P13 / F1-F2 refer to the sections abo
 | 13 | GHSA-v39h-62p7-jpjc | `fast-uri` 3.1.0 (T) | high | `ground-truth-app` | runtime server (MCP SDK) [P5] | unlikely | override 3.1.0 -> 3.1.9 | fix now: override | low |
 | 14 | GHSA-2883-xcg3-v3hh | `js-yaml` 4.3.1 (T) | high | `ground-truth-app` | runtime server [P3] | trusted input only | override 4.3.2 | fix now: override | low |
 | 15 | GHSA-3f7j-7jwc-fxfj | `systeminformation` 5.31.7 (T) | high | `ground-truth-app` | runtime server (OTel) [P6] | No (Linux; no user input) | override 5.31.7 -> 5.33.18 | fix now: override | low |
-| 16 | GHSA-mrhx-c7xc-m3w5 | `zod` 4.3.6 (T) | high | `ground-truth-app` | runtime server + client [P8] | Yes (bodies <= 1 mb) | override 4.6.7 (all consumers) | defer: 4.6.7 tried, card over budget (Results) | medium |
+| 16 | GHSA-mrhx-c7xc-m3w5 | `zod` 4.3.6 (T) | high | `ground-truth-app` | runtime server + client [P8] | Yes (bodies <= 1 mb) | override 4.6.7 (all consumers) | fixed: override 4.6.7 + card locale trim (Results) | medium |
 | 17 | GHSA-49rj-9fvp-4h2h | `react-router` 7.13.1 (D) | high | `figma/_code` | Figma reference export [F1] | No | remove export manifest | fixed: manifest removed | none |
 | 18 | GHSA-8646-j5j9-6r62 | `react-router` 7.13.1 (D) | high | `figma/_code` | Figma reference export [F1] | No | remove export manifest | fixed: manifest removed | none |
 | 19 | GHSA-8x6r-g9mw-2r78 | `react-router` 7.13.1 (D) | high | `figma/_code` | Figma reference export [F1] | No | remove export manifest | fixed: manifest removed | none |
@@ -117,7 +117,7 @@ Keys: (D) direct, (T) transitive. Notes P1-P13 / F1-F2 refer to the sections abo
 * Fix now: 30 rows, all app. They come from 7 override changes plus 1 devDependency bump.
 * Fixed (manifest removed): 19 Figma rows.
 * Dismiss: 10 app rows (not reachable).
-* Defer: 2 rows (zod, instrumentation-pg).
+* Defer: 2 rows (zod, instrumentation-pg). zod was fixed later the same day (Results, "zod 4.6.7 applied").
 
 ## Proposed change set (step 4, after approval)
 
@@ -182,6 +182,20 @@ Gotcha: an override experiment's lockfile keeps caret-range consumers on the exp
 
 **zod options for the owner:** (a) keep 4.3.6 until AppKit moves off its exact pin (current); (b) raise the card budget to about 120 KB gzip / 480 KB raw in `build.ts` and L300-17, add the global override, and regenerate the card and `contracts.schema.json` (a contract-snapshot change, so rerun `api_contract_tests`).
 
+**zod 4.6.7 applied (owner, 2026-10-29), budget unchanged.** The card is mostly zod, and most of that zod is unused: `main.ts` imports ext-apps' lean `app.js` (33 KB), MCP SDK v1 needs zod at runtime, and zod's `export * as locales` keeps all 51 locales (~185 KB minified) in the bundle (colinhacks/zod#6050). `build.ts` now has a Vite plugin (`zodEnglishOnlyLocales`) that serves an English-only `zod/v4/locales/index.js`. Checked on an exact rsync:
+
+| Check | Result |
+| --- | --- |
+| Frozen install / lockfile-only | pass / byte-identical; one zod copy (4.6.7) |
+| MCP App card | 75,467 B gzip / 273,447 raw (main: 82,280 / 344,467; 4.6.7 without the trim: 113,476) |
+| zod messages | English at runtime (classic and mini); no other locales in the card |
+| `contracts.schema.json` | 36 nullable `anyOf` -> `type: [T, "null"]`, 2 email patterns; nothing else |
+| Both `tsc -b` / vitest | 0 errors / 62 files, 1891 pass, 2 skipped |
+| `pnpm run build` / `check:bundle` | pass, generated files unchanged / entry chunk 242.90 kB gzip (was 302.56) |
+| Audit | 0 C / 3 H / 8 M / 0 L (11): Prometheus exporter, sdk-node, Jaeger propagator, 8 OTel DB instrumentations |
+
+Gotcha: a second install from the same pnpm store again left AppKit's bundled `@databricks/sdk-*` empty, even with `--force`; a new `--store-dir` fixed it (runbook updated). Not yet done: dev deploy, `api_contract_tests`, card render in Genie One (follow-up 5).
+
 ## Appendix: vulnerable range -> first patched
 
 1 `>=3.4.4 <=3.4.16` -> 3.4.17; 2 `<0.217.0` -> 0.217.0; 3 `<2.9.0` -> 2.9.0; 4 `>=0.57.0 <0.217.0` -> 0.217.0; 5 `<=3.4.16` -> 3.4.17; 6 `<3.1.3` -> 3.1.3; 7 `<3.1.5` -> 3.1.5; 8 `<3.1.6` -> 3.1.6; 9 `<3.1.6` -> 3.1.6; 10 `<=3.1.0` -> 3.1.1; 11 `<3.1.7` -> 3.1.7; 12 `<=3.1.3` -> 3.1.4; 13 `<=3.1.1` -> 3.1.2; 14 `>=4.0.0 <4.3.2` -> 4.3.2; 15 `<5.33.16` -> 5.33.16; 16 `<4.6.6` -> 4.6.6; 17 `>=7.0.0 <=7.14.1` -> 7.14.2; 18 `>=7.7.0 <7.13.2` -> 7.13.2; 19 `<7.15.0` -> 7.15.0; 20 `<7.18.0` -> 7.18.0; 21 `>=7.12.0 <7.18.2` -> 7.18.2; 22 `<7.14.0` -> 7.14.0; 23 `>=8.0.0 <=8.1.5` -> 8.1.6; 24 `<0.66.0` -> 0.66.0; 25 `<0.65.0` -> 0.65.0; 26-28 `<0.67.0` -> 0.67.0; 29 `<0.46.0` -> 0.46.0; 30 `<0.73.0` -> 0.73.0; 31 `<0.40.0` -> 0.40.0; 32 `>=2.1.0 <4.1.11` -> 4.1.11; 33 `<4.1.12` -> 4.1.12; 34 `<=3.4.12` -> 3.4.13; 35 `<6.1.0` -> 6.1.0; 36 `<3.1.8` -> 3.1.8; 37 `<3.1.9` -> 3.1.9; 38 `>=2.2.5 <6.16.0` -> 6.16.0; 39 `>=6.7.0 <=6.16.0` -> 6.16.1; 40 `>=6.14.2 <=6.15.3` -> 6.15.4; 41 `<5.33.13` -> 5.33.13; 42 `<4.1.11` -> 4.1.11; 43 `>=2.0.0 <2.8.3` -> 2.8.3; 44 `<7.14.1` -> 7.14.1; 45 `>=6.4.0 <7.18.0` -> 7.18.0; 46 `>=7.5.1 <7.13.2` -> 7.13.2; 47 `>=7.11.0 <7.18.0` -> 7.18.0; 48 `>=6.0.0 <7.18.0` -> 7.18.0; 49, 51, 52 `<=8.1.5` -> 8.1.6; 50, 53 `<=8.0.15` -> 8.0.16; 54 `<=3.4.15` -> 3.4.16; 55 `<=3.4.11` -> 3.4.12; 56 `<=3.4.16` -> 3.4.17; 57, 58 `<3.1.9` -> 3.1.9; 59 `<5.33.14` -> 5.33.14; 60 `>=7.12.0 <7.15.1` -> 7.15.1; 61 `<=8.1.5` -> 8.1.6.
@@ -194,4 +208,5 @@ Gotcha: an override experiment's lockfile keeps caret-range consumers on the exp
 * `PROJECT_MEMORY.md` and `ground-truth-app/PROJECT_MEMORY.md` (status rows, App Stack, Finding 17).
 * Added `docs/requests/2026-10-29_dependabot-follow-ups.md` (10 items) and its row in `docs/requests/README.md`.
 * Follow-up 3: added `ground-truth-app/server/lib/otelEnvCheck.ts` + `otelEnvCheck.test.ts` (8 tests) and one call in `server/server.ts` after the startup marker. Checks on an exact rsync: vitest 62 files, 1891 pass / 2 skipped; both `tsc -b` 0 errors; eslint clean on the new files (the `server.ts` `no-unsafe-argument` at `adoptAppKitHttpServer` was already there); `pnpm run build` OK; entry chunk 302.56 kB gzip; `bundle validate --strict --target dev` OK.
+* Follow-up 5 (zod): `ground-truth-app/server/mcp/views/app/build.ts` (locale-trim plugin, budget comment), `reviewCardApp.generated.ts`, `shared/contracts/generated/contracts.schema.json`, `pnpm-workspace.yaml` + `package.json` (`zod` 4.6.7), `pnpm-lock.yaml`; `docs/runbooks/node_toolchain_genie_code.md` (zod rule, pnpm store gotcha).
 * All committed on `mg-genie-dependabot-triage` (from `main` @ `9198d2d`).

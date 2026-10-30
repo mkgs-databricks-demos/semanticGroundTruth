@@ -10,13 +10,16 @@ overrides:
   bare-path: 3.1.1
   bare-url: 2.5.2
   # Security overrides (2026-10-29, docs/sessions/2026-10-29_dependabot-triage.md).
-  # dompurify, echarts, js-yaml: exact pins in AppKit / AppKit UI 0.89.0; yaml, qs: locked
+  # dompurify, echarts, js-yaml, zod: exact pins in AppKit / AppKit UI 0.89.0; yaml, qs: locked
   # through AppKit, OTel and Express. Drop each once upstream ships the patched version.
+  # zod (GHSA-mrhx): one copy for the app, AppKit and the MCP SDK; the MCP App card stays
+  # under budget only with the locale trim in server/mcp/views/app/build.ts.
   dompurify: 3.4.17
   echarts: 6.1.0
   'js-yaml@4.3.1': 4.3.2
   yaml: 2.8.3
   qs: 6.16.1
+  zod: 4.6.7
 
 allowBuilds:
   '@ast-grep/napi': true
