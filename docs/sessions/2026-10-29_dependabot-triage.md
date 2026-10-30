@@ -1,6 +1,6 @@
 # Dependabot triage: 57 alerts on `main` @ `9198d2d` (2026-10-29)
 
-**Status:** on `mg-genie-dependabot-triage`. **Done (owner-approved 2026-10-29):** removed the Figma export's `_code/package.json` and `_code/pnpm-lock.yaml` (19 Figma rows), and applied the app change set (30 rows; `pnpm audit` 42 -> 12). **zod 4.6.7 applied (owner, 2026-10-29)** with a card locale trim that keeps the MCP App card under its 100 KB budget (75,467 B gzip; see Results); `pnpm audit` 12 -> 11. **Waiting for the owner:** dismissing the 10 not-reachable app alerts on GitHub. Follow-ups: [`../requests/2026-10-29_dependabot-follow-ups.md`](../requests/2026-10-29_dependabot-follow-ups.md).
+**Status:** merged to `main` 2026-10-30 ([PR #11](https://github.com/mkgs-databricks-demos/semanticGroundTruth/pull/11), merge commit `b8672f5`; CodeQL checks passed). **Done (owner-approved 2026-10-29):** removed the Figma export's `_code/package.json` and `_code/pnpm-lock.yaml` (19 Figma rows), and applied the app change set (30 rows; `pnpm audit` 42 -> 12). **zod 4.6.7 applied (owner, 2026-10-29)** with a card locale trim that keeps the MCP App card under its 100 KB budget (75,467 B gzip; see Results); `pnpm audit` 12 -> 11. **Waiting for the owner:** dismissing the 10 not-reachable app alerts on GitHub. Follow-ups: [`../requests/2026-10-29_dependabot-follow-ups.md`](../requests/2026-10-29_dependabot-follow-ups.md).
 
 ## Source and method
 
@@ -209,4 +209,4 @@ Gotcha: a second install from the same pnpm store again left AppKit's bundled `@
 * Added `docs/requests/2026-10-29_dependabot-follow-ups.md` (10 items) and its row in `docs/requests/README.md`.
 * Follow-up 3: added `ground-truth-app/server/lib/otelEnvCheck.ts` + `otelEnvCheck.test.ts` (8 tests) and one call in `server/server.ts` after the startup marker. Checks on an exact rsync: vitest 62 files, 1891 pass / 2 skipped; both `tsc -b` 0 errors; eslint clean on the new files (the `server.ts` `no-unsafe-argument` at `adoptAppKitHttpServer` was already there); `pnpm run build` OK; entry chunk 302.56 kB gzip; `bundle validate --strict --target dev` OK.
 * Follow-up 5 (zod): `ground-truth-app/server/mcp/views/app/build.ts` (locale-trim plugin, budget comment), `reviewCardApp.generated.ts`, `shared/contracts/generated/contracts.schema.json`, `pnpm-workspace.yaml` + `package.json` (`zod` 4.6.7), `pnpm-lock.yaml`; `docs/runbooks/node_toolchain_genie_code.md` (zod rule, pnpm store gotcha).
-* All committed on `mg-genie-dependabot-triage` (from `main` @ `9198d2d`).
+* All committed on `mg-genie-dependabot-triage` (from `main` @ `9198d2d`), merged as PR #11 (`b8672f5`, 2026-10-30).
