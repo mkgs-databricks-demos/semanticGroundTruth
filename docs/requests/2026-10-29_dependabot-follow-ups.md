@@ -2,7 +2,7 @@
 
 **Source:** the Dependabot triage on branch `mg-genie-dependabot-triage` (commits `e33b1d8`, `f66faae`), report [`../sessions/2026-10-29_dependabot-triage.md`](../sessions/2026-10-29_dependabot-triage.md), `ground-truth-app/PROJECT_MEMORY.md` Finding 17.
 
-**Closed:** 1 (PR #11 merged 2026-10-30 04:59Z, merge commit `b8672f5`); 5 (zod 4.6.7 + card locale trim, deployment `01f1d3f6e512`, card rendered and used in Genie One 2026-10-30); 2 (dev deployment `01f1d3976c2d` verified: probes 12/12, `deploy_verification` 9/0, soak clean, `api_contract_tests` run `1079527457244820` 153 / 0); 3 (OTel env check: deployed line shows neither component enabled; commit `31b1b85`, deployment `01f1d3976c2d12cf810f52e0f5d24bb5`).
+**Closed:** 7 (GitHub shows 11 on `main` after the merge: 3 high, 8 moderate, matching `pnpm audit`); 1 (PR #11 merged 2026-10-30 04:59Z, merge commit `b8672f5`); 5 (zod 4.6.7 + card locale trim, deployment `01f1d3f6e512`, card rendered and used in Genie One 2026-10-30); 2 (dev deployment `01f1d3976c2d` verified: probes 12/12, `deploy_verification` 9/0, soak clean, `api_contract_tests` run `1079527457244820` 153 / 0); 3 (OTel env check: deployed line shows neither component enabled; commit `31b1b85`, deployment `01f1d3976c2d12cf810f52e0f5d24bb5`).
 
 Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when convenient.
 
@@ -14,7 +14,7 @@ Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when
 | 4 | P2 | root / owner | Dismiss the 10 not-reachable OTel alerts on GitHub (unblocked by 3) |
 | 5 | P2 | app | ~~zod GHSA-mrhx (high)~~ closed |
 | 6 | P3 | app (upstream) | `@opentelemetry/instrumentation-pg` GHSA-qqmp: needs an AppKit with auto-instrumentations that has `instrumentation-pg` >= 0.73.0 |
-| 7 | P3 | root | Reconcile the GitHub alert count with `pnpm audit` after the merge |
+| 7 | P3 | root | ~~Reconcile the GitHub alert count with `pnpm audit` after the merge~~ closed |
 | 8 | P3 | app | Drop each security override once AppKit ships the patched version |
 | 9 | P3 | design / owner | Keep the Figma Make export's `package.json` / lockfile out of the repo |
 | 10 | P3 | root / owner | Dependabot API access from Genie Code |
@@ -25,6 +25,7 @@ Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when
 * **Scope:** the Figma export manifest removal, the 7 overrides + `vitest` 4.1.12, and the docs; checks are listed in the triage report's Results section.
 * **Done when:** merged; the Dependabot page for `main` drops the Figma and fixed app alerts.
 * **Closed (2026-10-30):** [PR #11](https://github.com/mkgs-databricks-demos/semanticGroundTruth/pull/11) merged by the owner at 04:59:10Z, merge commit `b8672f5` (12 commits, head `5fe8efe`). CodeQL, Analyze (javascript-typescript) and Analyze (python) all passed; no new code-scanning alerts. The merged tree equals `5fe8efe`, the tree deployed to dev as `01f1d3f6e512`. The branch was deleted on merge. The Dependabot page count is follow-up 7.
+* **Follow-up 7 closed (2026-10-30):** the push of `mg-genie-dependabot-post-merge` reported "GitHub found 11 vulnerabilities on ... default branch (3 high, 8 moderate)", down from 63 (1 critical, 23 high, 31 moderate, 8 low). That equals the `pnpm audit` result on the merged lockfile (0 C / 3 H / 8 M / 0 L): the 10 alerts in item 4 plus `instrumentation-pg` (item 6).
 
 ## 2. Deploy the override set to dev (P2, app)
 
