@@ -2,7 +2,7 @@
 
 **Source:** the Dependabot triage on branch `mg-genie-dependabot-triage` (commits `e33b1d8`, `f66faae`), report [`../sessions/2026-10-29_dependabot-triage.md`](../sessions/2026-10-29_dependabot-triage.md), `ground-truth-app/PROJECT_MEMORY.md` Finding 17.
 
-**Closed:** 2 (dev deployment `01f1d3976c2d` verified: probes 12/12, `deploy_verification` 9/0, soak clean, `api_contract_tests` run `1079527457244820` 153 / 0); 3 (OTel env check: deployed line shows neither component enabled; commit `31b1b85`, deployment `01f1d3976c2d12cf810f52e0f5d24bb5`).
+**Closed:** 5 (zod 4.6.7 + card locale trim, deployment `01f1d3f6e512`, card rendered and used in Genie One 2026-10-30); 2 (dev deployment `01f1d3976c2d` verified: probes 12/12, `deploy_verification` 9/0, soak clean, `api_contract_tests` run `1079527457244820` 153 / 0); 3 (OTel env check: deployed line shows neither component enabled; commit `31b1b85`, deployment `01f1d3976c2d12cf810f52e0f5d24bb5`).
 
 Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when convenient.
 
@@ -12,7 +12,7 @@ Priority: **P1** = fix before the next build, **P2** = next build, **P3** = when
 | 2 | P2 | app | ~~Deploy the override set to dev and verify it~~ closed |
 | 3 | P2 | app | ~~Confirm the deployed app has no platform-injected `OTEL_METRICS_EXPORTER` or `OTEL_PROPAGATORS`~~ closed |
 | 4 | P2 | root / owner | Dismiss the 10 not-reachable OTel alerts on GitHub (unblocked by 3) |
-| 5 | P2 | app | zod GHSA-mrhx (high): fixed on the branch and deployed to dev (`01f1d3f6e512`, probes 12/12, contract tests 153 / 0); only the Genie One card render check left |
+| 5 | P2 | app | ~~zod GHSA-mrhx (high)~~ closed |
 | 6 | P3 | app (upstream) | `@opentelemetry/instrumentation-pg` GHSA-qqmp: needs an AppKit with auto-instrumentations that has `instrumentation-pg` >= 0.73.0 |
 | 7 | P3 | root | Reconcile the GitHub alert count with `pnpm audit` after the merge |
 | 8 | P3 | app | Drop each security override once AppKit ships the patched version |
@@ -65,7 +65,7 @@ The fixes need `@mlflow/core` / AppKit to move to `sdk-node` >= 0.217 and `@open
 * **Change (applied on the branch):** `build.ts` plugin `zodEnglishOnlyLocales` keeps only zod's English locale (and corrects the `app-with-deps` comment); `zod: 4.6.7` in `pnpm-workspace.yaml` overrides and `package.json` (dependency + inert overrides copy); lockfile, `reviewCardApp.generated.ts` and `contracts.schema.json` regenerated (36 nullable `anyOf` -> `type: [T, "null"]`, 2 email patterns; nothing else).
 * **Checks (exact rsync, Node 22.16.0, pnpm 11.0.8):** frozen install; lockfile-only byte-identical; one zod copy (4.6.7); card **75,467 B gzip / 273,447 raw** (was 82,280 / 344,467); English zod messages at runtime (classic and mini), no other locales in the card; both `tsc -b` 0 errors; vitest 62 files, 1891 pass / 2 skipped; `pnpm run build` OK and leaves the 3 generated files unchanged; entry chunk **242.90 kB** gzip (was 302.56; zod 4.6.7 also drops unused locales from the client); audit 0 C / 3 H / 8 M / 0 L (11; zod row gone).
 * **Deployed (2026-10-30, `32dc3da`):** `bundle run app --target dev` -> deployment `01f1d3f6e51219888b03876091d84598` SUCCEEDED, app RUNNING. Probes 12/12 (M2M SPN). The live `resources/read` of `ui://ground-truth/review-card` (`text/html;profile=mcp-app`) is byte-identical to the committed card (273,447 B, same sha256; decode the event stream as UTF-8, `requests` defaults to Latin-1). `deploy_verification` run `712371650173866` 9 / 0. `api_contract_tests` run `284479630574228` 153 pass / 0 fail / 201 `skipped_live` / 100%. Soak 00:16-00:33Z: 1,620 log rows, 0 error lines, 1 start, no missing module/package, 177 traces, 0 error spans; one warn, "Lakebase plugin exposes no pool.end()/close(); skipping" (`server/server.ts:53`, the old process shutting down, logged on every redeploy since 10-28). `otel_env` unchanged (`prometheusExporter: false`, `jaegerPropagator: false`).
-* **Left:** render the review card in Genie One (owner confirmed 2026-10-29 that Genie One renders MCP Apps in this workspace) and check approve / reject / skip. Then close.
+* **Genie One (owner, 2026-10-30):** "give me a new card" -> `review_get_next` rendered the interactive card (Members with Gaps, measure, PENDING; Approve / Reject / Edit / Skip with A / R / E / S shortcuts, skip-reason select, logic, Add synonym, "29 / 151 reviewed"; dark host theme applied). The owner approved a card from the card itself: `lb_votes_history` has `vote_type = approve`, `source = mcp` at 04:19:21Z; 22 `POST /mcp` spans 04:14-04:20Z, 0 error spans; 0 error log lines since 04:10Z; deployment `01f1d3f6e512` still active. Reject / Edit / Skip were not clicked in Genie One; they go through the same `app.callServerTool` path and are covered by `main.test.ts` / `view.test.ts` and the live contract tests. **Closed.**
 
 ## 6. `instrumentation-pg` GHSA-qqmp (P3, upstream)
 

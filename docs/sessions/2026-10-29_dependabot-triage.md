@@ -194,7 +194,7 @@ Gotcha: an override experiment's lockfile keeps caret-range consumers on the exp
 | `pnpm run build` / `check:bundle` | pass, generated files unchanged / entry chunk 242.90 kB gzip (was 302.56) |
 | Audit | 0 C / 3 H / 8 M / 0 L (11): Prometheus exporter, sdk-node, Jaeger propagator, 8 OTel DB instrumentations |
 
-Gotcha: a second install from the same pnpm store again left AppKit's bundled `@databricks/sdk-*` empty, even with `--force`; a new `--store-dir` fixed it (runbook updated). **Deployed (2026-10-30):** `32dc3da` -> deployment `01f1d3f6e51219888b03876091d84598`; probes 12/12; live MCP card byte-identical to the committed one; `deploy_verification` run `712371650173866` 9 / 0; `api_contract_tests` run `284479630574228` 153 / 0 / 201 `skipped_live` / 100%; soak 00:16-00:33Z 0 error lines, 0 error spans (one existing shutdown warn). Not yet done: card render in Genie One (follow-up 5).
+Gotcha: a second install from the same pnpm store again left AppKit's bundled `@databricks/sdk-*` empty, even with `--force`; a new `--store-dir` fixed it (runbook updated). **Deployed (2026-10-30):** `32dc3da` -> deployment `01f1d3f6e51219888b03876091d84598`; probes 12/12; live MCP card byte-identical to the committed one; `deploy_verification` run `712371650173866` 9 / 0; `api_contract_tests` run `284479630574228` 153 / 0 / 201 `skipped_live` / 100%; soak 00:16-00:33Z 0 error lines, 0 error spans (one existing shutdown warn). **Genie One (owner, 2026-10-30):** the card rendered and the owner approved from it (`lb_votes_history` `approve`, `source = mcp`, 04:19:21Z; 22 `POST /mcp` spans, 0 errors). Follow-up 5 closed.
 
 ## Appendix: vulnerable range -> first patched
 
