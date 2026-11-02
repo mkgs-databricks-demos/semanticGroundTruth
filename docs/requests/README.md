@@ -4,6 +4,7 @@ Open work that came out of a build or an interactive session and is not yet in a
 
 | Date | File | Source | Open items |
 |------|------|--------|------------|
+| 2026-10-30 | [2026-10-30_mcp-sdk-v2-follow-ups.md](2026-10-30_mcp-sdk-v2-follow-ups.md) | MCP SDK v2 upgrade (branch `mg-genie-mcp-sdk-v2`, deployment `01f1d474df55`) | 5 (1 P1: card approve check in Genie One) |
 | 2026-10-30 | [2026-10-30_appkit-upgrade-plan.md](2026-10-30_appkit-upgrade-plan.md) | Plan for Dependabot follow-ups 6 and 8 | Waiting on an AppKit release after 0.89.0 |
 | 2026-10-29 | [2026-10-29_dependabot-follow-ups.md](2026-10-29_dependabot-follow-ups.md) | Dependabot triage (PR #11, merged `b8672f5`) | 4 (0 P1, all P3; 1, 2, 3, 4, 5 and 7 closed) |
 | 2026-10-28 | [2026-10-28_build-5-follow-ups.md](2026-10-28_build-5-follow-ups.md) | Build 5 (run `229891579528310`, waves 5-0..5-10) | 14 (2 P1) |
